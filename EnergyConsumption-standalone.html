@@ -1,0 +1,999 @@
+<!-- 
+  PROGRAM: Car Energy Tracker (Standalone Edition)
+  AUTHOR: Gemini (Senior Developer Persona)
+  GENERATED: 2025-11-19 14:30:00 +07
+  
+  VERSION: v14 (UI Polish)
+  DEPENDENCIES: None (All CSS/JS embedded)
+  
+  REVISION NOTES (v14):
+  1. UI Improvement (Data Manager):
+     - Standardized button sizes in the Data Modal.
+     - "Export" and "Import" buttons now share equal width (flex: 1) for a cleaner look.
+  2. Inherits all previous functionality (Cost Logic Fixes, CSV Support, etc.).
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Car Energy Tracker v14</title>
+    <style>
+        :root {
+            --primary: #1e3c72;
+            --secondary: #2a5298;
+            --accent: #0d6efd;
+            --success: #198754;
+            --danger: #dc3545;
+            --warning: #ffc107;
+            --light: #f8f9fa;
+            --dark: #212529;
+            --border: #dee2e6;
+            --shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        * { box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: #f4f6f9; margin: 0; padding: 0; color: #333; }
+        
+        /* Layout */
+        .container { max-width: 900px; margin: 0 auto; padding: 15px; }
+        .navbar { background: linear-gradient(135deg, var(--primary), var(--secondary)); color: white; padding: 1rem; display: flex; justify-content: space-between; align-items: center; box-shadow: var(--shadow); margin-bottom: 20px; }
+        .navbar h1 { margin: 0; font-size: 1.25rem; font-weight: 600; display: flex; align-items: center; gap: 10px; }
+        .nav-btn { background: rgba(255,255,255,0.2); border: none; color: white; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 0.9rem; transition: 0.2s; }
+        .nav-btn:hover { background: rgba(255,255,255,0.3); }
+
+        /* Components */
+        .card { background: white; border-radius: 8px; padding: 20px; box-shadow: var(--shadow); margin-bottom: 20px; }
+        .row { display: flex; gap: 15px; flex-wrap: wrap; }
+        .col { flex: 1; min-width: 200px; }
+        .col-half { flex: 0 0 calc(50% - 8px); }
+        .hidden { display: none !important; }
+        .text-end { text-align: right; }
+        .text-center { text-align: center; }
+        .small { font-size: 0.85rem; color: #666; }
+        .fw-bold { font-weight: bold; }
+
+        /* Forms */
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: 500; font-size: 0.9rem; }
+        input, select { width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: 4px; font-size: 1rem; }
+        input:focus, select:focus { outline: 2px solid var(--accent); border-color: transparent; }
+        
+        /* Buttons */
+        .btn { display: inline-block; padding: 8px 16px; border: 1px solid transparent; border-radius: 4px; cursor: pointer; font-size: 0.95rem; text-align: center; text-decoration: none; width: 100%; }
+        .btn-sm { padding: 4px 8px; font-size: 0.85rem; width: auto; }
+        .btn-primary { background: var(--accent); color: white; }
+        .btn-success { background: var(--success); color: white; }
+        .btn-warning { background: var(--warning); color: #000; }
+        .btn-danger { background: var(--danger); color: white; }
+        .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--dark); }
+        .btn:hover { opacity: 0.9; }
+        .d-flex { display: flex; gap: 10px; align-items: center; }
+
+        /* Tabs */
+        .tabs { display: flex; border-bottom: 1px solid var(--border); margin-bottom: 20px; }
+        .tab-btn { background: none; border: none; padding: 10px 20px; cursor: pointer; color: #666; font-weight: 500; border-bottom: 3px solid transparent; }
+        .tab-btn.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .tab-content { display: none; animation: fadeIn 0.3s; }
+        .tab-content.active { display: block; }
+
+        /* Tables */
+        table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+        th { text-align: left; padding: 10px; background: var(--light); border-bottom: 2px solid var(--border); }
+        td { padding: 10px; border-bottom: 1px solid var(--border); }
+        tr:last-child td { border-bottom: none; }
+
+        /* Badges */
+        .badge { padding: 3px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: bold; color: white; }
+        .bg-bev { background: var(--success); }
+        .bg-ice { background: var(--danger); }
+
+        /* Modal */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; display: none; justify-content: center; align-items: center; }
+        .modal { background: white; width: 90%; max-width: 500px; border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); animation: slideDown 0.3s; }
+        .modal-header { padding: 15px 20px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; font-weight: bold; }
+        .modal-body { padding: 20px; max-height: 70vh; overflow-y: auto; }
+        .close-modal { background: none; border: none; font-size: 1.5rem; cursor: pointer; line-height: 1; }
+
+        /* Custom Chart */
+        .chart-container { position: relative; height: 250px; width: 100%; border: 1px solid var(--border); border-radius: 4px; background: white; padding: 10px; }
+        canvas { width: 100%; height: 100%; display: block; }
+
+        /* Utilities */
+        .trip-summary { background: #e9ecef; border-left: 4px solid var(--primary); padding: 10px; margin-bottom: 15px; border-radius: 4px; font-size: 0.9rem; }
+        .editing-mode { border: 2px solid var(--warning); }
+
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes slideDown { from { transform: translateY(-20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+    </style>
+</head>
+<body>
+
+<nav class="navbar">
+    <h1>⚡ Car Energy Tracker</h1>
+    <div class="d-flex">
+        <button class="nav-btn" onclick="ui.openModal('settingsModal')">⚙️ Settings</button>
+        <button class="nav-btn" onclick="ui.openModal('dataModal')">💾 Data</button>
+    </div>
+</nav>
+
+<div class="container">
+    <!-- Tabs -->
+    <div class="tabs">
+        <button class="tab-btn active" onclick="ui.switchTab('input')">Log Trip</button>
+        <button class="tab-btn" onclick="ui.switchTab('dashboard')">Dashboard</button>
+        <button class="tab-btn" onclick="ui.switchTab('profiles')">Car Profiles</button>
+        <button class="tab-btn" onclick="ui.switchTab('costs')">Cost Profiles</button>
+    </div>
+
+    <!-- TAB: Log Trip -->
+    <div id="input" class="tab-content active">
+        <div class="card" id="tripCard" style="max-width: 600px; margin: 0 auto;">
+            <div class="d-flex" style="justify-content: space-between; margin-bottom: 15px;">
+                <h3 style="margin:0; color:var(--primary);" id="tripFormTitle">Log New Trip</h3>
+                <button id="cancelEditTrip" class="btn-sm btn-outline hidden" onclick="app.cancelEdit('trip')">Cancel</button>
+            </div>
+
+            <form id="tripForm">
+                <input type="hidden" id="editLogId">
+                
+                <div class="form-group">
+                    <label>Select Vehicle</label>
+                    <select id="inputCarSelect" required><option value="">-- Choose --</option></select>
+                </div>
+                
+                <div class="form-group">
+                    <label>Trip Date</label>
+                    <input type="date" id="tripDate" required>
+                </div>
+
+                <div class="row">
+                    <div class="col-half form-group">
+                        <label>Start (km)</label>
+                        <input type="number" id="startKm" required step="0.1">
+                    </div>
+                    <div class="col-half form-group">
+                        <label>End (km)</label>
+                        <input type="number" id="endKm" required step="0.1">
+                    </div>
+                </div>
+
+                <!-- Auto Calc Summary -->
+                <div id="tripSummary" class="trip-summary hidden">
+                    <div class="row text-center" style="gap:0">
+                        <div class="col" style="border-right:1px solid #ccc">
+                            <div class="small">Dist</div><strong id="sumDist">0</strong> km
+                        </div>
+                        <div class="col" style="border-right:1px solid #ccc">
+                            <div class="small">Cons.</div><strong id="sumCons">0</strong> <span id="sumUnit" class="small">-</span>
+                        </div>
+                        <div class="col" style="border-right:1px solid #ccc">
+                            <div class="small">Cost</div><strong id="sumCost">0</strong>
+                        </div>
+                        <div class="col">
+                            <div class="small">Eff.</div><strong id="sumEff">0</strong> <span id="sumEffUnit" class="small"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- BEV Section -->
+                <div id="bevFields" class="hidden" style="background: #f0fdf4; padding: 15px; border-radius: 6px; border: 1px solid #bbf7d0; margin-bottom: 15px;">
+                    <div class="small fw-bold" style="color: var(--success); margin-bottom: 10px;">🔌 BEV Charging & Cost</div>
+                    <div class="row">
+                        <div class="col-half form-group">
+                            <label>Charge Type</label>
+                            <select id="bevChargeType"><option value="AC">AC (Slow)</option><option value="DC">DC (Fast)</option></select>
+                        </div>
+                        <div class="col-half form-group">
+                            <label>Period</label>
+                            <select id="bevPeriod"><option value="Off-Peak">Off-Peak</option><option value="On-Peak">On-Peak</option></select>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Effective Rate (<span class="currency-symbol"></span>)</label>
+                        <input type="number" id="bevPrice" step="0.01" readonly>
+                        <div id="bevPriceDate" class="small text-end" style="margin-top:2px;"></div>
+                    </div>
+                    <hr style="border:0; border-top:1px solid #ddd; margin: 10px 0;">
+                    <div class="row">
+                        <div class="col-half form-group"><label class="small">Batt % Start</label><input type="number" id="battStart"></div>
+                        <div class="col-half form-group"><label class="small">Batt % End</label><input type="number" id="battEnd"></div>
+                    </div>
+                </div>
+
+                <!-- ICE Section -->
+                <div id="iceFields" class="hidden" style="background: #fef2f2; padding: 15px; border-radius: 6px; border: 1px solid #fecaca; margin-bottom: 15px;">
+                    <div class="small fw-bold" style="color: var(--danger); margin-bottom: 10px;">⛽ Refueling</div>
+                    <div class="form-group">
+                        <label>Gas Type</label>
+                        <select id="iceGasType">
+                            <option value="Gas 95">Gas 95</option><option value="Gas 91">Gas 91</option>
+                            <option value="E20">E20</option><option value="E85">E85</option><option value="Diesel">Diesel</option>
+                        </select>
+                    </div>
+                    <div class="row">
+                        <div class="col-half form-group">
+                            <label>Litres Filled</label>
+                            <input type="number" id="gasFilled" step="0.01">
+                        </div>
+                        <div class="col-half form-group">
+                            <label>Price/Litre (<span class="currency-symbol"></span>)</label>
+                            <input type="number" id="gasPrice" step="0.01" readonly>
+                        </div>
+                    </div>
+                    <div id="icePriceDate" class="small text-end"></div>
+                </div>
+
+                <button type="submit" id="tripSubmitBtn" class="btn btn-primary">Save Trip Log</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- TAB: Dashboard -->
+    <div id="dashboard" class="tab-content">
+        <div class="card">
+            <h3>📈 Efficiency Trend (km/unit)</h3>
+            <div class="chart-container">
+                <canvas id="trendCanvas"></canvas>
+            </div>
+        </div>
+        <div class="card">
+            <h3>Trip History</h3>
+            <div style="overflow-x: auto;">
+                <table id="logsTable">
+                    <thead>
+                        <tr>
+                            <th>Date</th><th>Car</th><th>Dist</th><th>Used</th><th>Eff. (km/u)</th><th>Rate</th><th>Cost</th><th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- TAB: Profiles -->
+    <div id="profiles" class="tab-content">
+        <div class="row">
+            <div class="col" style="flex: 0 0 300px;">
+                <div class="card" id="carCard">
+                    <div class="d-flex" style="justify-content: space-between; margin-bottom:10px;">
+                        <h4 id="carFormTitle" style="margin:0">Add Car</h4>
+                        <button id="cancelEditCar" class="btn-sm btn-outline hidden" onclick="app.cancelEdit('car')">Cancel</button>
+                    </div>
+                    <form id="profileForm">
+                        <input type="hidden" id="editCarId">
+                        <div class="form-group"><select id="carType" required><option value="BEV">BEV (Electric)</option><option value="ICE">ICE (Combustion)</option></select></div>
+                        <div class="form-group"><input type="text" id="carName" required placeholder="Nickname"></div>
+                        <div class="form-group"><input type="text" id="carModel" required placeholder="Model"></div>
+                        
+                        <div id="profileBevSpecs">
+                            <div class="form-group"><label class="small">Battery (kWh)</label><input type="number" id="carBatSize" step="0.1"></div>
+                            <div class="form-group"><label class="small">Range (km)</label><input type="number" id="carBevRange" step="1"></div>
+                        </div>
+                        <div id="profileIceSpecs" class="hidden">
+                            <div class="form-group"><label class="small">Tank (L)</label><input type="number" id="carTankSize" step="1"></div>
+                            <div class="form-group"><label class="small">Range (km)</label><input type="number" id="carIceRange" step="1"></div>
+                        </div>
+                        <button type="submit" id="carSubmitBtn" class="btn btn-success">Save Car</button>
+                    </form>
+                </div>
+            </div>
+            <div class="col">
+                <div class="card">
+                    <h4>Your Fleet</h4>
+                    <div id="carList"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TAB: Costs -->
+    <div id="costs" class="tab-content">
+        <div class="row">
+            <div class="col" style="flex: 0 0 300px;">
+                <div class="card" id="costCard">
+                    <div class="d-flex" style="justify-content: space-between; margin-bottom:10px;">
+                        <h4 id="costFormTitle" style="margin:0">Add Price</h4>
+                        <button id="cancelEditCost" class="btn-sm btn-outline hidden" onclick="app.cancelEdit('cost')">Cancel</button>
+                    </div>
+                    <form id="costForm">
+                        <input type="hidden" id="editCostId">
+                        <div class="form-group"><label class="small">Date</label><input type="date" id="costDate" required></div>
+                        <div class="form-group"><label class="small">Type</label><select id="costType"><option value="BEV">BEV</option><option value="ICE">ICE</option></select></div>
+                        
+                        <div id="costBevInputs">
+                            <div class="form-group"><label class="small">Mode</label><select id="costBevMode"><option value="DC">DC</option><option value="AC">AC</option></select></div>
+                            <div class="form-group"><label class="small">Period</label><select id="costBevPeriod"><option value="Off-Peak">Off-Peak</option><option value="On-Peak">On-Peak</option></select></div>
+                            <div class="form-group"><label class="small">Base Unit Price</label><input type="number" id="costPrice" step="0.01" placeholder="0.00"></div>
+                            <div class="form-group"><label class="small">FT</label><input type="number" id="costFt" step="0.01" placeholder="0.00"></div>
+                            <div class="form-group"><label class="small">VAT (%)</label><input type="number" id="costVat" step="0.1" value="7.0"></div>
+                        </div>
+
+                        <div id="costIceInputs" class="hidden">
+                            <div class="form-group">
+                                <label class="small">Fuel</label>
+                                <select id="costIceGasType">
+                                    <option value="Gas 95">Gas 95</option><option value="Gas 91">Gas 91</option>
+                                    <option value="E20">E20</option><option value="E85">E85</option><option value="Diesel">Diesel</option>
+                                </select>
+                            </div>
+                            <div class="form-group"><label class="small">Price/Litre</label><input type="number" id="costIcePrice" step="0.01" placeholder="0.00"></div>
+                        </div>
+                        <button type="submit" id="costSubmitBtn" class="btn btn-warning">Save Price</button>
+                    </form>
+                </div>
+            </div>
+            <div class="col">
+                <div class="card">
+                    <div class="d-flex" style="justify-content: space-between;">
+                        <h4 style="margin:0">Price History</h4>
+                        <button class="btn-sm btn-outline" onclick="app.renderCosts()">Refresh</button>
+                    </div>
+                    <div style="max-height: 400px; overflow-y: auto; margin-top: 10px;">
+                        <table id="costTable">
+                            <thead><tr><th>Date</th><th>Type</th><th>Detail</th><th>Eff. Rate</th><th>Action</th></tr></thead>
+                            <tbody id="costListBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modals -->
+<div id="settingsModal" class="modal-overlay">
+    <div class="modal">
+        <div class="modal-header">Settings <button class="close-modal" onclick="window.ui.closeModal('settingsModal')">&times;</button></div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label>Currency</label>
+                <select id="settingCurrency" onchange="app.updateCurrencySetting()">
+                    <option value="THB">THB (฿)</option><option value="USD">USD ($)</option>
+                    <option value="EUR">EUR (€)</option><option value="CUSTOM">Custom</option>
+                </select>
+            </div>
+            <div class="form-group hidden" id="customCurrencyDiv">
+                <label>Symbol</label><input type="text" id="settingCustomSymbol" maxlength="5">
+            </div>
+            <button class="btn btn-primary" onclick="app.saveSettings()">Save</button>
+        </div>
+    </div>
+</div>
+
+<div id="dataModal" class="modal-overlay">
+    <div class="modal">
+        <div class="modal-header">Data Manager <button class="close-modal" onclick="window.ui.closeModal('dataModal')">&times;</button></div>
+        <div class="modal-body">
+            <div style="padding-bottom: 15px; border-bottom: 1px solid var(--border); margin-bottom: 15px;">
+                <h4 style="margin-top:0">Full Backup (JSON)</h4>
+                <div class="d-flex">
+                    <button class="btn btn-primary" style="flex:1" onclick="app.exportData('all')">⬇ Export All</button>
+                    <label class="btn btn-outline" style="flex:1; text-align:center; cursor:pointer;">
+                        ⬆ Import All <input type="file" hidden onchange="app.importData(this, 'all')">
+                    </label>
+                </div>
+            </div>
+
+            <h4>CSV Management (Excel)</h4>
+            <div class="d-flex" style="margin-bottom:10px; background:var(--light); padding:8px; border-radius:4px;">
+                <div style="width:60px; font-weight:bold;">Cars</div>
+                <button class="btn-sm btn-outline" style="flex:1; text-align:center;" onclick="app.exportCSV('cars')">Exp CSV</button>
+                <label class="btn-sm btn-outline" style="flex:1; text-align:center; cursor:pointer;">Imp CSV <input type="file" hidden onchange="app.importCSV(this, 'cars')"></label>
+            </div>
+            <div class="d-flex" style="margin-bottom:10px; background:var(--light); padding:8px; border-radius:4px;">
+                <div style="width:60px; font-weight:bold;">Costs</div>
+                <button class="btn-sm btn-outline" style="flex:1; text-align:center;" onclick="app.exportCSV('costs')">Exp CSV</button>
+                <label class="btn-sm btn-outline" style="flex:1; text-align:center; cursor:pointer;">Imp CSV <input type="file" hidden onchange="app.importCSV(this, 'costs')"></label>
+            </div>
+             <div class="d-flex" style="margin-bottom:10px; background:var(--light); padding:8px; border-radius:4px;">
+                <div style="width:60px; font-weight:bold;">Logs</div>
+                <button class="btn-sm btn-outline" style="flex:1; text-align:center;" onclick="app.exportCSV('logs')">Exp CSV</button>
+                <label class="btn-sm btn-outline" style="flex:1; text-align:center; cursor:pointer;">Imp CSV <input type="file" hidden onchange="app.importCSV(this, 'logs')"></label>
+            </div>
+
+            <div class="text-end" style="margin-top:20px;">
+                <button class="btn-sm btn-danger" onclick="app.clearData()">Reset App</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// --- SIMPLE CHART ENGINE (v2) ---
+class SimpleChart {
+    constructor(canvasId) {
+        this.canvas = document.getElementById(canvasId);
+        this.ctx = this.canvas.getContext('2d');
+        window.addEventListener('resize', () => { this.resize(); this.draw(); });
+        setTimeout(() => this.resize(), 100);
+    }
+    resize() {
+        if(this.canvas.parentElement) {
+            this.canvas.width = this.canvas.parentElement.clientWidth;
+            this.canvas.height = this.canvas.parentElement.clientHeight || 250;
+            this.draw();
+        }
+    }
+    setData(data) { this.data = data; this.draw(); }
+    draw() {
+        const ctx = this.ctx; const w = this.canvas.width; const h = this.canvas.height; const pad = 40;
+        ctx.clearRect(0, 0, w, h);
+        if(!this.data || this.data.length === 0) {
+            ctx.fillStyle = "#666"; ctx.fillText("No data to display", w/2 - 30, h/2); return;
+        }
+        let allDates = []; let maxVal = 0;
+        this.data.forEach(ds => ds.points.forEach(p => { allDates.push(new Date(p.x)); if(p.y > maxVal) maxVal = p.y; }));
+        if (allDates.length === 0) return;
+        allDates.sort((a,b) => a - b);
+        const minDate = allDates[0].getTime(); const maxDate = allDates[allDates.length-1].getTime();
+        const timeRange = (maxDate - minDate) || 1;
+        maxVal = maxVal * 1.1 || 10;
+
+        // Grid & Axes
+        ctx.beginPath(); ctx.strokeStyle = '#ccc'; ctx.lineWidth = 1;
+        ctx.moveTo(pad, pad); ctx.lineTo(pad, h - pad); ctx.lineTo(w - pad, h - pad);
+        ctx.stroke();
+
+        // Plot
+        const colors = ['#198754', '#dc3545', '#0d6efd', '#ffc107'];
+        this.data.forEach((ds, idx) => {
+            ctx.beginPath(); ctx.strokeStyle = colors[idx % colors.length]; ctx.lineWidth = 2;
+            ctx.fillStyle = ctx.strokeStyle;
+            ds.points.sort((a,b) => new Date(a.x) - new Date(b.x));
+            ds.points.forEach((p, i) => {
+                let x = pad;
+                if (timeRange > 1) x += ((new Date(p.x).getTime() - minDate) / timeRange) * (w - (pad*2));
+                else x = w / 2; // Center if single point
+
+                const y = (h - pad) - (p.y / maxVal) * (h - (pad*2));
+                if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+                
+                // Draw point
+                ctx.fillRect(x-3, y-3, 6, 6);
+            });
+            ctx.stroke();
+            ctx.fillStyle = colors[idx % colors.length]; ctx.fillText(`● ${ds.label}`, w - 100, pad + (idx * 15));
+        });
+        
+        ctx.fillStyle = '#666'; ctx.font = '10px sans-serif';
+        ctx.fillText(maxVal.toFixed(1), 5, pad); 
+        ctx.fillText("0", 20, h - pad);
+        ctx.fillText(allDates[0].toLocaleDateString(), pad, h - 5);
+        if(allDates.length > 1) ctx.fillText(allDates[allDates.length-1].toLocaleDateString(), w - 80, h - 5);
+    }
+}
+
+// --- UI CONTROLLER ---
+window.ui = {
+    switchTab: (tabId) => {
+        document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+        document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+        document.getElementById(tabId).classList.add('active');
+        document.querySelector(`button[onclick="ui.switchTab('${tabId}')"]`).classList.add('active');
+        if(tabId === 'dashboard') window.app.renderChart();
+    },
+    openModal: (id) => document.getElementById(id).style.display = 'flex',
+    closeModal: (id) => document.getElementById(id).style.display = 'none'
+};
+
+// --- APP LOGIC ---
+class EnergyTracker {
+    constructor() {
+        this.data = { cars: [], logs: [], costs: [], settings: { currency: 'THB', symbol: '฿' } };
+        this.chart = new SimpleChart('trendCanvas');
+        this.init();
+    }
+
+    init() {
+        this.load();
+        document.getElementById('tripDate').valueAsDate = new Date();
+        document.getElementById('costDate').valueAsDate = new Date();
+        this.setupEvents();
+        this.renderAll();
+        this.updateCurrencyUI();
+        // Force price check in case a car is pre-selected by browser
+        setTimeout(() => this.updatePriceDisplay(), 200);
+    }
+
+    save() {
+        localStorage.setItem('evTrackerV14', JSON.stringify(this.data));
+        this.renderAll();
+    }
+
+    load() {
+        const stored = localStorage.getItem('evTrackerV14') || localStorage.getItem('evTrackerV13') || localStorage.getItem('evTrackerV12') || localStorage.getItem('evTrackerV9');
+        if (stored) {
+            try { this.data = JSON.parse(stored); } catch(e) { console.error(e); }
+            if (!this.data.settings) this.data.settings = { currency: 'THB', symbol: '฿' };
+            ['cars', 'logs', 'costs'].forEach(k => { if (!this.data[k]) this.data[k] = []; });
+        }
+    }
+
+    uuid() { return Math.random().toString(36).substr(2, 9); }
+
+    updateCurrencySetting() {
+        const val = document.getElementById('settingCurrency').value;
+        document.getElementById('customCurrencyDiv').classList.toggle('hidden', val !== 'CUSTOM');
+    }
+
+    saveSettings() {
+        const code = document.getElementById('settingCurrency').value;
+        let sym = '';
+        const symbols = { THB: '฿', USD: '$', EUR: '€', GBP: '£', JPY: '¥', CNY: '¥' };
+        sym = code === 'CUSTOM' ? (document.getElementById('settingCustomSymbol').value || '?') : symbols[code];
+        this.data.settings = { currency: code, symbol: sym };
+        this.save();
+        this.updateCurrencyUI();
+        window.ui.closeModal('settingsModal');
+    }
+
+    updateCurrencyUI() {
+        const sym = this.data.settings.symbol;
+        document.querySelectorAll('.currency-symbol').forEach(el => el.textContent = sym);
+        document.getElementById('settingCurrency').value = this.data.settings.currency;
+        if (this.data.settings.currency === 'CUSTOM') {
+            document.getElementById('customCurrencyDiv').classList.remove('hidden');
+            document.getElementById('settingCustomSymbol').value = this.data.settings.symbol;
+        }
+    }
+
+    getPrice(date, type, params) {
+        // FIX: Use String comparison to avoid Timezone issues (e.g. 2023-11-19 < 2023-11-19T07:00)
+        const relevant = this.data.costs.filter(c => {
+            if (c.type !== type) return false;
+            if (type === 'BEV') return c.subType === params.mode && c.period === params.period;
+            if (type === 'ICE') return c.subType === params.gasType;
+            return false;
+        });
+        // Sort by Date DESC
+        relevant.sort((a, b) => b.date.localeCompare(a.date));
+        
+        // Find first where Cost Date <= Trip Date
+        return relevant.find(c => c.date <= date) || null;
+    }
+
+    calculateEffectiveRate(cost) {
+        if (!cost) return 0;
+        if (cost.type === 'ICE') return cost.price;
+        const base = parseFloat(cost.price) || 0;
+        const ft = parseFloat(cost.ft) || 0;
+        const vat = parseFloat(cost.vat) || 0;
+        return (base + ft) * (1 + (vat / 100));
+    }
+
+    // --- UPDATED AUTO CALCULATION (km/unit) ---
+    autoCalculateTripStats() {
+        const start = parseFloat(document.getElementById('startKm').value);
+        const end = parseFloat(document.getElementById('endKm').value);
+        const carId = document.getElementById('inputCarSelect').value;
+        const car = this.data.cars.find(c => c.id === carId);
+        const summaryDiv = document.getElementById('tripSummary');
+
+        if (!car || isNaN(start) || isNaN(end) || (end - start <= 0)) {
+            summaryDiv.classList.add('hidden'); return;
+        }
+
+        const dist = end - start;
+        summaryDiv.classList.remove('hidden');
+        document.getElementById('sumDist').textContent = dist.toFixed(1);
+
+        let consumption = 0, eff = 0, cost = 0;
+        const type = car.type;
+        const rateParams = type === 'BEV' 
+            ? { mode: document.getElementById('bevChargeType').value, period: document.getElementById('bevPeriod').value } 
+            : { gasType: document.getElementById('iceGasType').value };
+
+        const priceProfile = this.getPrice(document.getElementById('tripDate').value, type, rateParams);
+        const unitRate = this.calculateEffectiveRate(priceProfile);
+
+        if (type === 'BEV') {
+            // Estimate consumption based on profile specs
+            const fraction = dist / parseFloat(car.range || 1);
+            consumption = fraction * parseFloat(car.batterySize || 0);
+            // Efficiency = km / kWh
+            eff = consumption > 0 ? (dist / consumption) : 0;
+            document.getElementById('sumUnit').textContent = 'kWh';
+            document.getElementById('sumEffUnit').textContent = 'km/kWh';
+        } else {
+            const filled = parseFloat(document.getElementById('gasFilled').value);
+            if (!isNaN(filled) && filled > 0) {
+                consumption = filled;
+                // Efficiency = km / Litre
+                eff = dist / filled;
+            }
+            document.getElementById('sumUnit').textContent = 'L';
+            document.getElementById('sumEffUnit').textContent = 'km/L';
+        }
+
+        if (type === 'ICE') {
+            const filled = parseFloat(document.getElementById('gasFilled').value);
+            cost = isNaN(filled) ? 0 : filled * unitRate;
+        } else {
+            cost = consumption * unitRate;
+        }
+
+        document.getElementById('sumCons').textContent = consumption.toFixed(2);
+        document.getElementById('sumEff').textContent = eff.toFixed(2);
+        document.getElementById('sumCost').textContent = this.data.settings.symbol + cost.toFixed(2);
+    }
+
+    saveLog(log, id = null) {
+        const car = this.data.cars.find(c => c.id === log.carId);
+        if (!car) return;
+        const dist = log.endKm - log.startKm;
+        if (dist <= 0) { alert("End KM must be greater than Start KM"); return; }
+
+        let consumption = 0, cost = 0, eff = 0;
+        
+        if (car.type === 'BEV') {
+            const fraction = dist / parseFloat(car.range || 1);
+            consumption = fraction * parseFloat(car.batterySize || 0);
+            cost = consumption * log.unitPrice;
+            eff = consumption > 0 ? (dist / consumption) : 0;
+        } else {
+            consumption = parseFloat(log.fuelFilled);
+            cost = consumption * log.unitPrice;
+            eff = consumption > 0 ? (dist / consumption) : 0;
+        }
+
+        const entry = {
+            ...log,
+            distance: dist,
+            consumption: consumption,
+            efficiency: eff, // Stored as km/unit
+            unit: car.type === 'BEV' ? 'kWh' : 'L',
+            totalCost: cost
+        };
+
+        if (id) {
+            const index = this.data.logs.findIndex(l => l.id === id);
+            if (index !== -1) { entry.id = id; this.data.logs[index] = entry; }
+        } else {
+            entry.id = this.uuid();
+            this.data.logs.push(entry);
+        }
+        this.save();
+        this.cancelEdit('trip');
+    }
+
+    editLog(id) {
+        const log = this.data.logs.find(l => l.id === id);
+        if (!log) return;
+        window.ui.switchTab('input');
+        document.getElementById('tripFormTitle').textContent = "Edit Trip Log";
+        document.getElementById('tripSubmitBtn').textContent = "Update Trip";
+        document.getElementById('tripSubmitBtn').className = 'btn btn-warning';
+        document.getElementById('cancelEditTrip').classList.remove('hidden');
+        document.getElementById('tripCard').classList.add('editing-mode');
+
+        document.getElementById('editLogId').value = log.id;
+        const sel = document.getElementById('inputCarSelect');
+        sel.value = log.carId;
+        sel.dispatchEvent(new Event('change'));
+
+        document.getElementById('tripDate').value = log.date;
+        document.getElementById('startKm').value = log.startKm;
+        document.getElementById('endKm').value = log.endKm;
+
+        if (log.chargingMode) {
+            document.getElementById('bevChargeType').value = log.chargingMode;
+            document.getElementById('bevPeriod').value = log.period;
+            document.getElementById('battStart').value = log.battStart || '';
+            document.getElementById('battEnd').value = log.battEnd || '';
+        } else {
+            document.getElementById('iceGasType').value = log.gasType;
+            document.getElementById('gasFilled').value = log.fuelFilled;
+        }
+        this.updatePriceDisplay();
+        this.autoCalculateTripStats();
+    }
+
+    saveCar(car, id = null) {
+        if (id) {
+            const idx = this.data.cars.findIndex(c => c.id === id);
+            if (idx !== -1) { car.id = id; this.data.cars[idx] = car; }
+        } else {
+            car.id = this.uuid();
+            this.data.cars.push(car);
+        }
+        this.save();
+        this.cancelEdit('car');
+    }
+
+    editCar(id) {
+        const car = this.data.cars.find(c => c.id === id);
+        if (!car) return;
+        document.getElementById('carFormTitle').textContent = "Edit Car";
+        document.getElementById('carSubmitBtn').textContent = "Update Car";
+        document.getElementById('cancelEditCar').classList.remove('hidden');
+        document.getElementById('carCard').classList.add('editing-mode');
+        document.getElementById('editCarId').value = car.id;
+        
+        document.getElementById('carType').value = car.type;
+        document.getElementById('carType').dispatchEvent(new Event('change'));
+        document.getElementById('carName').value = car.name;
+        document.getElementById('carModel').value = car.model;
+        if (car.type === 'BEV') {
+            document.getElementById('carBatSize').value = car.batterySize;
+            document.getElementById('carBevRange').value = car.range;
+        } else {
+            document.getElementById('carTankSize').value = car.tankSize;
+            document.getElementById('carIceRange').value = car.range;
+        }
+    }
+
+    saveCost(cost, id = null) {
+        const preserveType = document.getElementById('costType').value;
+        if (id) {
+            const idx = this.data.costs.findIndex(c => c.id === id);
+            if (idx !== -1) { cost.id = id; this.data.costs[idx] = cost; }
+        } else {
+            cost.id = this.uuid();
+            this.data.costs.push(cost);
+        }
+        this.save();
+        this.cancelEdit('cost');
+        
+        // FIX: Restore Type AND force update of trip display
+        document.getElementById('costType').value = preserveType;
+        document.getElementById('costType').dispatchEvent(new Event('change'));
+        this.updatePriceDisplay(); 
+    }
+
+    editCost(id) {
+        const cost = this.data.costs.find(c => c.id === id);
+        if (!cost) return;
+        document.getElementById('costFormTitle').textContent = "Edit Price";
+        document.getElementById('costSubmitBtn').textContent = "Update Price";
+        document.getElementById('cancelEditCost').classList.remove('hidden');
+        document.getElementById('costCard').classList.add('editing-mode');
+        document.getElementById('editCostId').value = cost.id;
+        document.getElementById('costDate').value = cost.date;
+        document.getElementById('costType').value = cost.type;
+        document.getElementById('costType').dispatchEvent(new Event('change'));
+
+        if (cost.type === 'BEV') {
+            document.getElementById('costBevMode').value = cost.subType;
+            document.getElementById('costBevPeriod').value = cost.period;
+            document.getElementById('costPrice').value = cost.price;
+            document.getElementById('costFt').value = cost.ft || '';
+            document.getElementById('costVat').value = cost.vat || 7;
+        } else {
+            document.getElementById('costIceGasType').value = cost.subType;
+            document.getElementById('costIcePrice').value = cost.price;
+        }
+    }
+
+    cancelEdit(mode) {
+        if (mode === 'trip') {
+            document.getElementById('tripFormTitle').textContent = "Log New Trip";
+            document.getElementById('tripSubmitBtn').textContent = "Save Trip Log";
+            document.getElementById('tripSubmitBtn').className = 'btn btn-primary';
+            document.getElementById('cancelEditTrip').classList.add('hidden');
+            document.getElementById('tripCard').classList.remove('editing-mode');
+            document.getElementById('editLogId').value = "";
+            document.getElementById('tripForm').reset();
+            document.getElementById('tripSummary').classList.add('hidden');
+            document.getElementById('tripDate').valueAsDate = new Date();
+            this.updatePriceDisplay();
+        }
+        if (mode === 'car') {
+            document.getElementById('carFormTitle').textContent = "Add Car";
+            document.getElementById('carSubmitBtn').textContent = "Save Car";
+            document.getElementById('cancelEditCar').classList.add('hidden');
+            document.getElementById('carCard').classList.remove('editing-mode');
+            document.getElementById('editCarId').value = "";
+            document.getElementById('profileForm').reset();
+        }
+        if (mode === 'cost') {
+            document.getElementById('costFormTitle').textContent = "Add Price";
+            document.getElementById('costSubmitBtn').textContent = "Save Price";
+            document.getElementById('cancelEditCost').classList.add('hidden');
+            document.getElementById('costCard').classList.remove('editing-mode');
+            document.getElementById('editCostId').value = "";
+            document.getElementById('costForm').reset();
+            document.getElementById('costDate').valueAsDate = new Date();
+        }
+    }
+
+    deleteItem(col, id) {
+        if (confirm("Delete this item?")) {
+            this.data[col] = this.data[col].filter(i => i.id !== id);
+            this.save();
+        }
+    }
+
+    renderAll() {
+        this.renderCarSelect(); 
+        this.renderCars();
+        this.renderCosts();
+        this.renderLogs();
+        if(document.getElementById('dashboard').classList.contains('active')) this.renderChart();
+    }
+    
+    renderCars() {
+        const list = document.getElementById('carList');
+        const items = this.data.cars.map(c => {
+            const badge = c.type === 'BEV' ? 'bg-bev' : 'bg-ice';
+            const desc = c.type === 'BEV' ? `${c.batterySize}kWh` : `${c.tankSize || '?'}L`;
+            return `<div style="display:flex; justify-content:space-between; padding:10px; border-bottom:1px solid #eee;">
+                <div><span class="badge ${badge}">${c.type}</span> <b>${c.name}</b> <span class="small">(${desc})</span></div>
+                <div>
+                    <button class="nav-btn" style="color:#0d6efd" onclick="window.app.editCar('${c.id}')">✏️</button>
+                    <button class="nav-btn" style="color:#dc3545" onclick="window.app.deleteItem('cars','${c.id}')">🗑️</button>
+                </div></div>`;
+        });
+        list.innerHTML = items.join('');
+    }
+
+    renderCosts() {
+        const tbody = document.getElementById('costListBody');
+        const sorted = [...this.data.costs].sort((a, b) => new Date(b.date) - new Date(a.date));
+        const sym = this.data.settings.symbol;
+        const rows = sorted.map(c => {
+            const eff = this.calculateEffectiveRate(c);
+            const detail = c.type === 'BEV' ? `${c.subType} ${c.period}` : c.subType;
+            return `<tr><td>${c.date}</td><td>${c.type}</td><td><span class="small">${detail}</span></td><td><b>${sym}${eff.toFixed(2)}</b></td>
+            <td class="text-end"><button class="nav-btn" style="color:#0d6efd" onclick="window.app.editCost('${c.id}')">✏️</button><button class="nav-btn" style="color:#dc3545" onclick="window.app.deleteItem('costs','${c.id}')">🗑️</button></td></tr>`;
+        });
+        tbody.innerHTML = rows.join('');
+    }
+
+    renderLogs() {
+        const tbody = document.querySelector('#logsTable tbody');
+        const sorted = [...this.data.logs].sort((a, b) => new Date(b.date) - new Date(a.date));
+        const sym = this.data.settings.symbol;
+        const rows = sorted.map(l => {
+            const car = this.data.cars.find(c => c.id === l.carId);
+            if (!car) return '';
+            // NOTE: Efficiency in logs is now km/unit
+            return `<tr><td>${l.date}</td><td><span class="badge ${car.type==='BEV'?'bg-bev':'bg-ice'}">${car.name}</span></td>
+            <td>${(l.distance||0).toFixed(1)}</td><td>${(l.consumption||0).toFixed(2)}</td><td>${(l.efficiency||0).toFixed(2)}</td><td>${(l.unitPrice||0).toFixed(2)}</td><td>${sym}${(l.totalCost||0).toFixed(2)}</td>
+            <td class="text-end"><button class="nav-btn" style="color:#0d6efd" onclick="window.app.editLog('${l.id}')">✏️</button><button class="nav-btn" style="color:#dc3545" onclick="window.app.deleteItem('logs','${l.id}')">🗑️</button></td></tr>`;
+        });
+        tbody.innerHTML = rows.join('');
+    }
+
+    renderCarSelect() {
+        const sel = document.getElementById('inputCarSelect'); 
+        const val = sel.value;
+        const opts = this.data.cars.map(c => `<option value="${c.id}" data-type="${c.type}">${c.name}</option>`);
+        sel.innerHTML = '<option value="">-- Choose --</option>' + opts.join('');
+        sel.value = val;
+    }
+
+    renderChart() {
+        this.chart.resize();
+        const datasets = [];
+        this.data.cars.forEach(car => {
+            const logs = this.data.logs.filter(l => l.carId === car.id).sort((a,b) => new Date(a.date) - new Date(b.date));
+            // PLOT EFFICIENCY (km/unit) INSTEAD OF COST
+            if(logs.length) datasets.push({ label: car.name, points: logs.map(l => ({x: l.date, y: l.efficiency})) });
+        });
+        this.chart.setData(datasets);
+    }
+
+    // --- EVENT SETUP ---
+    setupEvents() {
+        document.getElementById('carType').addEventListener('change', (e) => {
+            const isBev = e.target.value === 'BEV';
+            document.getElementById('profileBevSpecs').classList.toggle('hidden', !isBev);
+            document.getElementById('profileIceSpecs').classList.toggle('hidden', isBev);
+        });
+        document.getElementById('costType').addEventListener('change', (e) => {
+            const isBev = e.target.value === 'BEV';
+            document.getElementById('costBevInputs').classList.toggle('hidden', !isBev);
+            document.getElementById('costIceInputs').classList.toggle('hidden', isBev);
+            document.getElementById('costPrice').required = isBev;
+            document.getElementById('costIcePrice').required = !isBev;
+        });
+        document.getElementById('inputCarSelect').addEventListener('change', (e) => {
+            const opt = e.target.selectedOptions[0];
+            const type = opt ? opt.dataset.type : null;
+            document.getElementById('bevFields').classList.toggle('hidden', type !== 'BEV');
+            document.getElementById('iceFields').classList.toggle('hidden', type !== 'ICE');
+            this.updatePriceDisplay(); this.autoCalculateTripStats();
+        });
+        ['tripDate', 'bevChargeType', 'bevPeriod', 'iceGasType'].forEach(id => {
+            document.getElementById(id).addEventListener('change', () => { this.updatePriceDisplay(); this.autoCalculateTripStats(); });
+        });
+        ['startKm', 'endKm', 'gasFilled'].forEach(id => document.getElementById(id).addEventListener('input', () => this.autoCalculateTripStats()));
+
+        document.getElementById('profileForm').addEventListener('submit', e => {
+            e.preventDefault();
+            const type = document.getElementById('carType').value;
+            this.saveCar({
+                type, name: document.getElementById('carName').value, model: document.getElementById('carModel').value,
+                batterySize: document.getElementById('carBatSize').value, range: type==='BEV'?document.getElementById('carBevRange').value:document.getElementById('carIceRange').value,
+                tankSize: document.getElementById('carTankSize').value
+            }, document.getElementById('editCarId').value || null);
+        });
+        document.getElementById('costForm').addEventListener('submit', e => {
+            e.preventDefault();
+            const type = document.getElementById('costType').value;
+            const cost = {
+                date: document.getElementById('costDate').value, type,
+                subType: type==='BEV' ? document.getElementById('costBevMode').value : document.getElementById('costIceGasType').value,
+                period: type==='BEV' ? document.getElementById('costBevPeriod').value : null,
+                price: parseFloat(type==='BEV'?document.getElementById('costPrice').value:document.getElementById('costIcePrice').value),
+                ft: parseFloat(document.getElementById('costFt').value), vat: parseFloat(document.getElementById('costVat').value)
+            };
+            if(isNaN(cost.price)) return alert("Invalid Price");
+            this.saveCost(cost, document.getElementById('editCostId').value || null);
+        });
+        document.getElementById('tripForm').addEventListener('submit', e => {
+            e.preventDefault();
+            const sel = document.getElementById('inputCarSelect');
+            const type = sel.selectedOptions[0].dataset.type;
+            const log = {
+                date: document.getElementById('tripDate').value, carId: sel.value,
+                startKm: parseFloat(document.getElementById('startKm').value), endKm: parseFloat(document.getElementById('endKm').value),
+                unitPrice: parseFloat(type==='BEV'?document.getElementById('bevPrice').value:document.getElementById('gasPrice').value)
+            };
+            if(type==='BEV') {
+                log.chargingMode=document.getElementById('bevChargeType').value; log.period=document.getElementById('bevPeriod').value;
+                log.battStart=document.getElementById('battStart').value; log.battEnd=document.getElementById('battEnd').value;
+            } else {
+                log.gasType=document.getElementById('iceGasType').value; log.fuelFilled=document.getElementById('gasFilled').value;
+            }
+            this.saveLog(log, document.getElementById('editLogId').value || null);
+        });
+    }
+
+    // --- CSV / JSON IMPORT EXPORT ---
+    toCSV(data) {
+        if (!data || !data.length) return '';
+        const headers = Object.keys(data[0]);
+        const rows = [headers.join(',')];
+        data.forEach(row => rows.push(headers.map(h => `"${row[h]===undefined?'':row[h]}"`).join(',')));
+        return rows.join('\n');
+    }
+    parseCSV(txt) {
+        const lines = txt.split('\n').filter(l=>l.trim()); if(lines.length<2) return [];
+        const h = lines[0].split(',').map(s=>s.trim());
+        return lines.slice(1).map(l => {
+            const p = l.split(','); const o = {};
+            h.forEach((k,i) => { let v = p[i]?p[i].replace(/"/g,'').trim():''; if(!isNaN(v) && !k.includes('Id') && !k.includes('date')) v=parseFloat(v); o[k]=v; });
+            if(!o.id) o.id=this.uuid();
+            return o;
+        });
+    }
+    exportData(t) { this.dn((t==='all'?this.data:{[t]:this.data[t]}), 'json', `ev_${t}.json`); }
+    exportCSV(t) { 
+        let d = this.data[t];
+        if(t==='logs') d = d.map(l => ({...l, carName: (this.data.cars.find(c=>c.id===l.carId)||{}).name || 'Unknown'}));
+        this.dn(this.toCSV(d), 'csv', `ev_${t}.csv`); 
+    }
+    dn(content, type, name) {
+        const blob = new Blob([type==='json'?JSON.stringify(content):content], {type: type==='json'?'application/json':'text/csv'});
+        const a = document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name; document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    }
+    importData(inp, t) { this.rf(inp, (res) => {
+        try { const j = JSON.parse(res);
+            if(t==='all') { if(confirm("Overwrite all?")) this.data=j; }
+            else { if(j[t]) j[t].forEach(i => { if(!this.data[t].some(x=>x.id===i.id)) this.data[t].push(i); }); }
+            this.save(); location.reload();
+        } catch(e) { alert("Error"); }
+    }); }
+    importCSV(inp, t) { this.rf(inp, (res) => {
+        try { const d = this.parseCSV(res); let c=0;
+            d.forEach(i => {
+                if(t==='logs' && !i.carId && i.carName) { const car = this.data.cars.find(x=>x.name===i.carName); if(car) i.carId=car.id; }
+                delete i.carName;
+                if(!this.data[t].some(x=>x.id===i.id)) { this.data[t].push(i); c++; }
+            });
+            this.save(); alert(`Imported ${c}`); location.reload();
+        } catch(e) { alert("Error"); }
+    }); }
+    rf(i, cb) { if(i.files[0]) { const r=new FileReader(); r.onload=e=>cb(e.target.result); r.readAsText(i.files[0]); i.value=''; } }
+    clearData() { if(confirm("Reset?")) { localStorage.removeItem('evTrackerV9'); location.reload(); } }
+}
+
+// --- INIT ---
+// Attaching to window to ensure inline HTML handlers can find it
+window.app = new EnergyTracker();
+</script>
+</body>
+</html>
