@@ -1,0 +1,890 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Secure Password & Passphrase Generator</title>
+    <style>
+        /* --- Compact Style (Fixed Layout) --- */
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            color: #333;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .container {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            max-width: 550px; /* Slightly increased max width for better spacing */
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        h1, h2 {
+            text-align: center;
+            color: #0056b3;
+            margin-bottom: 15px;
+            font-size: 1.5em;
+        }
+        
+        h2 {
+            font-size: 1.2em;
+            margin-top: 5px;
+        }
+
+        .mode-selection {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 20px;
+            font-size: 1em;
+        }
+
+        .mode-selection input[type="radio"] {
+            display: none;
+        }
+
+        .mode-selection label {
+            padding: 8px 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s, border-color 0.3s;
+        }
+
+        .mode-selection input[type="radio"]:checked + label {
+            background-color: #007bff;
+            color: white;
+            border-color: #007bff;
+        }
+
+        .input-section {
+            margin-bottom: 15px;
+            padding: 10px;
+            border: 1px solid #eee;
+            border-radius: 5px;
+            background-color: #fdfdfd;
+        }
+
+        /* Grid layout for form groups: 2 columns, label on the left, input on the right */
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr; /* Two main columns */
+            gap: 10px 20px;
+        }
+
+        /* Common options: Count field spans two columns for better look */
+        .common-options .form-group:first-child {
+            grid-column: 1 / span 2;
+        }
+
+        .form-group {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 0;
+            width: 100%; /* Ensure group takes full cell width */
+        }
+
+        .form-group label {
+            font-weight: bold;
+            color: #555;
+            white-space: nowrap;
+            margin-right: 10px;
+            flex-shrink: 1; /* Allow label to shrink if necessary */
+            min-width: 60px; /* Minimum width for short labels like 'Digits' */
+        }
+
+        .form-group input[type="number"],
+        .form-group input[type="text"] {
+            width: 60px; /* Reduced fixed width for inputs */
+            padding: 6px 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 0.9em;
+            text-align: center;
+            flex-shrink: 0; /* Prevent input from shrinking */
+        }
+        
+        /* The main Leet-Speak checkbox must span both columns */
+        .common-options .checkbox-group {
+             grid-column: 1 / span 2;
+             justify-content: flex-start;
+        }
+        
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 5px;
+        }
+
+        .checkbox-group input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+
+        /* Passphrase Checkbox Layout: A 3-column sub-grid inside a grid cell */
+        .passphrase-checkboxes {
+             grid-column: 1 / span 2; /* Span across both columns */
+             display: grid;
+             grid-template-columns: repeat(3, 1fr); /* 3 items side-by-side */
+             gap: 10px;
+        }
+        
+        /* Ensure individual checkbox items inside the passphrase-checkboxes group are centered */
+        .passphrase-checkboxes .form-group {
+            justify-content: flex-start; /* Align contents to the left */
+        }
+        
+        .passphrase-checkboxes .form-group label {
+            font-weight: normal;
+        }
+
+        /* Wordlist Group: Full width container for the file input */
+        .wordlist-group {
+            grid-column: 1 / span 2;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            margin-top: 10px;
+        }
+        
+        .wordlist-input-row {
+            display: flex;
+            width: 100%;
+            align-items: center;
+            margin-top: 5px;
+        }
+        
+        .wordlist-input-row input[type="file"] {
+            flex-grow: 1;
+            padding: 2px 0;
+        }
+
+        button {
+            display: block;
+            width: 100%;
+            padding: 10px 15px;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 1em;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            margin-top: 15px;
+        }
+
+        button:hover {
+            background-color: #218838;
+        }
+
+        .output-section {
+            margin-top: 20px;
+            text-align: center;
+        }
+
+        #outputArea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            background-color: #f9f9f9;
+            box-sizing: border-box;
+            resize: vertical;
+        }
+
+        #copyBtn {
+            width: auto;
+            padding: 6px 12px;
+            background-color: #007bff;
+            margin-top: 10px;
+            display: inline-block;
+        }
+
+        #copyBtn:hover {
+            background-color: #0056b3;
+        }
+
+        .error-message {
+            color: #dc3545;
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            padding: 8px;
+            border-radius: 5px;
+            margin-top: 15px;
+            font-size: 0.9em;
+            display: none;
+        }
+
+        .file-name {
+            font-size: 0.8em;
+            color: #666;
+            margin-left: 5px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            max-width: 100px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Secure Password & Passphrase Generator</h1>
+
+        <div class="mode-selection">
+            <input type="radio" id="modeCharacter" name="mode" value="character" checked>
+            <label for="modeCharacter">Character Password</label>
+
+            <input type="radio" id="modePassphrase" name="mode" value="passphrase">
+            <label for="modePassphrase">Passphrase</label>
+        </div>
+        
+        <hr>
+
+        <div class="input-section common-options form-grid">
+            <div class="form-group">
+                <label for="count">Number to Generate:</label>
+                <input type="number" id="count" value="5" min="1" max="10">
+            </div>
+            <div class="checkbox-group">
+                <input type="checkbox" id="enableReplacements" checked>
+                <label for="enableReplacements">Enable **Leet-Speak**</label>
+            </div>
+        </div>
+        
+        <hr>
+
+        <div id="characterOptions" class="input-section mode-group">
+            <h2>Character Password Options</h2>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="charLength">Total Length (min 16):</label>
+                    <input type="number" id="charLength" value="16" min="16">
+                </div>
+                <div class="form-group">
+                    <label for="charDigits">Digits:</label>
+                    <input type="number" id="charDigits" value="3" min="0">
+                </div>
+                <div class="form-group">
+                    <label for="charSpecial">Special Chars:</label>
+                    <input type="number" id="charSpecial" value="2" min="0">
+                </div>
+                <div class="form-group">
+                    <label for="charCapital">Capital Letters:</label>
+                    <input type="number" id="charCapital" value="4" min="0">
+                </div>
+                <div class="form-group">
+                    <label for="charLower">Lowercase Letters:</label>
+                    <input type="number" id="charLower" value="7" min="0">
+                </div>
+            </div>
+        </div>
+
+        <div id="passphraseOptions" class="input-section mode-group" style="display: none;">
+            <h2>Passphrase Options</h2>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="passWords">Words (3-6):</label>
+                    <input type="number" id="passWords" value="4" min="3" max="6">
+                </div>
+                <div class="form-group">
+                    <label for="passSeparator">Separator:</label>
+                    <input type="text" id="passSeparator" value="-">
+                </div>
+
+                <div class="wordlist-group">
+                    <label for="passWordlist">Custom Wordlist (5-7 letter, alpha):</label>
+                    <div class="wordlist-input-row">
+                        <input type="file" id="passWordlist" accept=".txt">
+                        <span id="wordlistFileName" class="file-name"></span>
+                    </div>
+                </div>
+                
+                <div class="passphrase-checkboxes">
+                    <div class="form-group checkbox-group">
+                        <input type="checkbox" id="passCapitalize" checked>
+                        <label for="passCapitalize">Capitalize</label>
+                    </div>
+                    <div class="form-group checkbox-group">
+                        <input type="checkbox" id="passAddNumber" checked>
+                        <label for="passAddNumber">Add Number</label>
+                    </div>
+                    <div class="form-group checkbox-group">
+                        <input type="checkbox" id="passAddSymbol" checked>
+                        <label for="passAddSymbol">Add Symbol</label>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <hr>
+
+        <button id="generateBtn">Generate</button>
+
+        <div id="errorMessage" class="error-message"></div>
+
+        <div class="output-section">
+            <h2>Generated Output:</h2>
+            <textarea id="outputArea" readonly rows="10"></textarea>
+            <button id="copyBtn">Copy All</button>
+        </div>
+    </div>
+
+    <script>
+        /* --- script.js content starts here (Identical to previous, only HTML/CSS changed) --- */
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- DOM Elements ---
+            const modeCharacterRadio = document.getElementById('modeCharacter');
+            const modePassphraseRadio = document.getElementById('modePassphrase');
+            const characterOptionsDiv = document.getElementById('characterOptions');
+            const passphraseOptionsDiv = document.getElementById('passphraseOptions');
+            const countInput = document.getElementById('count');
+            const enableReplacementsCheckbox = document.getElementById('enableReplacements');
+
+            const charLengthInput = document.getElementById('charLength');
+            const charDigitsInput = document.getElementById('charDigits');
+            const charSpecialInput = document.getElementById('charSpecial');
+            const charCapitalInput = document.getElementById('charCapital');
+            const charLowerInput = document.getElementById('charLower');
+
+            const passWordsInput = document.getElementById('passWords');
+            const passSeparatorInput = document.getElementById('passSeparator');
+            const passCapitalizeCheckbox = document.getElementById('passCapitalize');
+            const passAddNumberCheckbox = document.getElementById('passAddNumber');
+            const passAddSymbolCheckbox = document.getElementById('passAddSymbol');
+            const passWordlistInput = document.getElementById('passWordlist');
+            const wordlistFileNameSpan = document.getElementById('wordlistFileName');
+
+            const generateBtn = document.getElementById('generateBtn');
+            const outputArea = document.getElementById('outputArea');
+            const copyBtn = document.getElementById('copyBtn');
+            const errorMessageDiv = document.getElementById('errorMessage');
+
+            // --- Constants and Data ---
+            const NON_CONFUSING_DIGITS = "23456789";
+            const NON_CONFUSING_CAPITAL_LETTERS = "ABCDEFGHJKLMNPQRSTUVWXZ";
+            const NON_CONFUSING_LOWER_LETTERS = "abcdefghijkmnpqrstuvwxyz";
+            const NON_CONFUSING_SPECIAL_CHARS = "!@#$-+.,"; // Restricted set
+            const REPLACEMENT_PROBABILITY = 0.5; // Still 50% chance for a replacement to occur
+
+            // UPDATED REPLACEMENT_MAP: Each character can have multiple leet-speak options
+            const REPLACEMENT_MAP = {
+                'a': ['4', '@'],
+                'b': ['8'],
+                'c': ['(', 'k'],
+                'e': ['3'],
+                'g': ['9', '6'],
+                'h': ['#'],
+                'i': ['1', '!'],
+                'l': ['1'], // 'l' can also be 1
+                'o': ['0'],
+                's': ['5', '$'],
+                't': ['7', '+'],
+                'z': ['2'],
+            };
+
+            // Embedded wordlist (same as in Go version)
+            const EMBEDDED_PASSPHRASE_WORDLIST = [
+                "apple", "baker", "brave", "brick", "cabin", "candy", "chair", "clean", "climb", "cloud",
+                "coast", "cobra", "coral", "couch", "crane", "crate", "crazy", "cream", "cross", "crown",
+                "daisy", "dance", "dared", "demon", "dense", "depth", "dewy", "diode", "dirty", "disks",
+                "diver", "dozen", "dream", "dress", "drift", "drive", "earth", "eaten", "edges", "eight",
+                "eject", "elder", "elite", "empty", "enjoy", "enter", "epoch", "error", "essay", "evade",
+                "every", "exact", "exile", "exist", "extra", "fable", "faded", "fairy", "faith", "false",
+                "famed", "fancy", "farms", "fatal", "fault", "favor", "feast", "fiber", "field", "fiery",
+                "fifth", "fifty", "fight", "filed", "fills", "final", "fired", "first", "fishy", "fixed",
+                "flame", "flash", "flatr", "flawd", "fleet", "flesh", "flock", "floor", "flora", "flour",
+                "fluff", "fluid", "flush", "flyer", "folly", "fonts", "force", "forge", "forth", "forty",
+                "foulr", "found", "foxes", "foyer", "frame", "frank", "fraud", "fresh", "fried", "frock",
+                "front", "frost", "froth", "frown", "fruit", "fully", "funny", "furry", "fused", "gains",
+                "games", "gamma", "gases", "gates", "gauge", "gears", "genes", "giant", "gifts", "girls",
+                "given", "gland", "glass", "glide", "globe", "glory",
+                "glove", "gnome", "gonna", "goods", "goofy", "goose", "gorge", "grace",
+                "grade", "grain", "grand", "grape", "graph", "grasp", "grass", "grave", "graze", "great",
+                "greek", "green", "greet", "grief", "grill", "grime", "grind", "gripe", "groan", "gross",
+                "group", "grove", "grown", "grunt", "guard", "guess", "guest", "guide", "guilt", "gulfs",
+                "gully", "gummy", "gunsy", "gushy", "gusto", "gutsy", "gypsy", "habit", "hairy", "halls",
+                "hands", "hangs", "happy", "hardy", "harms", "harry", "hasty", "hatch", "hated", "hater",
+                "hauls", "haven", "hawks", "heads", "heals", "hears", "heart", "heats", "heavy", "hedge",
+                "heels", "helps", "herbs", "heres", "heron", "hight", "hills", "hints", "hired", "hires",
+                "hissy", "hitch", "hives", "hobby", "holds", "holes", "hollow", "honor", "hooks", "hopes",
+                "horse", "hosts", "hotel", "hours", "house", "hover", "howdy", "human", "humid", "humor",
+                "hunts", "hurry", "husky", "hydro", "hymen", "hymns", "hyped", "ideal", "idiot", "idols",
+                "igloo", "image", "imply", "inbox", "incur", "index", "india", "inert", "infer", "ingot",
+                "inked", "inlay", "inlet", "inner", "input", "inset", "intel", "inter", "intox", "intro",
+                "inure", "irate", "irony", "islet", "issue", "italy", "items", "ivory", "jaded", "jails",
+                "jambs", "japan", "jawsy", "jazzy", "jelly", "jesus", "jewel", "jiffy", "joins", "joint",
+                "jokes", "jolly", "jolt", "joust", "joyful", "judge", "juice", "jumbo", "jumps", "junes",
+                "jungle", "junior", "junkr", "justy", "karma", "kebab", "keeps", "kiosk", "kissy", "knead",
+                "kneel", "knelt", "knife", "knock", "knots", "koala", "kooky", "kudos", "label", "labor",
+                "laced", "lacks", "laden", "ladle", "lager", "lakes", "lambs", "lamps", "lands", "lanky",
+                "lapel", "lapse", "large", "larky", "larva", "laser", "lasso", "lasts", "latch", "later",
+                "lathe", "latin", "laugh", "lavas", "layer", "leads", "leaky", "leans", "leaps", "learn",
+                "lease", "least", "leave", "ledge", "leech", "leery", "lefty", "legal", "leggy", "lemon",
+                "lemur", "lends", "lensr", "leper", "level", "lever", "liars", "libel", "licks", "lidos",
+                "light", "liked", "liken", "likes", "limbs", "limit", "lined", "liner", "lines", "lingo",
+                "links", "lions", "lipid", "lists", "litch", "lithe", "lived", "liver", "lives", "loads",
+                "locus", "loamy", "loans", "loath", "lobby", "local", "locks", "lodge", "lofty", "logic",
+                "login", "loins", "loner", "longs", "looks", "looms", "loose", "lords", "lorry", "loses",
+                "lousy", "loved", "lover", "loves", "lowly", "loyal", "lucky", "lulls", "lumen", "lumpy",
+                "lunar", "lunch", "lures", "lurid", "lusty", "lying", "lyric", "macaw", "macho", "macro",
+                "madam", "madly", "magic", "maids", "mails", "major", "maker", "makes", "malls", "maltp",
+                "manly", "manor", "maple", "march", "margs", "marks", "marry", "marsh", "masks", "mason",
+                "massy", "match", "mated", "mates", "maths", "matte", "mauve", "maxis", "mayor", "means",
+                "meant", "meaty", "medal", "media", "meets", "melon", "melts", "menus", "mercy", "merge",
+                "merit", "merry", "mesh", "messy", "metal", "meter", "mewed", "micas", "midst", "might",
+                "mikes", "miles", "milky", "mills", "mimes", "minds", "mined", "mines", "minor", "minty",
+                "minus", "mirth", "miser", "missy", "misty", "miter", "mitts", "mixed", "mixer", "moans",
+                "moats", "mocha", "modal", "model", "modes", "moist", "molar", "molds", "molts", "money",
+                "monks", "month", "moody", "moons", "moors", "moral", "morns", "morph", "mossy", "motel",
+                "moths", "motif", "motor", "mount", "mouse", "mouth", "moved", "mover", "moves", "movie",
+                "mowed", "mower", "mucin", "muddy", "muffy", "mules", "multi", "mumbo", "mummy", "mural",
+                "murky", "mused", "mushy", "music", "mussy", "musty", "muted", "myths", "nails", "naked",
+                "names", "nappy", "nasal", "nasty", "natal", "naves", "necks", "needs", "nerdy", "nerve",
+                "nests", "netts", "never", "newer", "newly", "nicer", "niche", "nicks", "night", "nimby",
+                "ninth", "nifty", "noble", "noise", "noisy", "nomad", "north", "nosey", "noted", "notes",
+                "nouns", "novel", "nudes", "nukes", "nulls", "nurse", "nutsy", "oaken", "oases", "oasis",
+                "oaten", "obese", "obits", "ocean", "ochre", "occult", "octal", "oddly", "odium", "offer",
+                "often", "oiled", "oinks", "okays", "older", "olive", "omega", "omens", "omits", "onely",
+                "onion", "onset", "opera", "opted", "optic", "orals", "orbit", "order", "organ", "other",
+                "otter", "ounce", "outer", "outgo", "ovals", "ovary", "ovens", "overt", "owing", "owned",
+                "owner", "oxide", "paced", "paces", "paddy", "pager", "pages", "pains", "paint", "pairs",
+                "paler", "palms", "paned", "panel", "panic", "pansy", "paper", "parch", "pared", "parent",
+                "parks", "parts", "party", "pasta", "paste", "patch", "paths", "patio", "paver", "pause",
+                "paved", "pawns", "peace", "peach", "peaks", "peaky", "pearl", "pedal", "peeve", "penal",
+                "pence", "pends", "penny", "perch", "peril", "perks", "perms", "phase", "phone", "photo",
+                "piano", "picks", "piece", "piled", "piles", "pills", "pilot", "pines", "pinky", "pints",
+                "pious", "pipes", "pithy", "pivot", "pixel", "place", "plain", "plans", "plant", "plate",
+                "plays", "plead", "pleat", "ploys", "plugs", "plumb", "plume", "polar", "poles", "polls",
+                "ponds", "pools", "popes", "poppy", "ports", "posed", "poses", "posts", "potty", "pound",
+                "pours", "power", "prank", "prays", "press", "price", "prick", "pride", "prime", "print",
+                "prior", "prism", "prize", "probe", "proof", "props", "proud", "prove", "proxy", "prune",
+                "psalm", "puffy", "pulpy", "pulse", "punch", "pupil", "puree", "purer", "purge", "purse",
+                "pushy", "pylon", "quack", "quail", "quake", "qualm", "quark", "quart", "quash", "quasi",
+                "queen", "query", "quest", "queue", "quick", "quiet", "quill", "quilt", "quint", "quirk",
+                "quite", "quits", "quota", "quote", "rabid", "racer", "races", "radar", "radii", "radio",
+                "rafts", "raged", "rages", "raidn", "rains", "raise", "rally", "ranch", "randy", "range",
+                "ranks", "rapid", "rarer", "raspy", "rates", "raths", "ratio", "races", "razor", "reach",
+                "react", "reads", "ready", "realm", "reams", "reaps", "rebel", "recap", "recur", "reddy",
+                "relay", "relax", "reply", "resin", "rests", "rewed", "rhyme", "rings", "rinse", "ripen",
+                "risen", "risky", "rival", "river", "roast", "robin", "robot", "rocky", "rogue", "roman",
+                "romeo", "rondo", "roots", "roped", "ropes", "roses", "rotor", "rough", "round", "rouse",
+                "route", "rover", "rowdy", "royal", "rubby", "ruler", "rumba", "runny", "rural", "rusty",
+                "saber", "sable", "sacks", "salty", "sandy", "sauce", "scare", "scoop", "scout", "scowl",
+                "scrap", "screw", "scrim", "scrub", "scuba", "scull", "sense", "seven", "shade", "shaft",
+                "shake", "shall", "shame", "shape", "share", "sharp", "shave", "shawl", "sheaf", "shear",
+                "sheen", "sheep", "sheer", "sheet", "shelf", "shell", "shift", "shine", "shins", "ships",
+                "shirt", "shock", "shoes", "shook", "shoot", "shops", "short", "shots", "shove", "showy",
+                "shred", "shrew", "shrub", "shrug", "shunt", "sicks", "sided", "sides", "siege", "sieve",
+                "sight", "sigma", "signs", "silty", "since", "sinks", "sinus", "siren", "sitar", "sites",
+                "sixes", "sixth", "sixty", "sized", "sizes", "skate", "skeet", "skews", "skiff", "skill",
+                "skimp", "skins", "skips", "skirt", "skits", "skull", "skunk", "slabs", "slack", "slain",
+                "slang", "slant", "slash", "slate", "slave", "sleek", "sleep", "sleet", "slice", "slick",
+                "slimy", "sling", "slips", "sloan", "slope", "slosh", "sloth", "slots", "slump", "slung",
+                "slush", "small", "smart", "smash", "smear", "smell", "smelt", "smile", "smirk", "smock",
+                "smoke", "smoky", "snack", "snaky", "snaps", "snare", "snarl", "sneak", "sneck", "sniff",
+                "snipe", "snips", "snobs", "snoop", "snoot", "snore", "snort", "snout", "snowy", "snuff",
+                "soapy", "soars", "sockt", "sodas", "sofas", "softs", "soggy", "solar", "solid", "solve",
+                "songs", "sonic", "sonny", "sooty", "sorry", "sorts", "souls", "sound", "soups", "sourl",
+                "south", "sowed", "space", "spade", "spank", "spans", "spare", "spark", "spars", "spasm",
+                "spate", "speak", "spear", "specs", "speed", "spell", "spend", "spent", "spice", "spicy",
+                "spike", "spill", "spins", "spire", "spite", "splat", "split", "spoil", "spoke", "spoof",
+                "spook", "spoon", "sport", "spots", "spout", "spray", "spree", "sprig", "sprog", "spuds",
+                "spunk", "spurs", "squad", "squat", "squid", "stack", "staff", "stage", "stair", "stake",
+                "stale", "stall", "stamp", "stand", "stank", "stare", "start", "state", "stats", "stave",
+                "stays", "stead", "steak", "steal", "steam", "steel", "steep", "steer", "stems", "steps",
+                "stern", "stewy", "stick", "stiff", "still", "sting", "stink", "stint", "stock", "stoic",
+                "stoke", "stole", "stomp", "stone", "stony", "stood", "stool", "stoop", "store", "stork",
+                "storm", "story", "stout", "stove", "strap", "straw", "stray", "strip", "strop", "stuck",
+                "study", "stuff", "stump", "stung", "stunt", "style", "subby", "sucks", "sugar", "suits",
+                "sulks", "sully", "sunny", "super", "surfs", "surge", "sushi", "swabs", "swamp", "swans",
+                "swarm", "swash", "sweat", "sweep", "sweet", "swell", "swift", "swims", "swine", "swing",
+                "swirl", "swiss", "swish", "swoop", "sword", "swore", "sworn", "syrup", "taboo", "tacit",
+                "tackl", "tacks", "tacky", "tacos", "tahoe", "taken", "takes", "tales", "talks", "tally",
+                "tamed", "tamer", "tames", "tango", "tangy", "tanks", "taper", "tapes", "tardy", "tarns",
+                "tarot", "tarry", "tasks", "taste", "tasty", "tater", "tatts", "taunt", "taxes", "taxis",
+                "teach", "teams", "tears", "tease", "teddy", "teens", "teeth", "tempo", "tends", "tenor",
+                "tents", "terms", "terse", "tests", "texas", "thaws", "their", "theme", "there", "these",
+                "thick", "thief", "thigh", "thing", "think", "third", "those", "three", "throw", "thump",
+                "ticks", "tidal", "tides", "tiers", "tiger", "tight", "tiled", "tiles", "tills", "timed",
+                "timer", "times", "timid", "tinfo", "tings", "tints", "tired", "tires", "titan", "title",
+                "toady", "toast", "today", "togas", "token", "tolls", "tombs", "tomes", "tones",
+                "tongs", "tonic", "tooth", "topaz", "topic", "torch", "totes", "total", "toted", "totes",
+                "touch", "tough", "tours", "towed", "towel", "tower", "towns", "toxic", "trace", "track",
+                "tract", "trade", "trail", "train", "tramp", "trams", "trap", "trash", "trawl", "tread",
+                "treat", "treey", "trend", "tress", "trial", "tribe", "trick", "tried", "tries", "trips",
+                "troll", "troop", "trot", "trout", "truce", "truck", "truly", "trunk", "truss", "trust",
+                "truth", "tuber", "tulip", "tummy", "tunes", "tunic", "turbo", "turns", "tutor", "tweed",
+                "twice", "twill", "twine", "twins", "twirl", "twist", "typed", "types", "tyres", "ulcer",
+                "ultra", "umbra", "unban", "unfit", "union", "unite", "unity", "unlit", "until", "unzip",
+                "upset", "urban", "urged", "urges", "urine", "usage", "usual", "usurp", "utter", "valid",
+                "valor", "value", "valve", "vapor", "vault", "vegan", "veins", "velar", "veldt", "venom",
+                "vents", "venue", "verge", "verse", "verso", "vetch", "vicar", "video", "views", "vigil",
+                "vigor", "villa", "vines", "vinyl", "viola", "viper", "viral", "vireo", "virtu", "virus",
+                "visit", "visor", "vista", "vital", "vivid", "vixen", "vocal", "vodka", "vogue", "voice",
+                "voids", "volts", "voted", "voter", "votes", "vouch", "vowel", "vulva", "waded", "wades",
+                "wagon", "waist", "waits", "walks", "walls", "wants", "wards", "warez", "warmt", "warns",
+                "warts", "washy", "waste", "watch", "water", "watts", "waves", "waxed", "waxes", "weary",
+                "weave", "wedge", "weeds", "weeks", "weigh", "weird", "welds", "wells", "welsh", "wench",
+                "wends", "wetly", "whack", "whale", "wharf", "wheat", "wheel", "where", "while", "whims",
+                "whine", "whiny", "whips", "whirl", "whirr", "white", "whole", "whore", "whose", "wicks",
+                "widen", "wider", "widow", "width", "wield", "wilds", "wiles", "wills", "wilts", "wince",
+                "winds", "windy", "wines", "wings", "winks", "wiped", "wiper", "wires", "wiser", "wisps",
+                "witty", "wives", "woken", "wolfs", "woman", "wombs", "woods", "woody", "wordy", "works",
+                "world", "worms", "worry", "worse", "worst", "worth", "wound", "woven", "wrack", "wrath",
+                "wreak", "wreck", "wrens", "wrest", "wrist", "write", "wrong", "wrote", "yacht", "yards",
+                "yarns", "yawns", "yearn", "years", "yeast", "yells", "yelps", "yield", "yodel", "yogis",
+                "young", "yours", "youth", "yummy", "zeals", "zebra", "zeros", "zesty", "zilch", "zincs",
+                "zings", "zippy", "zonal", "zones", "zooey", "zoom", "zymes",
+            ];
+
+            let customWordlist = null; // Stores custom wordlist if loaded
+
+            // --- Helper Functions ---
+
+            /**
+             * Generates a cryptographically secure random integer in [0, max).
+             * Uses rejection sampling to avoid modulo bias.
+             * @param {number} max - The upper bound (exclusive).
+             * @returns {number} A secure random integer.
+             */
+            function secureRandomInt(max) {
+                if (max <= 0) {
+                    throw new Error("Max must be greater than 0");
+                }
+                const randomBytes = new Uint32Array(1);
+                const maxUnbiased = Math.floor(0xFFFFFFFF / max) * max;
+                let randomNumber;
+                do {
+                    window.crypto.getRandomValues(randomBytes);
+                    randomNumber = randomBytes[0];
+                } while (randomNumber >= maxUnbiased);
+                return randomNumber % max;
+            }
+
+            /**
+             * Shuffles an array in place using Fisher-Yates (Knuth) algorithm with secure randomness.
+             * @param {Array} array - The array to shuffle.
+             * @returns {Array} The shuffled array.
+             */
+            function shuffleArray(array) {
+                for (let i = array.length - 1; i > 0; i--) {
+                    const j = secureRandomInt(i + 1); // Get random index from 0 to i
+                    [array[i], array[j]] = [array[j], array[i]]; // Swap elements
+                }
+                return array;
+            }
+
+            /**
+             * Applies random leet-speak like replacements to the given string.
+             * Selects a random replacement if multiple options exist.
+             * @param {string} s - The input string.
+             * @returns {string} The string with replacements.
+             */
+            function applyRandomReplacements(s) {
+                let chars = s.split('');
+                for (let i = 0; i < chars.length; i++) {
+                    const charLower = chars[i].toLowerCase();
+                    const possibleReplacements = REPLACEMENT_MAP[charLower];
+
+                    if (possibleReplacements && possibleReplacements.length > 0 && Math.random() < REPLACEMENT_PROBABILITY) {
+                        // Pick a random replacement from the available options
+                        const replacement = possibleReplacements[secureRandomInt(possibleReplacements.length)];
+                        chars[i] = replacement;
+                    }
+                }
+                return chars.join('');
+            }
+
+            /**
+             * Checks if a string contains only alphabetic characters.
+             * @param {string} s - The string to check.
+             * @returns {boolean} True if all characters are alphabetic, false otherwise.
+             */
+            function isAlpha(s) {
+                return /^[a-zA-Z]+$/.test(s);
+            }
+
+            /**
+             * Filters a list of words to include only 5-7 letter lowercase alphabetic words.
+             * @param {string[]} lines - Array of words.
+             * @returns {string[]} Filtered array of words.
+             */
+            function filterWordlist(lines) {
+                const filteredWords = [];
+                for (const line of lines) {
+                    const cleanWord = line.trim().toLowerCase();
+                    if (cleanWord.length >= 5 && cleanWord.length <= 7 && isAlpha(cleanWord)) {
+                        filteredWords.push(cleanWord);
+                    }
+                }
+                return filteredWords;
+            }
+
+            /**
+             * Inserts a character into a string at a specific position.
+             * @param {string} str - The original string.
+             * @param {string} char - The character to insert.
+             * @param {number} index - The position to insert at.
+             * @returns {string} The new string with the character inserted.
+             */
+            function insertChar(str, char, index) {
+                return str.slice(0, index) + char + str.slice(index);
+            }
+
+            // --- Password Generation Logic (Unchanged) ---
+
+            /**
+             * Generates a character-based password.
+             * @param {number} length - Total length.
+             * @param {number} numDigits - Number of digits.
+             * @param {number} numSpecial - Number of special characters.
+             * @param {number} numCapital - Number of capital letters.
+             * @param {number} numLower - Number of lowercase letters.
+             * @param {boolean} applyReplacements - Whether to apply leet-speak replacements.
+             * @returns {string} The generated password.
+             * @throws {Error} If validation fails.
+             */
+            function generateCharacterPassword(length, numDigits, numSpecial, numCapital, numLower, applyReplacements) {
+                if (length < 16) {
+                    throw new Error("Total characters must be 16 or more.");
+                }
+                if (numDigits < 0 || numSpecial < 0 || numCapital < 0 || numLower < 0) {
+                    throw new Error("Number of character types must be non-negative integers.");
+                }
+
+                if (numDigits > NON_CONFUSING_DIGITS.length) {
+                    throw new Error(`Cannot generate ${numDigits} digits without confusable characters (0, 1). Max non-confusing digits: ${NON_CONFUSING_DIGITS.length}`);
+                }
+                if (numCapital > NON_CONFUSING_CAPITAL_LETTERS.length) {
+                    throw new Error(`Cannot generate ${numCapital} capital letters without confusable characters (I, O). Max non-confusing capital letters: ${NON_CONFUSING_CAPITAL_LETTERS.length}`);
+                }
+                if (numLower > NON_CONFUSING_LOWER_LETTERS.length) {
+                    throw new Error(`Cannot generate ${numLower} lowercase letters without confusable characters (l, o). Max non-confusing lowercase letters: ${NON_CONFUSING_LOWER_LETTERS.length}`);
+                }
+                if (numSpecial > NON_CONFUSING_SPECIAL_CHARS.length) {
+                    throw new Error(`Cannot generate ${numSpecial} special characters from the allowed set (${NON_CONFUSING_SPECIAL_CHARS}). Max unique special characters: ${NON_CONFUSING_SPECIAL_CHARS.length}`);
+                }
+
+                if ((numDigits + numSpecial + numCapital + numLower) > length) {
+                    throw new Error("Sum of specified character types exceeds total length.");
+                }
+
+                let passwordChars = [];
+
+                // Add required characters securely
+                for (let i = 0; i < numDigits; i++) {
+                    passwordChars.push(NON_CONFUSING_DIGITS[secureRandomInt(NON_CONFUSING_DIGITS.length)]);
+                }
+                for (let i = 0; i < numSpecial; i++) {
+                    passwordChars.push(NON_CONFUSING_SPECIAL_CHARS[secureRandomInt(NON_CONFUSING_SPECIAL_CHARS.length)]);
+                }
+                for (let i = 0; i < numCapital; i++) {
+                    passwordChars.push(NON_CONFUSING_CAPITAL_LETTERS[secureRandomInt(NON_CONFUSING_CAPITAL_LETTERS.length)]);
+                }
+                for (let i = 0; i < numLower; i++) {
+                    passwordChars.push(NON_CONFUSING_LOWER_LETTERS[secureRandomInt(NON_CONFUSING_LOWER_LETTERS.length)]);
+                }
+
+                // Fill the remaining length with a mix of all non-confusing allowed characters
+                const allNonConfusingChars = NON_CONFUSING_DIGITS + NON_CONFUSING_SPECIAL_CHARS + NON_CONFUSING_CAPITAL_LETTERS + NON_CONFUSING_LOWER_LETTERS;
+                const remainingLength = length - passwordChars.length;
+                if (remainingLength > 0) {
+                    for (let i = 0; i < remainingLength; i++) {
+                        passwordChars.push(allNonConfusingChars[secureRandomInt(allNonConfusingChars.length)]);
+                    }
+                }
+
+                // Shuffle the password characters
+                shuffleArray(passwordChars);
+
+                let finalPassword = passwordChars.join('');
+
+                // Apply random leet-speak replacements if enabled
+                if (applyReplacements) {
+                    finalPassword = applyRandomReplacements(finalPassword);
+                }
+
+                return finalPassword;
+            }
+
+            /**
+             * Generates a passphrase.
+             * @param {number} numWords - Number of words.
+             * @param {string} separator - Word separator.
+             * @param {boolean} capitalizeWords - Whether to capitalize words.
+             * @param {boolean} addNumber - Whether to add a number.
+             * @param {boolean} addSymbol - Whether to add a symbol.
+             * @param {string[]|null} customWordlist - Custom wordlist or null for embedded.
+             * @param {boolean} applyReplacements - Whether to apply leet-speak replacements.
+             * @returns {string} The generated passphrase.
+             * @throws {Error} If validation fails.
+             */
+            async function generatePassphrase(numWords, separator, capitalizeWords, addNumber, addSymbol, customWordlist, applyReplacements) {
+                if (numWords < 3 || numWords > 6) {
+                    throw new Error("Number of words must be between 3 and 6.");
+                }
+
+                const wordsToUse = customWordlist || EMBEDDED_PASSPHRASE_WORDLIST;
+
+                if (wordsToUse.length < numWords) {
+                    throw new Error(`The selected wordlist (contains ${wordsToUse.length} words) does not have enough words (${numWords} required).`);
+                }
+
+                // Select random words without replacement
+                let selectedWords = [];
+                let tempWordlist = [...wordsToUse]; // Create a mutable copy
+
+                for (let i = 0; i < numWords; i++) {
+                    const idx = secureRandomInt(tempWordlist.length);
+                    selectedWords.push(tempWordlist[idx]);
+                    tempWordlist.splice(idx, 1); // Remove selected word
+                }
+
+                if (capitalizeWords) {
+                    selectedWords = selectedWords.map(word => word.charAt(0).toUpperCase() + word.slice(1));
+                }
+
+                let passphraseStr = selectedWords.join(separator);
+
+                if (addNumber) {
+                    const digit = NON_CONFUSING_DIGITS[secureRandomInt(NON_CONFUSING_DIGITS.length)];
+                    const insertPos = secureRandomInt(passphraseStr.length + 1);
+                    passphraseStr = insertChar(passphraseStr, digit, insertPos);
+                }
+
+                if (addSymbol) {
+                    const symbol = NON_CONFUSING_SPECIAL_CHARS[secureRandomInt(NON_CONFUSING_SPECIAL_CHARS.length)];
+                    const insertPos = secureRandomInt(passphraseStr.length + 1); // Recalculate length after number insertion
+                    passphraseStr = insertChar(passphraseStr, symbol, insertPos);
+                }
+
+                // Apply random leet-speak replacements if enabled
+                if (applyReplacements) {
+                    passphraseStr = applyRandomReplacements(passphraseStr);
+                }
+
+                return passphraseStr;
+            }
+
+            // --- UI Logic and Event Handlers (Unchanged) ---
+
+            function displayError(message) {
+                errorMessageDiv.textContent = message;
+                errorMessageDiv.style.display = 'block';
+            }
+
+            function clearError() {
+                errorMessageDiv.textContent = '';
+                errorMessageDiv.style.display = 'none';
+            }
+
+            function updateModeDisplay() {
+                if (modeCharacterRadio.checked) {
+                    characterOptionsDiv.style.display = 'block';
+                    passphraseOptionsDiv.style.display = 'none';
+                } else {
+                    characterOptionsDiv.style.display = 'none';
+                    passphraseOptionsDiv.style.display = 'block';
+                }
+                clearError(); // Clear errors when mode changes
+                outputArea.value = ''; // Clear output when mode changes
+            }
+
+            // Handles custom wordlist file selection
+            passWordlistInput.addEventListener('change', async (event) => {
+                const file = event.target.files[0];
+                if (file) {
+                    wordlistFileNameSpan.textContent = `(${file.name})`;
+                    try {
+                        const text = await file.text();
+                        const lines = text.split('\n');
+                        customWordlist = filterWordlist(lines);
+                        clearError();
+                        if (customWordlist.length === 0) {
+                            displayError("Custom wordlist processed, but no valid (5-7 letter, alphabetic) words found.");
+                        } else {
+                            console.log(`Loaded custom wordlist with ${customWordlist.length} words.`);
+                        }
+                    } catch (err) {
+                        customWordlist = null; // Clear if error
+                        displayError(`Failed to read wordlist file: ${err.message}`);
+                        wordlistFileNameSpan.textContent = '';
+                    }
+                } else {
+                    customWordlist = null;
+                    wordlistFileNameSpan.textContent = '';
+                }
+            });
+
+            generateBtn.addEventListener('click', async () => {
+                clearError();
+                outputArea.value = '';
+                const numToGenerate = parseInt(countInput.value, 10);
+                const applyReplacements = enableReplacementsCheckbox.checked; // Get replacement option
+
+                let generatedOutputs = [];
+
+                for (let i = 0; i < numToGenerate; i++) {
+                    try {
+                        let result;
+                        if (modeCharacterRadio.checked) {
+                            const length = parseInt(charLengthInput.value, 10);
+                            const digits = parseInt(charDigitsInput.value, 10);
+                            const special = parseInt(charSpecialInput.value, 10);
+                            const capital = parseInt(charCapitalInput.value, 10);
+                            const lower = parseInt(charLowerInput.value, 10);
+                            // Pass applyReplacements to the generation function
+                            result = generateCharacterPassword(length, digits, special, capital, lower, applyReplacements);
+                        } else { // Passphrase mode
+                            const words = parseInt(passWordsInput.value, 10);
+                            const separator = passSeparatorInput.value;
+                            const capitalize = passCapitalizeCheckbox.checked;
+                            const addNum = passAddNumberCheckbox.checked;
+                            const addSym = passAddSymbolCheckbox.checked;
+                            // Pass applyReplacements to the generation function
+                            result = await generatePassphrase(words, separator, capitalize, addNum, addSym, customWordlist, applyReplacements);
+                        }
+                        generatedOutputs.push(result);
+                    } catch (err) {
+                        displayError(err.message);
+                        // Stop generating if an error occurs for one password
+                        generatedOutputs = [];
+                        break;
+                    }
+                }
+
+                if (generatedOutputs.length > 0) {
+                    outputArea.value = generatedOutputs.join('\n');
+                }
+            });
+
+            copyBtn.addEventListener('click', () => {
+                outputArea.select();
+                outputArea.setSelectionRange(0, 99999); // For mobile devices
+                document.execCommand('copy');
+                alert('Copied to clipboard!');
+            });
+
+            // Initial setup
+            modeCharacterRadio.addEventListener('change', updateModeDisplay);
+            modePassphraseRadio.addEventListener('change', updateModeDisplay);
+            updateModeDisplay(); // Call initially to set correct view
+        });
+        /* --- script.js content ends here --- */
+    </script>
+</body>
+</html>

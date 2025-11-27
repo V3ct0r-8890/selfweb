@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Network & Bandwidth Calculator</title>
+    <!--
+        SPECIFICATIONS:
+        - This is a single-page HTML/CSS/JS application.
+        - It provides two tools in a tabbed interface:
+          1. Subnet Calculator
+          2. Bandwidth Calculator
+        - No external libraries or frameworks are used.
+        
+        SUBNET CALCULATOR:
+        - Accepts a single input in CIDR format (e.g., 192.168.1.0/24).
+        - If the prefix (CIDR value) is 24 or higher (e.g., /25, /26), it calculates
+          all subnets of that size that fit within the parent /24 block.
+        - If the prefix is less than 24 (e.g., /23), it calculates only the
+          single block specified.
+        - Added a dropdown to select the output format:
+          1. Markdown Table (for copying to documents)
+          2. HTML Table (for copying to web pages)
+          3. Simple Table (on-page) (renders directly in the UI)
+        - Output is a table showing:
+          Network, Usable IP Range (Start-End), Broadcast, and Usable IPs.
+          
+        BANDWIDTH CALCULATOR:
+        - Provides two modes, selectable via a dropdown:
+          1. Calculate required bandwidth from data volume and time.
+          2. Calculate transferable data volume from bandwidth and time.
+        - Supports data units from Bytes to Petabytes (PB).
+        - Supports bandwidth units from bps to Gbps (using decimal 1000-based prefixes).
+        - Supports time units from Seconds to Days.
+        - Calculations update in real-time on input (oninput/onchange) AND
+          via an explicit "Calculate" button for each mode.
+        - Both calculators now run on page load.
+        
+        *** FIX UPDATE ***
+        - Renamed id="bandwidth" to id="bandwidthInput" and
+          id="bandwidthUnit" to id="bandwidthUnitInput" to resolve
+          a strange browser bug where the element's value was
+          returning 'undefined'.
+        - Removed debugging console.log statements.
+
+        STYLING:
+        - Uses simple, "compact" CSS for layout.
+        - Does not use Tailwind CSS or any frameworks.
+    -->
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: #f4f4f4;
+            color: #333;
+            margin: 0;
+            padding: 1rem;
+        }
+        .container {
+            max-width: 800px;
+            margin: 1rem auto;
+            background-color: #fff;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .tabs {
+            display: flex;
+            background-color: #eee;
+            border-bottom: 1px solid #ccc;
+        }
+        .tab-button {
+            padding: 12px 16px;
+            border: none;
+            background-color: transparent;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 500;
+            color: #555;
+        }
+        .tab-button.active {
+            background-color: #fff;
+            color: #007bff;
+            border-bottom: 2px solid #007bff;
+            margin-bottom: -1px; /* Align with border */
+        }
+        .tab-content {
+            display: none;
+            padding: 1.5rem;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        
+        /* General Form Styles */
+        .form-group {
+            margin-bottom: 1rem;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+        }
+        input[type="text"],
+        input[type="number"],
+        select {
+            width: 100%;
+            padding: 8px;
+            box-sizing: border-box; /* Important for 100% width */
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 1rem;
+        }
+        button.calc-button {
+            background-color: #007bff;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1rem;
+        }
+        button.calc-button:hover {
+            background-color: #0056b3;
+        }
+
+        /* Subnet Calculator */
+        #subnetOutput {
+            width: 100%;
+            height: 300px;
+            font-family: "Courier New", Courier, monospace;
+            background-color: #fafafa;
+            border: 1px solid #eee;
+            border-radius: 4px;
+            padding: 1rem;
+            box-sizing: border-box;
+            white-space: pre;
+            overflow-x: auto;
+        }
+
+        /* Styles for on-page table */
+        .simple-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+        }
+        .simple-table th,
+        .simple-table td {
+            border: 1px solid #ccc;
+            padding: 8px;
+            text-align: left;
+            font-family: "Courier New", Courier, monospace;
+        }
+        .simple-table th {
+            background-color: #f4f4f4;
+            font-weight: 600;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+
+        /* Bandwidth Calculator */
+        .bw-grid {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 10px;
+            align-items: center;
+        }
+        .bw-grid label {
+            font-weight: 500;
+            margin-bottom: 0;
+        }
+        .bw-grid .span-2 {
+            grid-column: 1 / -1;
+        }
+        #calcBandwidthForm,
+        #calcVolumeForm {
+            border: 1px solid #eee;
+            padding: 1rem;
+            border-radius: 4px;
+            background-color: #fcfcfc;
+        }
+        h3 {
+            margin-top: 0;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 8px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <nav class="tabs">
+            <button class="tab-button active" onclick="openTab(event, 'subnet')">Subnet Calculator</button>
+            <button class="tab-button" onclick="openTab(event, 'bandwidth')">Bandwidth Calculator</button>
+        </nav>
+
+        <!-- ==================== -->
+        <!-- Subnet Calculator Tab -->
+        <!-- ==================== -->
+        <div id="subnet" class="tab-content active">
+            <h2>Subnet Calculator</h2>
+            <div class="form-group">
+                <label for="cidrInput">Enter CIDR (e.g., 192.168.10.0/26):</label>
+                <input type="text" id="cidrInput" placeholder="192.168.10.0/26" value="192.168.10.0/26" oninput="calculateSubnet()">
+            </div>
+            <div class="form-group">
+                <label for="formatSelect">Output Format:</label>
+                <select id="formatSelect" onchange="calculateSubnet()">
+                    <option value="onpage">Simple Table (on-page)</option>
+                    <option value="markdown">Markdown Table (for copy)</option>
+                    <option value="html">HTML Table (for copy)</option>
+                </select>
+            </div>
+            <button type="button" class="calc-button" onclick="calculateSubnet()">Calculate</button>
+            
+            <!-- This div is for the copy/paste text area -->
+            <div id="subnetTextOutputArea" class="form-group" style="margin-top: 1rem; display: none;">
+                <label for="subnetOutput">Table Output (for copy/paste):</label>
+                <textarea id="subnetOutput" readonly></textarea>
+            </div>
+
+            <!-- This new div is for the rendered on-page table -->
+            <div id="subnetTableOutput" style="margin-top: 1rem;">
+                <!-- Table will be injected here by JS -->
+            </div>
+        </div>
+
+        <!-- ====================== -->
+        <!-- Bandwidth Calculator Tab -->
+        <!-- ====================== -->
+        <div id="bandwidth" class="tab-content">
+            <h2>Bandwidth Calculator</h2>
+            <div class="form-group">
+                <label for="bwModeSelect">Calculation Mode:</label>
+                <select id="bwModeSelect" onchange="toggleBwMode()">
+                    <option value="calcBandwidth">Calculate Bandwidth Required</option>
+                    <option value="calcVolume">Calculate Data Volume</option>
+                </select>
+            </div>
+
+            <!-- Mode 1: Calculate Bandwidth -->
+            <div id="calcBandwidthForm">
+                <h3>Calculate Required Bandwidth</h3>
+                <div class="bw-grid">
+                    <label for="dataVolume">Data Volume:</label>
+                    <label for="volumeUnit">Unit:</label>
+                    
+                    <input type="number" id="dataVolume" value="100" oninput="calculateBandwidth()">
+                    <select id="volumeUnit" onchange="calculateBandwidth()">
+                        <option value="Bytes">Bytes</option>
+                        <option value="KB">KB</option>
+                        <option value="MB">MB</option>
+                        <option value="GB" selected>GB</option>
+                        <option value="TB">TB</option>
+                        <option value="PB">PB</option>
+                    </select>
+
+                    <label for="transferTime">Transfer Time:</label>
+                    <label for="timeUnit">Unit:</label>
+
+                    <input type="number" id="transferTime" value="1" oninput="calculateBandwidth()">
+                    <select id="timeUnit" onchange="calculateBandwidth()">
+                        <option value="Seconds">Seconds</option>
+                        <option value="Minutes">Minutes</option>
+                        <option value="Hours" selected>Hours</option>
+                        <option value="Days">Days</option>
+                    </select>
+
+                    <hr class="span-2">
+
+                    <label for="resultBandwidth">Required Bandwidth:</label>
+                    <label for="bandwidthUnitResult">Unit:</label>
+
+                    <input type="text" id="resultBandwidth" readonly>
+                    <select id="bandwidthUnitResult" onchange="calculateBandwidth()">
+                        <option value="bps">bps</option>
+                        <option value="kbps">kbps</option>
+                        <option value="Mbps" selected>Mbps</option>
+                        <option value="Gbps">Gbps</option>
+                    </select>
+
+                    <div class="span-2" style="margin-top: 1rem;">
+                        <button type="button" class="calc-button" onclick="calculateBandwidth()">Calculate</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Mode 2: Calculate Volume -->
+            <div id="calcVolumeForm" style="display: none;">
+                <h3>Calculate Data Volume</h3>
+                <div class="bw-grid">
+                    <!-- *** ID RENAMED HERE *** -->
+                    <label for="bandwidthInput">Bandwidth:</label>
+                    <label for="bandwidthUnitInput">Unit:</label>
+
+                    <!-- *** ID RENAMED HERE *** -->
+                    <input type="number" id="bandwidthInput" value="100" oninput="calculateVolume()">
+                    <!-- *** ID RENAMED HERE *** -->
+                    <select id="bandwidthUnitInput" onchange="calculateVolume()">
+                        <option value="bps">bps</option>
+                        <option value="kbps">kbps</option>
+                        <option value="Mbps" selected>Mbps</option>
+                        <option value="Gbps">Gbps</option>
+                    </select>
+
+                    <label for="transferTimeVol">Transfer Time:</label>
+                    <label for="timeUnitVol">Unit:</label>
+
+                    <input type="number" id="transferTimeVol" value="1" oninput="calculateVolume()">
+                    <select id="timeUnitVol" onchange="calculateVolume()">
+                        <option value="Seconds">Seconds</option>
+                        <option value="Minutes">Minutes</option>
+                        <option value="Hours" selected>Hours</option>
+                        <option value="Days">Days</option>
+                    </select>
+
+                    <hr class="span-2">
+
+                    <label for="resultVolume">Data Volume:</label>
+                    <label for="volumeUnitResult">Unit:</label>
+                    
+                    <input type="text" id="resultVolume" readonly>
+                    <select id="volumeUnitResult" onchange="calculateVolume()">
+                        <option value="Bytes">Bytes</option>
+                        <option value="KB">KB</option>
+                        <option value="MB">MB</option>
+                        <option value="GB" selected>GB</option>
+                        <option value="TB">TB</option>
+                        <option value="PB">PB</option>
+                    </select>
+
+                    <div class="span-2" style="margin-top: 1rem;">
+                        <button type="button" class="calc-button" onclick="calculateVolume()">Calculate</button>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        // ========================================================================
+        // SPECIFICATIONS (JavaScript)
+        // This script handles:
+        // 1. Tabbed interface logic (openTab function).
+        // 2. Subnet calculator logic (calculateSubnet and helpers).
+        // 3. Bandwidth calculator logic (toggleBwMode, calculateBandwidth, calculateVolume).
+        // ========================================================================
+
+        // ------------------------
+        // Tab Interface Logic
+        // ------------------------
+        function openTab(evt, tabName) {
+            let i, tabcontent, tabbuttons;
+            tabcontent = document.getElementsByClassName("tab-content");
+            for (i = 0; i < tabcontent.length; i++) {
+                tabcontent[i].style.display = "none";
+            }
+            tabbuttons = document.getElementsByClassName("tab-button");
+            for (i = 0; i < tabbuttons.length; i++) {
+                tabbuttons[i].className = tabbuttons[i].className.replace(" active", "");
+            }
+            document.getElementById(tabName).style.display = "block";
+            evt.currentTarget.className += " active";
+        }
+
+        // ------------------------
+        // Subnet Calculator Logic
+        // ------------------------
+        
+        /**
+         * Converts an IP address string (e.g., "192.168.1.1") to a 32-bit unsigned integer.
+         * @param {string} ip - The IP address string.
+         * @returns {number} The 32-bit integer representation.
+         */
+        function ipToInt(ip) {
+            // Check if ip is valid, otherwise return NaN
+            if (!/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(ip)) {
+                return NaN;
+            }
+            const octets = ip.split('.').map(Number);
+            if (octets.some(octet => octet < 0 || octet > 255)) {
+                return NaN;
+            }
+            return octets.reduce((acc, octet) => (acc << 8) + octet, 0) >>> 0;
+        }
+
+        /**
+         * Converts a 32-bit unsigned integer back to an IP address string.
+         * @param {number} int - The 32-bit integer.
+         * @returns {string} The IP address string.
+         */
+        function intToIp(int) {
+            return `${(int >>> 24)}.${(int >>> 16) & 255}.${(int >>> 8) & 255}.${int & 255}`;
+        }
+
+        /**
+         * Main function to calculate subnets based on CIDR input.
+         */
+        function calculateSubnet() {
+            const cidrInput = document.getElementById('cidrInput').value;
+            const format = document.getElementById('formatSelect').value;
+            
+            // Get output elements
+            const outputTextarea = document.getElementById('subnetOutput');
+            const textOutputDiv = document.getElementById('subnetTextOutputArea');
+            const tableOutputDiv = document.getElementById('subnetTableOutput');
+            
+            const [ip, prefixStr] = cidrInput.split('/');
+            if (!ip || !prefixStr) {
+                const errorMsg = "Error: Invalid CIDR format. Expected 'ip/prefix' (e.g., 192.168.1.0/24).";
+                if (format === 'onpage') {
+                    tableOutputDiv.innerHTML = `<p style="color: red;">${errorMsg}</p>`;
+                    textOutputDiv.style.display = 'none';
+                } else {
+                    outputTextarea.value = errorMsg;
+                    textOutputDiv.style.display = 'block';
+                    tableOutputDiv.style.display = 'none';
+                }
+                return;
+            }
+
+            const prefix = parseInt(prefixStr, 10);
+            if (isNaN(prefix) || prefix < 0 || prefix > 32) {
+                const errorMsg = "Error: Invalid prefix. Must be a number between 0 and 32.";
+                if (format === 'onpage') {
+                    tableOutputDiv.innerHTML = `<p style="color: red;">${errorMsg}</p>`;
+                    textOutputDiv.style.display = 'none';
+                } else {
+                    outputTextarea.value = errorMsg;
+                    textOutputDiv.style.display = 'block';
+                    tableOutputDiv.style.display = 'none';
+                }
+                return;
+            }
+            
+            const ipInt = ipToInt(ip);
+            if (isNaN(ipInt)) {
+                 const errorMsg = "Error: Invalid IP address format.";
+                 if (format === 'onpage') {
+                    tableOutputDiv.innerHTML = `<p style="color: red;">${errorMsg}</p>`;
+                    textOutputDiv.style.display = 'none';
+                } else {
+                    outputTextarea.value = errorMsg;
+                    textOutputDiv.style.display = 'block';
+                    tableOutputDiv.style.display = 'none';
+                }
+                 return;
+            }
+
+            // Handle output visibility
+            if (format === 'onpage') {
+                textOutputDiv.style.display = 'none';
+                tableOutputDiv.style.display = 'block';
+                outputTextarea.value = ''; // Clear textarea
+            } else {
+                textOutputDiv.style.display = 'block';
+                tableOutputDiv.style.display = 'none';
+                tableOutputDiv.innerHTML = ''; // Clear rendered table
+            }
+
+            let table = "";
+
+            // Set headers based on format
+            if (format === 'markdown') {
+                table = "| Network | Usable IP Range | Broadcast | Usable IPs |\n";
+                table += "|:---|:---|:---|:---|\n";
+            } else if (format === 'html' || format === 'onpage') {
+                // Use CSS class for on-page, keep inline for copyable HTML
+                const tableTag = (format === 'onpage')
+                    ? '<table class="simple-table">'
+                    : '<table border="1" style="border-collapse: collapse; width: 100%;">';
+                
+                table = tableTag + '\n';
+                table += '  <thead>\n';
+                table += '    <tr>\n';
+                table += '      <th>Network</th>\n';
+                table += '      <th>Usable IP Range</th>\n';
+                table += '      <th>Broadcast</th>\n';
+                table += '      <th>Usable IPs</th>\n';
+                table += '    </tr>\n';
+                table += '  </thead>\n';
+                table += '  <tbody>\n';
+            }
+
+            if (prefix >= 24) {
+                // User wants a prefix >= /24. List all subnets of this size within the parent /24.
+                const parentNetworkInt = ipInt & 0xFFFFFF00; // Find the start of the /24
+                const subnetSize = 1 << (32 - prefix);
+                const numSubnets = 256 / subnetSize;
+
+                for (let i = 0; i < numSubnets; i++) {
+                    const networkInt = parentNetworkInt + (i * subnetSize);
+                    const details = getSubnetDetails(networkInt, prefix);
+                    
+                    // Format row based on selected format
+                    if (format === 'markdown') {
+                        table += `| ${details.networkCol} | ${details.rangeCol} | ${details.broadcastCol} | ${details.usableCol} |\n`;
+                    } else if (format === 'html' || format === 'onpage') {
+                        table += '    <tr>\n';
+                        table += `      <td>${details.networkCol}</td>\n`;
+                        table += `      <td>${details.rangeCol}</td>\n`;
+                        table += `      <td>${details.broadcastCol}</td>\n`;
+                        table += `      <td>${details.usableCol}</td>\n`;
+                        table += '    </tr>\n';
+                    }
+                }
+            } else {
+                // User wants a prefix < /24. Just calculate the single block they asked for.
+                const networkMask = (0xFFFFFFFF << (32 - prefix)) >>> 0;
+                const networkInt = ipInt & networkMask;
+                const details = getSubnetDetails(networkInt, prefix);
+                
+                // Format row based on selected format
+                if (format === 'markdown') {
+                    table += `| ${details.networkCol} | ${details.rangeCol} | ${details.broadcastCol} | ${details.usableCol} |\n`;
+                } else if (format === 'html' || format === 'onpage') {
+                    table += '    <tr>\n';
+                    table += `      <td>${details.networkCol}</td>\n`;
+                    table += `      <td>${details.rangeCol}</td>\n`;
+                    table += `      <td>${details.broadcastCol}</td>\n`;
+                    table += `      <td>${details.usableCol}</td>\n`;
+                    table += '    </tr>\n';
+                }
+            }
+
+            // Close HTML table if necessary
+            if (format === 'html' || format === 'onpage') {
+                table += '  </tbody>\n';
+                table += '</table>';
+            }
+
+            // Send output to the correct element
+            if (format === 'onpage') {
+                tableOutputDiv.innerHTML = table;
+            } else {
+                outputTextarea.value = table;
+            }
+        }
+
+        /**
+         * Helper function to get the details for a subnet row.
+         * @param {number} networkInt - The 32-bit integer for the network address.
+         * @param {number} prefix - The CIDR prefix (e.g., 24, 26).
+         * @returns {object} An object with formatted strings for each table column.
+         */
+        function getSubnetDetails(networkInt, prefix) {
+            const networkIp = intToIp(networkInt);
+            const networkCol = `${networkIp}/${prefix}`;
+
+            if (prefix === 32) {
+                return {
+                    networkCol: networkCol,
+                    rangeCol: networkIp,
+                    broadcastCol: networkIp,
+                    usableCol: "1"
+                };
+            }
+
+            if (prefix === 31) {
+                const ip2 = intToIp(networkInt + 1);
+                return {
+                    networkCol: networkCol,
+                    rangeCol: `${networkIp} - ${ip2}`,
+                    broadcastCol: ip2, // Technically neither is broadcast, but this denotes the end
+                    usableCol: "2"
+                };
+            }
+
+            const broadcastInt = (networkInt | ((1 << (32 - prefix)) - 1)) >>> 0;
+            const startIpInt = networkInt + 1;
+            const endIpInt = broadcastInt - 1;
+            const usableIps = (1 << (32 - prefix)) - 2;
+
+            return {
+                networkCol: networkCol,
+                rangeCol: `${intToIp(startIpInt)} - ${intToIp(endIpInt)}`,
+                broadcastCol: intToIp(broadcastInt),
+                usableCol: String(usableIps)
+            };
+        }
+
+        // ---------------------------
+        // Bandwidth Calculator Logic
+        // ---------------------------
+
+        // Unit conversion constants
+        const BYTES_PER = {
+            'Bytes': 1,
+            'KB': 1024,
+            'MB': Math.pow(1024, 2),
+            'GB': Math.pow(1024, 3),
+            'TB': Math.pow(1024, 4),
+            'PB': Math.pow(1024, 5)
+        };
+
+        const BITS_PER = { // Networking uses 1000-based
+            'bps': 1,
+            'kbps': 1000,
+            'Mbps': Math.pow(1000, 2),
+            'Gbps': Math.pow(1000, 3)
+        };
+
+        const SECONDS_PER = {
+            'Seconds': 1,
+            'Minutes': 60,
+            'Hours': 3600,
+            'Days': 86400
+        };
+
+        /**
+         * Toggles the display of the bandwidth calculator forms.
+         */
+        function toggleBwMode() {
+            const mode = document.getElementById('bwModeSelect').value;
+            const calcBwForm = document.getElementById('calcBandwidthForm');
+            const calcVolForm = document.getElementById('calcVolumeForm');
+
+            if (mode === 'calcBandwidth') {
+                calcBwForm.style.display = 'block';
+                calcVolForm.style.display = 'none';
+                calculateBandwidth(); // Trigger calculation
+            } else {
+                calcBwForm.style.display = 'none';
+                calcVolForm.style.display = 'block';
+                calculateVolume(); // Trigger calculation
+            }
+        }
+
+        /**
+         * Mode 1: Calculates required bandwidth.
+         */
+        function calculateBandwidth() {
+            const volume = parseFloat(document.getElementById('dataVolume').value) || 0;
+            const volUnit = document.getElementById('volumeUnit').value;
+            const time = parseFloat(document.getElementById('transferTime').value) || 0;
+            const timeUnit = document.getElementById('timeUnit').value;
+            const resultUnit = document.getElementById('bandwidthUnitResult').value;
+            const resultField = document.getElementById('resultBandwidth');
+
+            if (time === 0) {
+                resultField.value = "N/A (Time cannot be 0)";
+                return;
+            }
+
+            const totalBytes = volume * BYTES_PER[volUnit];
+            const totalBits = totalBytes * 8;
+            const totalSeconds = time * SECONDS_PER[timeUnit];
+            
+            const bitsPerSecond = totalBits / totalSeconds;
+            
+            const resultBandwidth = bitsPerSecond / BITS_PER[resultUnit];
+            
+            resultField.value = formatNumber(resultBandwidth);
+        }
+
+        /**
+         * Mode 2: Calculates transferable data volume.
+         * *** JAVASCRIPT RENAMED HERE ***
+         */
+        function calculateVolume() {
+            // Use unique variable names for this function's scope
+            // *** RENAMED getElementById('bandwidthInput') ***
+            const bwVal = parseFloat(document.getElementById('bandwidthInput').value) || 0;
+            // *** RENAMED getElementById('bandwidthUnitInput') ***
+            const bwUnit = document.getElementById('bandwidthUnitInput').value;
+            const timeVal = parseFloat(document.getElementById('transferTimeVol').value) || 0;
+            const timeUnitString = document.getElementById('timeUnitVol').value;
+            const resultUnitString = document.getElementById('volumeUnitResult').value;
+            const resultField = document.getElementById('resultVolume');
+
+            const bitsPerSecond = bwVal * BITS_PER[bwUnit];
+            
+            const totalSeconds = timeVal * SECONDS_PER[timeUnitString];
+            
+            const totalBits = bitsPerSecond * totalSeconds;
+            const totalBytes = totalBits / 8;
+
+            const resultVolume = totalBytes / BYTES_PER[resultUnitString];
+            
+            resultField.value = formatNumber(resultVolume);
+        }
+        
+        /**
+         * Formats a number to a reasonable number of decimal places.
+         * @param {number} num - The number to format.
+         * @returns {string} The formatted number string.
+         */
+        function formatNumber(num) {
+            if (isNaN(num)) return "0";
+            if (!isFinite(num)) return "Infinity";
+            
+            // Use 'toPrecision' to avoid long decimals from floating point math
+            return parseFloat(num.toPrecision(6)).toString();
+        }
+
+        // Initial setup
+        document.addEventListener('DOMContentLoaded', () => {
+            // Default to the new 'onpage' view
+            document.getElementById('formatSelect').value = 'onpage';
+            calculateSubnet();
+            calculateBandwidth();
+            
+            // This call populates the 'Calculate Data Volume' tab on load.
+            calculateVolume(); 
+        });
+    </script>
+
+</body>
+</html>
