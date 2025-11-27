@@ -4,5 +4,7 @@
 [EnergyConsumption-standalone](https://v3ct0r-8890.github.io/selfweb/EnergyConsumption-standalone.html) <BR>
 [DateCalculator](https://V3ct0r-8890.github.io/selfweb/datecalc.html) <BR>
 [Simple Password Generator](https://V3ct0r-8890.github.io/selfweb/pass-gen.html) <BR>
-[Password Validator (No info keep)](https://V3ct0r-8890.github.io/selfweb/PassCheck.html) <BR>
+[Password Validator](https://V3ct0r-8890.github.io/selfweb/PassCheck.html) <BR>
 [Simple Subnet and Bandwidth Calculator](https://V3ct0r-8890.github.io/selfweb/subnetcal.html) <BR>
+<BR>
+My web application can be downloaded and run offline on a computer, with no information stored on any website. All data is kept in the browser’s storage, so clearing the browser storage will delete everything.
