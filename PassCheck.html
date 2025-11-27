@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <!--
+    File: password_checker.html
+    Created: 2025-11-11
+    Updated: 2025-11-11
+    Description: A single-page web app to check password strength criteria
+                 and estimate the time to crack.
+    -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Strong Password Checker</title>
+    <!-- Add zxcvbn library (removed 'defer' to fix race condition) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/zxcvbn/4.4.2/zxcvbn.js"></script>
+    <style>
+        /* --- CSS Styles --- */
+
+        /* Basic setup and centering */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f0f2f5;
+            display: grid;
+            place-items: center;
+            min-height: 90vh;
+            margin: 0;
+            color: #333;
+        }
+
+        /* Main application container */
+        .container {
+            background-color: #ffffff;
+            padding: 2rem 2.5rem;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+            width: 100%;
+            max-width: 400px;
+        }
+
+        h2 {
+            text-align: center;
+            margin-top: 0;
+            margin-bottom: 1.5rem;
+            color: #111;
+        }
+
+        /* Password input field wrapper */
+        .password-input-wrapper {
+            position: relative;
+            margin-bottom: 1.5rem;
+        }
+
+        #password-input {
+            width: 100%;
+            padding: 12px;
+            padding-right: 60px; /* Space for the toggle button */
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 1rem;
+            box-sizing: border-box; /* Important for padding to work correctly */
+        }
+
+        #password-input:focus {
+            outline: none;
+            border-color: #007bff;
+            box-shadow: 0 0 0 2px rgba(0,123,255,0.25);
+        }
+
+        /* Show/Hide toggle button */
+        #toggle-password {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 0.9rem;
+            color: #555;
+            padding: 4px;
+        }
+
+        /* Criteria list styling */
+        #strength-criteria {
+            padding: 0;
+            margin: 0;
+            list-style-type: none;
+        }
+
+        #strength-criteria li {
+            margin-bottom: 0.75rem;
+            font-size: 0.95rem;
+            transition: color 0.2s ease-in-out;
+            overflow: hidden; /* Added to contain the floated .count span */
+        }
+
+        /* New style for the character count span */
+        #strength-criteria .count {
+            float: right;
+            font-weight: 600;
+            color: #555;
+        }
+
+        /* Default state (invalid) */
+        #strength-criteria li.invalid {
+            color: #d9534f; /* Red */
+        }
+
+        #strength-criteria li.invalid::before {
+            content: '✗'; /* Cross mark */
+            display: inline-block;
+            margin-right: 10px;
+            font-weight: bold;
+        }
+
+        /* Valid state */
+        #strength-criteria li.valid {
+            color: #5cb85c; /* Green */
+        }
+
+        #strength-criteria li.valid::before {
+            content: '✓'; /* Check mark */
+            display: inline-block;
+            margin-right: 10px;
+            font-weight: bold;
+        }
+
+        /* Crack time result styling */
+        #crack-time-result {
+            text-align: center;
+            margin-top: 1.5rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid #eee;
+        }
+
+        #crack-time-result .label {
+            display: block;
+            font-size: 0.9rem;
+            color: #555;
+            margin-bottom: 0.35rem;
+        }
+
+        #crack-time-value {
+            font-size: 1.2rem;
+            font-weight: 600;
+            transition: color 0.3s ease;
+        }
+
+        #calculation-note {
+            text-align: center;
+            font-size: 0.8rem;
+            color: #888;
+            margin-top: 1rem;
+            margin-bottom: 0;
+        }
+
+        /* Dynamic classes for crack time color */
+        .time-instant { color: #d9534f; } /* Red */
+        .time-short   { color: #f0ad4e; } /* Orange */
+        .time-medium  { color: #007bff; } /* Blue */
+        .time-long    { color: #5cb85c; } /* Green */
+
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h2>Strong Password Checker</h2>
+
+        <div class="password-input-wrapper">
+            <input type="password" id="password-input" placeholder="Enter your password">
+            <button id="toggle-password" title="Show/Hide password">Show</button>
+        </div>
+
+        <ul id="strength-criteria">
+            <li id="length" class="invalid">At least 8 characters <span class="count">(0)</span></li>
+            <li id="lowercase" class="invalid">Lowercase letters (a-z) <span class="count">(0)</span></li>
+            <li id="uppercase" class="invalid">Uppercase letters (A-Z) <span class="count">(0)</span></li>
+            <li id="number" class="invalid">Numbers (0-9) <span class="count">(0)</span></li>
+            <li id="special" class="invalid">Special characters (!@#) <span class="count">(0)</span></li>
+        </ul>
+
+        <!-- New section for crack time -->
+        <div id="crack-time-result">
+            <span class="label">Estimated time to crack:</span>
+            <span id="crack-time-value">N/A</span>
+        </div>
+        <p id="calculation-note">Using zxcvbn (10B guesses/second estimate).</p>
+
+    </div>
+
+    <script>
+        /* --- JavaScript Logic --- */
+        /* Created: 2025-11-11 */
+        /* Updated: 2025-11-11 */
+
+        document.addEventListener('DOMContentLoaded', () => {
+            // Get all necessary DOM elements
+            const passwordInput = document.getElementById('password-input');
+            const toggleButton = document.getElementById('toggle-password');
+            const crackTimeValue = document.getElementById('crack-time-value');
+
+            // Get criteria list items
+            const criteria = {
+                length: document.getElementById('length'),
+                lengthCount: document.getElementById('length').querySelector('.count'),
+                lowercase: document.getElementById('lowercase'),
+                lowercaseCount: document.getElementById('lowercase').querySelector('.count'),
+                uppercase: document.getElementById('uppercase'),
+                uppercaseCount: document.getElementById('uppercase').querySelector('.count'),
+                number: document.getElementById('number'),
+                numberCount: document.getElementById('number').querySelector('.count'),
+                special: document.getElementById('special'),
+                specialCount: document.getElementById('special').querySelector('.count')
+            };
+
+            // Define regex patterns (still needed for the criteria list)
+            // Added 'g' (global) flag to count all occurrences
+            const patterns = {
+                lowercase: /[a-z]/g,
+                uppercase: /[A-Z]/g,
+                number: /[0-9]/g,
+                special: /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/g
+            };
+            // zxcvbn handles pool size, so this is no longer needed.
+            // const specialCharPoolSize = 32;
+
+            /**
+             * Handles the input event on the password field.
+             * Checks the password against all criteria and estimates crack time.
+             */
+            passwordInput.addEventListener('input', () => {
+                const password = passwordInput.value;
+
+                // --- 1. Update Validation Criteria & Counts ---
+
+                // Get counts
+                const totalLength = password.length;
+                const lowercaseCount = (password.match(patterns.lowercase) || []).length;
+                const uppercaseCount = (password.match(patterns.uppercase) || []).length;
+                const numberCount = (password.match(patterns.number) || []).length;
+                const specialCount = (password.match(patterns.special) || []).length;
+
+                // Update count text
+                criteria.lengthCount.textContent = `(${totalLength})`;
+                criteria.lowercaseCount.textContent = `(${lowercaseCount})`;
+                criteria.uppercaseCount.textContent = `(${uppercaseCount})`;
+                criteria.numberCount.textContent = `(${numberCount})`;
+                criteria.specialCount.textContent = `(${specialCount})`;
+
+                // Check Length
+                const isLengthValid = totalLength >= 8;
+                updateCriterion(criteria.length, isLengthValid);
+
+                // Check Lowercase
+                const hasLowercase = lowercaseCount > 0;
+                updateCriterion(criteria.lowercase, hasLowercase);
+
+                // Check Uppercase
+                const hasUppercase = uppercaseCount > 0;
+                updateCriterion(criteria.uppercase, hasUppercase);
+
+                // Check Number
+                const hasNumber = numberCount > 0;
+                updateCriterion(criteria.number, hasNumber);
+
+                // Check Special Character
+                const hasSpecial = specialCount > 0;
+                updateCriterion(criteria.special, hasSpecial);
+
+                // --- 2. Estimate Crack Time using zxcvbn ---
+
+                // Ensure zxcvbn has loaded (it's deferred, but this is a good safety check)
+                if (typeof zxcvbn === 'function') {
+                    if (password.length === 0) {
+                        // Reset if password is empty
+                        crackTimeValue.textContent = 'N/A';
+                        crackTimeValue.className = '';
+                    } else {
+                        // Get the zxcvbn result
+                        const result = zxcvbn(password);
+
+                        // Use the offline, fast-hashing estimate (10B guesses/sec)
+                        // const displayTime = result.crack_times_display.offline_fast_hashing_1e10_per_second;
+
+                        // Get the raw crack time in seconds
+                        const crackTimeInSeconds = result.crack_times_seconds.offline_fast_hashing_1e10_per_second;
+
+                        // Format it into the new detailed string
+                        const displayTime = formatSecondsDetailed(crackTimeInSeconds);
+
+                        // Update the UI text
+                        crackTimeValue.textContent = displayTime;
+
+                        // Update the color based on the score (0-4)
+                        const scoreClasses = ['time-instant', 'time-instant', 'time-short', 'time-medium', 'time-long'];
+                        crackTimeValue.className = ''; // Clear old classes
+                        crackTimeValue.classList.add(scoreClasses[result.score]);
+                    }
+                }
+            });
+
+            /**
+             * Toggles the password input field between 'text' and 'password' type.
+             */
+            toggleButton.addEventListener('click', () => {
+                if (passwordInput.type === 'password') {
+                    passwordInput.type = 'text';
+                    toggleButton.textContent = 'Hide';
+                } else {
+                    passwordInput.type = 'password';
+                    toggleButton.textContent = 'Show';
+                }
+            });
+
+            /**
+             * Helper function to update the class of a criterion element.
+             * @param {HTMLElement} element - The <li> element to update.
+             * @param {boolean} isValid - Whether the criterion is met.
+             */
+            function updateCriterion(element, isValid) {
+                if (isValid) {
+                    element.classList.remove('invalid');
+                    element.classList.add('valid');
+                } else {
+                    element.classList.remove('valid');
+                    element.classList.add('invalid');
+                }
+            }
+
+            /**
+             * Helper function to update the class of a criterion element.
+             * Estimates the time to crack a password based on its entropy.
+             * @param {string} password - The password string.
+             * @param {object} checks - Pre-calculated regex checks.
+             * @returns {object} - An object with {time, className}.
+             */
+            /*
+            function estimateCrackTime(password, checks) {
+                const L = password.length;
+                if (L === 0) {
+                    return { time: 'N/A', className: '' };
+                }
+
+                // 1. Calculate Character Pool Size (N)
+                let N = 0;
+                if (checks.hasLowercase) N += 26;
+                if (checks.hasUppercase) N += 26;
+                if (checks.hasNumber) N += 10;
+                if (checks.hasSpecial) N += specialCharPoolSize;
+
+                // Fallback if pool is 0 (e.g., password is just spaces)
+                if (N === 0) {
+                     // Assume a small pool if password has content but matches no criteria
+                    N = (password.length > 0) ? 1 : 0;
+                }
+
+                // 2. Calculate Entropy (E)
+                // E = L * log2(N)
+                const entropy = L * (Math.log(N) / Math.log(2));
+
+                // 3. Calculate Time
+                // Guesses per second (Assumption: 100 Billion)
+                const guessesPerSecond = 100_000_000_000;
+
+                // Total combinations = 2^E
+                const totalCombinations = Math.pow(2, entropy);
+
+                // Time in seconds
+                const seconds = totalCombinations / guessesPerSecond;
+
+                // 4. Format for display
+                return formatCrackTime(seconds);
+            }
+            */
+
+            /**
+             * Formats a time in seconds into a human-readable string and class.
+             * @param {number} seconds - The time in seconds.
+             * @returns {object} - An object with {time, className}.
+             */
+            /*
+            function formatCrackTime(seconds) {
+                // Define time constants
+                const MIN = 60;
+                const HOUR = MIN * 60;
+                const DAY = HOUR * 24;
+                const MONTH = DAY * 30.44; // Average month
+                const YEAR = DAY * 365.25; // Account for leap years
+                const THOUSAND_YEARS = YEAR * 1000;
+                const MILLION_YEARS = YEAR * 1_000_000;
+                const BILLION_YEARS = YEAR * 1_000_000_000;
+
+                // Handle numbers that JS might round to Infinity
+                } else {
+                    element.classList.remove('valid');
+                    element.classList.add('invalid');
+                }
+            }
+            */
+
+            // --- The manual crack time functions are no longer needed ---
+
+            /**
+             * Formats a time in seconds into a detailed "Y years, D days..." string.
+             * @param {number} totalSeconds - The time in seconds.
+             * @returns {string} - A human-readable string.
+             */
+            function formatSecondsDetailed(totalSeconds) {
+                if (!isFinite(totalSeconds)) {
+                    return "Effectively Forever";
+                }
+
+                if (totalSeconds < 1) {
+                    return "Instantly";
+                }
+
+                // Using 365.25 days for a year to account for leap years
+                const SECONDS_PER_YEAR = 31557600; // 365.25 * 24 * 60 * 60
+                const SECONDS_PER_DAY = 86400;     // 24 * 60 * 60
+                const SECONDS_PER_HOUR = 3600;      // 60 * 60
+                const SECONDS_PER_MINUTE = 60;
+
+                let remainingSeconds = totalSeconds;
+
+                const years = Math.floor(remainingSeconds / SECONDS_PER_YEAR);
+                remainingSeconds %= SECONDS_PER_YEAR;
+
+                const days = Math.floor(remainingSeconds / SECONDS_PER_DAY);
+                remainingSeconds %= SECONDS_PER_DAY;
+
+                const hours = Math.floor(remainingSeconds / SECONDS_PER_HOUR);
+                remainingSeconds %= SECONDS_PER_HOUR;
+
+                const minutes = Math.floor(remainingSeconds / SECONDS_PER_MINUTE);
+                remainingSeconds %= SECONDS_PER_MINUTE;
+
+                // The final remainder is the seconds
+                const seconds = Math.floor(remainingSeconds);
+
+                const parts = [];
+                if (years > 0) parts.push(`${years.toLocaleString('en-US')} ${years > 1 ? 'years' : 'year'}`);
+                if (days > 0) parts.push(`${days} ${days > 1 ? 'days' : 'day'}`);
+                if (hours > 0) parts.push(`${hours} ${hours > 1 ? 'hours' : 'hour'}`);
+                if (minutes > 0) parts.push(`${minutes} ${minutes > 1 ? 'minutes' : 'minute'}`);
+                if (seconds > 0) parts.push(`${seconds} ${seconds > 1 ? 'seconds' : 'second'}`);
+
+                if (parts.length === 0) {
+                    return "less than 1 second";
+                }
+
+                // To avoid clutter, let's just show the top 2 units
+                // e.g. "1 year, 210 days" instead of "1 year, 210 days, 5 hours..."
+                return parts.slice(0, 2).join(', ');
+            }
+        });
+    </script>
+
+</body>
+</html>
