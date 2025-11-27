@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meal Planner & Tracker Pro (Offline)</title>
+    <!-- 
+      App: Meal Planner & Tracker Pro (Standalone Offline Edition)
+      Developer: Gemini
+      Date: 2025-11-19 (Updated v28)
+      
+      Description: 
+      - Zero Dependencies: No external CSS or JS links. Works 100% offline.
+      - Custom CSS framework replacing Tailwind.
+      - Custom Canvas Charting Engine replacing Chart.js.
+      - SVG Icons embedded directly.
+      - Full feature parity with previous versions.
+      - [Update]: Reverted to single-file HTML (Removed PWA/ServiceWorker logic).
+    -->
+    <style>
+        /* --- CSS VARIABLES & RESET --- */
+        :root {
+            --primary: #2563EB; --primary-dark: #1D4ED8; --primary-light: #EFF6FF;
+            --success: #22C55E; --warning: #EAB308; --danger: #EF4444; --orange: #F97316; --purple: #7C3AED;
+            --gray-50: #F9FAFB; --gray-100: #F3F4F6; --gray-200: #E5E7EB; --gray-300: #D1D5DB;
+            --gray-500: #6B7280; --gray-700: #374151; --gray-800: #1F2937; --white: #FFFFFF;
+            --radius: 0.5rem; --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1);
+            --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: var(--font); background-color: var(--gray-50); color: var(--gray-800); display: flex; flex-direction: column; min-height: 100vh; }
+        
+        /* --- LAYOUT & COMPONENTS --- */
+        .container { max-width: 900px; margin: 0 auto; width: 100%; padding: 1rem; }
+        .card { background: var(--white); border: 1px solid var(--gray-200); border-radius: var(--radius); box-shadow: var(--shadow); margin-bottom: 1.5rem; overflow: hidden; }
+        .card-header { padding: 1rem; border-bottom: 1px solid var(--gray-100); background: var(--gray-50); display: flex; justify-content: space-between; align-items: center; }
+        .card-body { padding: 1rem; }
+        
+        /* --- HEADER & TABS --- */
+        header { background: var(--white); border-bottom: 1px solid var(--gray-200); position: sticky; top: 0; z-index: 10; }
+        .header-content { display: flex; justify-content: space-between; align-items: center; padding: 1rem; max-width: 900px; margin: 0 auto; }
+        .app-title { color: var(--primary); font-weight: 800; font-size: 1.25rem; display: flex; align-items: center; gap: 0.5rem; }
+        .tab-nav { display: flex; max-width: 900px; margin: 0 auto; overflow-x: auto; }
+        .tab-btn { flex: 1; padding: 1rem; border: none; background: none; cursor: pointer; color: var(--gray-500); font-weight: 500; border-bottom: 2px solid transparent; transition: all 0.2s; }
+        .tab-btn:hover { color: var(--primary); }
+        .tab-btn.active { color: var(--primary); border-bottom-color: var(--primary); font-weight: 700; }
+        .tab-content { display: none; animation: fadeIn 0.2s; }
+        .tab-content.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        /* --- FORMS & INPUTS --- */
+        label { display: block; font-size: 0.75rem; font-weight: 600; color: var(--gray-500); margin-bottom: 0.25rem; text-transform: uppercase; letter-spacing: 0.05em; }
+        input, select { width: 100%; padding: 0.5rem; border: 1px solid var(--gray-300); border-radius: var(--radius); font-size: 0.9rem; outline: none; transition: border-color 0.2s; }
+        input:focus, select:focus { border-color: var(--primary); ring: 2px solid var(--primary-light); }
+        button { cursor: pointer; border: none; border-radius: var(--radius); font-weight: 600; transition: filter 0.2s; display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; }
+        button:hover { filter: brightness(0.95); }
+        
+        /* --- UTILITIES --- */
+        .btn-primary { background: var(--primary); color: var(--white); padding: 0.5rem 1rem; }
+        .btn-success { background: var(--success); color: var(--white); padding: 0.5rem 1rem; }
+        .btn-outline { background: var(--white); border: 1px solid var(--gray-200); color: var(--gray-700); padding: 0.5rem 1rem; }
+        .btn-icon { padding: 0.25rem; background: transparent; color: var(--gray-500); }
+        .btn-icon:hover { color: var(--danger); }
+        .text-green-600 { color: var(--success); }
+        .text-yellow-600 { color: var(--warning); }
+        .text-orange-600 { color: var(--orange); }
+        .text-gray-600 { color: var(--gray-500); }
+        
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; align-items: start; }
+        .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
+        .flex-row { display: flex; gap: 0.75rem; align-items: flex-end; }
+        .text-sm { font-size: 0.875rem; }
+        .text-xs { font-size: 0.75rem; }
+        .font-bold { font-weight: 700; }
+        .text-right { text-align: right; }
+        .hidden { display: none; }
+        
+        /* --- SPECIFIC COMPONENTS --- */
+        .summary-card { background: var(--white); padding: 1rem; border-radius: var(--radius); border: 1px solid var(--gray-200); }
+        .progress-bg { background: var(--gray-200); height: 0.6rem; border-radius: 1rem; overflow: hidden; margin-top: 0.5rem; }
+        .progress-fill { height: 100%; border-radius: 1rem; transition: width 0.5s; }
+        
+        .log-item { display: flex; justify-content: space-between; align-items: center; padding: 0.75rem; border-bottom: 1px solid var(--gray-100); }
+        .log-item:last-child { border-bottom: none; }
+        .log-tag { font-size: 0.7rem; padding: 0.1rem 0.4rem; border-radius: 0.25rem; background: var(--primary-light); color: var(--primary); margin-right: 0.5rem; }
+        
+        .range-controls button { font-size: 0.75rem; padding: 0.25rem 0.5rem; border: 1px solid var(--gray-200); background: var(--white); color: var(--gray-500); }
+        .range-controls button.active { background: var(--primary-light); color: var(--primary); border-color: var(--primary); }
+
+        /* --- TREND TABLE --- */
+        .trend-table { width: 100%; border-collapse: collapse; margin-top: 1rem; font-size: 0.85rem; }
+        .trend-table th, .trend-table td { padding: 0.75rem 0.5rem; border-bottom: 1px solid var(--gray-200); text-align: right; }
+        .trend-table th:first-child, .trend-table td:first-child { text-align: left; }
+        .trend-table th { color: var(--gray-500); font-weight: 600; background: var(--gray-50); }
+        .trend-table tr:last-child td { border-bottom: none; }
+        
+        /* --- SUGGESTER GRID --- */
+        .suggester-grid { display: grid; grid-template-columns: auto 1fr auto auto; gap: 0.75rem 0.5rem; align-items: center; margin-bottom: 1rem; }
+        .suggester-grid label { margin: 0; cursor: pointer; color: var(--gray-700); font-size: 0.9rem; font-weight: 400; }
+        
+        /* --- REMAINING SUGGESTION LIST --- */
+        .suggest-list ul { padding-left: 1.25rem; font-size: 0.9rem; color: var(--gray-700); }
+        .suggest-list li { margin-bottom: 4px; list-style: disc; }
+        .suggest-list span { color: #9CA3AF; font-size: 0.75rem; }
+
+        /* --- LOG FOOD HEADER GRID --- */
+        .log-header-grid { display: grid; grid-template-columns: 1fr auto 1fr; width: 100%; align-items: center; gap: 1rem; }
+        
+        /* Responsive */
+        @media (max-width: 640px) {
+            .grid-3 { grid-template-columns: 1fr; }
+            .grid-2 { grid-template-columns: 1fr; }
+            .log-header-grid { grid-template-columns: 1fr; justify-items: center; gap: 0.5rem; }
+            .log-header-grid > div { justify-self: center !important; }
+            /* Reorder for mobile: Title first */
+            .log-header-grid > div:nth-child(2) { order: -1; margin-bottom: 0.5rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="header-content">
+            <div class="app-title">
+                <!-- SVG: Utensils -->
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2v0a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/></svg>
+                NutriTrack Offline
+            </div>
+            <div class="text-xs text-gray-500" id="headerTarget">Target: --g Protein</div>
+        </div>
+        <div class="tab-nav">
+            <button onclick="app.switchTab('tracker')" id="tab-tracker" class="tab-btn active">Tracker</button>
+            <button onclick="app.switchTab('trend')" id="tab-trend" class="tab-btn">Trend</button>
+            <button onclick="app.switchTab('suggester')" id="tab-suggester" class="tab-btn">Suggester</button>
+            <button onclick="app.switchTab('profile')" id="tab-profile" class="tab-btn">Profile</button>
+        </div>
+    </header>
+
+    <main class="container">
+        
+        <!-- ================= TRACKER TAB ================= -->
+        <div id="view-tracker" class="tab-content active">
+            <!-- Summary -->
+            <div class="grid-3" style="margin-bottom: 1.5rem;">
+                <div class="summary-card">
+                    <div class="text-xs text-gray-500">Protein</div>
+                    <div style="display:flex; justify-content:space-between; align-items:baseline;">
+                        <span class="font-bold" style="font-size:1.5rem; color:var(--success);" id="trk-protein-val">0g</span>
+                        <span class="text-xs text-gray-500" id="trk-protein-target">/ 0g</span>
+                    </div>
+                    <div class="progress-bg"><div id="trk-protein-bar" class="progress-fill" style="width:0%; background:var(--success);"></div></div>
+                </div>
+                <div class="summary-card">
+                    <div class="text-xs text-gray-500">Carbs</div>
+                    <div style="display:flex; justify-content:space-between; align-items:baseline;">
+                        <span class="font-bold" style="font-size:1.5rem; color:var(--warning);" id="trk-carb-val">0g</span>
+                        <span class="text-xs text-gray-500" id="trk-carb-target">/ 325g</span>
+                    </div>
+                    <div class="progress-bg"><div id="trk-carb-bar" class="progress-fill" style="width:0%; background:var(--warning);"></div></div>
+                    <div id="trk-carb-warn" class="hidden text-xs text-right" style="color:var(--danger); margin-top:4px; font-weight:700;">Over Limit!</div>
+                </div>
+                <div class="summary-card">
+                    <div class="text-xs text-gray-500">Fat (Est)</div>
+                    <div style="display:flex; justify-content:space-between; align-items:baseline;">
+                        <span class="font-bold" style="font-size:1.5rem; color:var(--orange);" id="trk-fat-val">0g</span>
+                        <span class="text-xs text-gray-500" id="trk-fat-target">/ --g</span>
+                    </div>
+                    <div class="progress-bg"><div id="trk-fat-bar" class="progress-fill" style="width:0%; background:var(--orange);"></div></div>
+                </div>
+            </div>
+
+            <!-- 2-COLUMN LAYOUT (Input+Suggest | History) -->
+            <div class="grid-2">
+                <!-- LEFT COLUMN -->
+                <div>
+                    <!-- Log Input -->
+                    <div class="card">
+                        <!-- Stacked Header Layout -->
+                        <div class="card-header" style="display:flex; flex-direction:column; align-items:stretch; gap:0.75rem;">
+                            <div style="text-align:center;">
+                                <span class="font-bold" style="font-size:1.1rem;">Log Food</span>
+                            </div>
+                            <div style="display:flex; justify-content:space-between; align-items:center;">
+                                <!-- Weight Input -->
+                                <div style="display:flex; align-items:center; background:var(--white); border:1px solid var(--gray-300); padding:0.4rem 0.5rem; border-radius:0.25rem;">
+                                    <span class="text-xs text-gray-500" style="margin-right:0.5rem;">Body Weight:</span>
+                                    <input type="number" id="trk-weight" step="0.1" style="width:50px; border:none; padding:0; font-weight:700; text-align:right;" onchange="app.updateProfileWeight()">
+                                    <span class="text-xs text-gray-500" style="margin-left:0.25rem;">kg</span>
+                                    <!-- SVG: Check Circle -->
+                                    <button onclick="app.logWeight()" class="btn-icon" style="color:var(--primary); margin-left:0.5rem;" title="Update Weight">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                                    </button>
+                                </div>
+                                <!-- Date Input -->
+                                <input type="date" id="trk-date" style="width:auto; padding:0.4rem 0.5rem;">
+                            </div>
+                        </div>
+                        
+                        <div class="card-body">
+                            <div class="grid-3" style="grid-template-columns: 1fr 2fr 1fr;">
+                                <div><label>Meal</label><select id="trk-meal" style="font-size:0.8rem;"><option>Breakfast</option><option>Lunch</option><option>Dinner</option><option>Snack</option></select></div>
+                                <div><label>Food Item</label><select id="trk-food" onchange="app.updateUnitLabel()" style="font-size:0.8rem;"></select></div>
+                                <div><label>Amt <span id="trk-unit">(g)</span></label><input type="number" id="trk-amount" placeholder="100"></div>
+                            </div>
+                            <div style="margin-top:1rem;">
+                                <button onclick="app.logItem()" class="btn-primary" style="width:100%">Add Record</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Remaining Suggestions (Beside) -->
+                    <div id="trk-remaining-box" class="card" style="display:none; background:var(--primary-light); border:1px solid var(--primary);">
+                       <div class="card-body suggest-list">
+                           <h4 style="font-size:0.9rem; font-weight:bold; color:var(--primary-dark); margin-bottom:0.5rem;">
+                               To meet remaining protein target:
+                           </h4>
+                           <ul id="trk-remaining-list">
+                               <!-- Injected by JS -->
+                           </ul>
+                       </div>
+                    </div>
+                </div>
+
+                <!-- RIGHT COLUMN: History -->
+                <div class="card" style="height: 100%;">
+                    <div class="card-header">
+                        <span class="font-bold">Today's History</span>
+                        <button onclick="app.clearDayLog()" style="color:var(--danger); font-size:0.75rem; background:none; border:none; cursor:pointer;">Clear Day</button>
+                    </div>
+                    <div id="trk-log-list" style="max-height:400px; overflow-y:auto;">
+                        <!-- Logs go here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= TREND TAB ================= -->
+        <div id="view-trend" class="tab-content">
+            <div class="card">
+                <div class="card-header">
+                    <span class="font-bold flex-row" style="display:flex; align-items:center; gap:0.5rem;">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                        History & Trends
+                    </span>
+                    <div class="range-controls">
+                        <button onclick="app.setChartRange('1w')" data-range="1w">1W</button>
+                        <button onclick="app.setChartRange('1m')" data-range="1m" class="active">1M</button>
+                        <button onclick="app.setChartRange('3m')" data-range="3m">3M</button>
+                        <button onclick="app.setChartRange('all')" data-range="all">ALL</button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <!-- CUSTOM CANVAS CHART -->
+                    <div style="position: relative; height: 400px; width: 100%;">
+                        <canvas id="customChart" style="width: 100%; height: 100%; display: block;"></canvas>
+                    </div>
+                    <div class="text-center text-xs text-gray-500" style="margin-top:1rem; display:flex; justify-content:center; gap:1rem;">
+                        <span style="display:flex; align-items:center; gap:4px;"><span style="width:10px; height:10px; background:var(--success); border-radius:50%;"></span> Protein</span>
+                        <span style="display:flex; align-items:center; gap:4px;"><span style="width:10px; height:10px; background:var(--warning); border-radius:50%;"></span> Carbs</span>
+                        <span style="display:flex; align-items:center; gap:4px;"><span style="width:10px; height:10px; background:var(--orange); border-radius:50%;"></span> Fat</span>
+                        <span style="display:flex; align-items:center; gap:4px;"><span style="width:20px; height:3px; background:var(--purple);"></span> Weight</span>
+                    </div>
+                    
+                    <!-- TREND TABLE -->
+                    <div id="trend-table-container"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= SUGGESTER TAB ================= -->
+        <div id="view-suggester" class="tab-content">
+            <div class="grid-2">
+                <div>
+                    <div class="card">
+                        <div class="card-header font-bold">1. Meal Config</div>
+                        <div class="card-body grid-2">
+                            <div><label>Meals/Day</label><select id="sug-meals"><option value="1">1</option><option value="2" selected>2</option><option value="3">3</option></select></div>
+                            <div><label>Base Eggs</label><select id="sug-eggs"><option value="0">0</option><option value="1">1</option><option value="2" selected>2</option><option value="3">3</option></select></div>
+                        </div>
+                    </div>
+                    
+                    <!-- OPTIMIZED BASE INTAKE LAYOUT -->
+                    <div class="card">
+                        <div class="card-header font-bold">2. Base Intake (Today)</div>
+                        <div class="card-body">
+                            <!-- Dairy/Protein Grid -->
+                            <div class="suggester-grid">
+                                <input type="checkbox" id="chk-prot" onchange="app.toggleInput('chk-prot','inp-prot')">
+                                <label for="chk-prot">Protein Drink</label>
+                                <input id="inp-prot" type="number" style="width:80px; text-align:right;" placeholder="30" disabled>
+                                <span class="text-xs text-gray-500">g</span>
+
+                                <input type="checkbox" id="chk-milk" onchange="app.toggleInput('chk-milk','inp-milk')">
+                                <label for="chk-milk">Milk</label>
+                                <input id="inp-milk" type="number" style="width:80px; text-align:right;" placeholder="450" disabled>
+                                <span class="text-xs text-gray-500">g</span>
+
+                                <input type="checkbox" id="chk-yogurt" onchange="app.toggleInput('chk-yogurt','inp-yogurt')">
+                                <label for="chk-yogurt">Greek Yogurt</label>
+                                <input id="inp-yogurt" type="number" style="width:80px; text-align:right;" placeholder="100" disabled>
+                                <span class="text-xs text-gray-500">g</span>
+                            </div>
+
+                            <hr style="border:0; border-top:1px solid var(--gray-200); margin:0.5rem 0 1rem 0;">
+                            
+                            <!-- Carbs Grid -->
+                            <div style="margin-bottom:0.5rem; font-size:0.8rem; font-weight:600; color:var(--gray-500);">CARBS (g)</div>
+                            <div class="grid-2">
+                                <div><label>Rice (ckd)</label><input id="inp-rice" type="number" value="150"></div>
+                                <div><label>Bread</label><input id="inp-bread" type="number" value="0"></div>
+                                <div><label>Veg</label><input id="inp-veg" type="number" value="150"></div>
+                                <div><label>Fruit</label><input id="inp-fruit" type="number" value="100"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <button onclick="app.generatePlan()" class="btn-primary" style="width:100%">Calculate Plan</button>
+                </div>
+                <div class="card">
+                    <div class="card-header font-bold" style="color:var(--primary);">Your Plan</div>
+                    <div class="card-body" id="sug-result-content"><div style="text-align:center; padding:2rem; color:var(--gray-500);">Click Calculate Plan to view results.</div></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= PROFILE TAB ================= -->
+        <div id="view-profile" class="tab-content">
+            <div style="max-width:600px; margin:0 auto;">
+                <div class="card">
+                    <div class="card-header">
+                        <span class="font-bold">Your Profile</span>
+                        <button onclick="app.saveProfileManual()" class="btn-primary" style="font-size:0.75rem; padding:0.25rem 0.75rem;">Save</button>
+                    </div>
+                    <div class="card-body grid-2">
+                        <div><label>Weight (kg)</label><input type="number" id="prof-weight" step="0.1" onchange="app.saveProfile()"></div>
+                        <div><label>Height (cm)</label><input type="number" id="prof-height" onchange="app.saveProfile()"></div>
+                        <div><label>Gender</label><select id="prof-gender" onchange="app.saveProfile()"><option value="male">Male</option><option value="female">Female</option></select></div>
+                        <div><label>Age Range</label><select id="prof-age" onchange="app.saveProfile()"><option value="1.0">Kid/Teen (x1.0)</option><option value="1.0">Adult 20-40 (x1.0)</option><option value="1.1">Adult 40-60 (x1.1)</option><option value="1.2">Adult 60+ (x1.2)</option></select></div>
+                    </div>
+                </div>
+                
+                <div class="card" style="background:var(--primary-light); border-color:var(--primary);">
+                    <div class="card-header" style="background:transparent; border-bottom-color:rgba(0,0,0,0.05); color:var(--primary-dark);"><span class="font-bold">WHO Guidelines</span></div>
+                    <div class="card-body text-sm" style="color:var(--primary-dark);">
+                        <div style="display:flex; justify-content:space-between; margin-bottom:0.5rem;"><span>Protein Base (0.83g/kg):</span><strong id="who-protein">--</strong></div>
+                        <div style="display:flex; justify-content:space-between; margin-bottom:0.5rem;"><span>Active Target:</span><strong style="color:var(--success);" id="who-user-protein">--</strong></div>
+                        <div style="display:flex; justify-content:space-between;"><span>Fat Range (20-35%):</span><strong id="who-fat">--</strong></div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header font-bold">Data Management</div>
+                    <div class="card-body grid-2">
+                        <button onclick="app.exportCSV()" class="btn-success">Export CSV</button>
+                        <button onclick="document.getElementById('import-file').click()" class="btn-primary">Import CSV</button>
+                        <input type="file" id="import-file" accept=".csv" class="hidden" onchange="app.processImport(this)">
+                        <button onclick="if(confirm('Wipe all data?')) { localStorage.clear(); location.reload(); }" class="btn-outline" style="grid-column: span 2; color:var(--danger); border-color:var(--danger);">Reset App Data</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <script>
+        // --- DATA & CONSTANTS ---
+        const FOOD_DB = {
+            "Chicken Breast": { p: 31, c: 0, f: 3.6, u: 'g' },
+            "Chicken Thighs": { p: 25, c: 0, f: 15, u: 'g' },
+            "Lean Beef": { p: 26, c: 0, f: 10, u: 'g' },
+            "Beef Loin": { p: 27, c: 0, f: 10, u: 'g' },
+            "Ribeye": { p: 22, c: 0, f: 22, u: 'g' },
+            "Lean Pork": { p: 27, c: 0, f: 6, u: 'g' },
+            "Mince Pork": { p: 24, c: 0, f: 18, u: 'g' },
+            "Pork Tenderloin": { p: 26, c: 0, f: 3.5, u: 'g' },
+            "Pork Loin": { p: 25, c: 0, f: 10, u: 'g' },
+            "Fish (Avg)": { p: 20, c: 0, f: 8, u: 'g' },
+            "Duck": { p: 24, c: 0, f: 11, u: 'g' },
+            "Large Egg": { p: 6, c: 0.6, f: 5, u: 'qty' },
+            "Milk": { p: 3, c: 5, f: 3, u: 'g' },
+            "Greek Yogurt": { p: 10, c: 4, f: 5, u: 'g' },
+            "Bread": { p: 9, c: 49, f: 1, u: 'g' },
+            "Rice (Cooked)": { p: 2.7, c: 28, f: 0.3, u: 'g' },
+            "Vegetables (Avg)": { p: 2, c: 5, f: 0.2, u: 'g' },
+            "Fruit (Avg)": { p: 0.5, c: 15, f: 0.3, u: 'g' },
+            "Protein Drink": { p: 100, c: 12.5, f: 4.2, u: 'g Protein' },
+            "Guava": { p: 2.6, c: 14, f: 1.0, u: 'g' },
+            "Avocado": { p: 2.0, c: 9, f: 15.0, u: 'g' },
+            "Papaya": { p: 0.5, c: 11, f: 0.3, u: 'g' },
+            "Jackfruit": { p: 1.7, c: 23, f: 0.6, u: 'g' },
+            "Orange": { p: 0.9, c: 12, f: 0.1, u: 'g' },
+            "Apple": { p: 0.3, c: 14, f: 0.2, u: 'g' }, 
+            "Green Cos (Lettuce)": { p: 1.2, c: 3.3, f: 0.3, u: 'g' },
+            "Green Oak (Lettuce)": { p: 1.4, c: 2.9, f: 0.2, u: 'g' },
+            "Almond": { p: 21, c: 22, f: 50, u: 'g' },
+            "Cashew Nut": { p: 18, c: 30, f: 44, u: 'g' },
+            "Sunflower Seed": { p: 21, c: 20, f: 51, u: 'g' },
+            "Pumpkin Seed (dry)": { p: 30, c: 11, f: 49, u: 'g' }
+        };
+        
+        const MEAT_LIST = [
+            "Chicken Breast", "Chicken Thighs", "Lean Beef", "Beef Loin", "Ribeye", 
+            "Lean Pork", "Mince Pork", "Pork Tenderloin", "Pork Loin", "Fish (Avg)", "Duck", "Large Egg"
+        ];
+
+        const app = {
+             state: { profile: { weight: 72, height: 170, gender: 'male', ageMult: 1.1 }, logs: [], chartRange: '1m' },
+             init() { this.loadData(); this.initUI(); this.updateAll(); window.addEventListener('resize', () => { if(document.getElementById('view-trend').style.display==='block') this.renderCustomChart(); }); },
+             initUI() {
+                 const sel = document.getElementById('trk-food');
+                 Object.keys(FOOD_DB).sort().forEach(f => { const opt = document.createElement('option'); opt.value=f; opt.textContent=f; sel.appendChild(opt); });
+                 const today = new Date().toISOString().split('T')[0];
+                 document.getElementById('trk-date').value = today;
+                 document.getElementById('trk-date').addEventListener('change', () => { this.renderLogList(); this.updateTrackerSummary(); });
+                 this.updateUIValues();
+             },
+             updateAll() { this.updateHeaderTarget(); this.calculateWHO(); this.updateUnitLabel(); this.renderLogList(); this.updateTrackerSummary(); },
+             switchTab(tab) {
+                 document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+                 document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+                 document.getElementById('view-'+tab).classList.add('active');
+                 document.getElementById('tab-'+tab).classList.add('active');
+                 if(tab === 'trend') this.renderCustomChart();
+             },
+             loadData() {
+                 const p = localStorage.getItem('nt_profile'); const l = localStorage.getItem('nt_logs');
+                 if(p) this.state.profile = { ...this.state.profile, ...JSON.parse(p) };
+                 if(l) this.state.logs = JSON.parse(l);
+             },
+             saveData() { localStorage.setItem('nt_profile', JSON.stringify(this.state.profile)); localStorage.setItem('nt_logs', JSON.stringify(this.state.logs)); this.updateAll(); },
+             saveProfile() {
+                 this.state.profile.weight = parseFloat(document.getElementById('prof-weight').value) || 72;
+                 this.state.profile.height = parseFloat(document.getElementById('prof-height').value) || 170;
+                 this.state.profile.gender = document.getElementById('prof-gender').value;
+                 this.state.profile.ageMult = parseFloat(document.getElementById('prof-age').value) || 1.0;
+                 document.getElementById('trk-weight').value = this.state.profile.weight;
+                 this.saveData();
+             },
+             saveProfileManual() { this.saveProfile(); alert('Saved!'); },
+             updateProfileWeight() {
+                 const w = parseFloat(document.getElementById('trk-weight').value);
+                 if(w>0) { this.state.profile.weight = w; document.getElementById('prof-weight').value = w; this.saveData(); }
+             },
+             updateUIValues() {
+                 document.getElementById('prof-weight').value = this.state.profile.weight;
+                 document.getElementById('trk-weight').value = this.state.profile.weight;
+                 document.getElementById('prof-height').value = this.state.profile.height;
+                 document.getElementById('prof-gender').value = this.state.profile.gender;
+                 document.getElementById('prof-age').value = this.state.profile.ageMult;
+                 this.updateHeaderTarget();
+             },
+             updateHeaderTarget() {
+                 const t = (this.state.profile.weight * this.state.profile.ageMult).toFixed(1);
+                 document.getElementById('headerTarget').textContent = `Target: ${t}g Protein`;
+             },
+             calculateWHO() {
+                 const {weight, height, gender, ageMult} = this.state.profile;
+                 const baseP = (weight * 0.83).toFixed(1);
+                 const userP = (weight * ageMult).toFixed(1);
+                 let age = 30; if(ageMult===1.0) age=25; else if(ageMult===1.1) age=50; else age=65;
+                 let bmr = (10*weight) + (6.25*height) - (5*age) + (gender==='male'?5:-161);
+                 const tdee = bmr * 1.2;
+                 const minF = ((tdee*0.2)/9).toFixed(0);
+                 const maxF = ((tdee*0.35)/9).toFixed(0);
+                 document.getElementById('who-protein').textContent = baseP + 'g';
+                 document.getElementById('who-user-protein').textContent = userP + 'g';
+                 document.getElementById('who-fat').textContent = `${minF}g - ${maxF}g`;
+                 this.state.profile.fatTargetMax = maxF;
+                 document.getElementById('trk-fat-target').textContent = `/ ${maxF}g`;
+             },
+             updateUnitLabel() {
+                 const u = FOOD_DB[document.getElementById('trk-food').value].u;
+                 document.getElementById('trk-unit').innerText = u==='qty' ? '(qty)' : '(g)';
+             },
+             logItem() {
+                 const wInput = parseFloat(document.getElementById('trk-weight').value);
+                 if(wInput && wInput !== this.state.profile.weight) { this.state.profile.weight = wInput; }
+                 const date = document.getElementById('trk-date').value;
+                 const meal = document.getElementById('trk-meal').value;
+                 const food = document.getElementById('trk-food').value;
+                 const amt = parseFloat(document.getElementById('trk-amount').value);
+                 if(!amt || amt<=0) return alert("Invalid amount");
+                 const meta = FOOD_DB[food];
+                 let p,c,f;
+                 if(meta.u === 'qty') { p = amt*meta.p; c = amt*meta.c; f = amt*meta.f; }
+                 else { p = (amt/100)*meta.p; c = (amt/100)*meta.c; f = (amt/100)*meta.f; }
+                 this.state.logs.push({ id: Date.now(), date, meal, food, amount: amt, unit: meta.u, p, c, f, w: this.state.profile.weight });
+                 this.saveData();
+                 document.getElementById('trk-amount').value = '';
+             },
+             logWeight() {
+                 const w = parseFloat(document.getElementById('trk-weight').value);
+                 if(w) { this.state.profile.weight = w; this.saveData(); alert("Weight setting updated."); }
+             },
+             removeLog(id) { if(!confirm('Delete?')) return; this.state.logs = this.state.logs.filter(l => l.id !== id); this.saveData(); },
+             clearDayLog() { if(!confirm('Clear today?')) return; const d = document.getElementById('trk-date').value; this.state.logs = this.state.logs.filter(l => l.date !== d); this.saveData(); },
+             renderLogList() {
+                 const d = document.getElementById('trk-date').value;
+                 const list = document.getElementById('trk-log-list');
+                 list.innerHTML = '';
+                 const logs = this.state.logs.filter(l => l.date === d).sort((a,b) => b.id - a.id);
+                 if(!logs.length) { list.innerHTML = '<div style="text-align:center; padding:1rem; color:#aaa; font-size:0.8rem;">No logs for this date.</div>'; return; }
+                 logs.forEach(l => {
+                     const div = document.createElement('div');
+                     div.className = 'log-item';
+                     div.innerHTML = `<div><div style="font-weight:600; font-size:0.9rem;">${l.food} <span style="font-weight:400; color:#888; font-size:0.8rem">(${l.amount}${l.unit})</span></div><div style="margin-top:2px;"><span class="log-tag">${l.meal}</span><span class="text-green-600 text-xs" style="margin-right:5px;">${l.p.toFixed(1)}P</span><span class="text-yellow-600 text-xs" style="margin-right:5px;">${l.c.toFixed(1)}C</span><span class="text-orange-600 text-xs" style="margin-right:5px;">${(l.f||0).toFixed(1)}F</span></div></div><button class="btn-icon" onclick="app.removeLog(${l.id})">&times;</button>`;
+                     list.appendChild(div);
+                 });
+             },
+             updateTrackerSummary() {
+                 const d = document.getElementById('trk-date').value;
+                 const logs = this.state.logs.filter(l => l.date === d);
+                 const sums = logs.reduce((acc, l) => ({ p: acc.p+l.p, c: acc.c+l.c, f: acc.f+(l.f||0) }), {p:0, c:0, f:0});
+                 const tP = this.state.profile.weight * this.state.profile.ageMult;
+                 const tF = this.state.profile.fatTargetMax || 60;
+                 this.setBar('trk-protein', sums.p, tP, 'var(--success)');
+                 this.setBar('trk-carb', sums.c, 325, 'var(--warning)', true);
+                 this.setBar('trk-fat', sums.f, tF, 'var(--orange)');
+                 this.renderRemainingSuggestions(tP - sums.p);
+             },
+             setBar(id, val, target, color, warn=false) {
+                 document.getElementById(id+'-val').textContent = val.toFixed(0) + 'g';
+                 const pct = Math.min((val/target)*100, 100);
+                 document.getElementById(id+'-bar').style.width = pct + '%';
+                 if(warn && val > target) document.getElementById(id+'-warn').classList.remove('hidden'); else if(warn) document.getElementById(id+'-warn').classList.add('hidden');
+             },
+             renderRemainingSuggestions(remainingP) {
+                 const box = document.getElementById('trk-remaining-box');
+                 const list = document.getElementById('trk-remaining-list');
+                 if (remainingP <= 5) { box.style.display = 'none'; return; }
+                 box.style.display = 'block'; list.innerHTML = '';
+                 MEAT_LIST.forEach(name => {
+                     const item = FOOD_DB[name];
+                     let amount, label, fat, cals;
+                     if (item.u === 'qty') {
+                         amount = (remainingP / item.p).toFixed(1); label = 'Eggs';
+                         fat = (amount * item.f).toFixed(1); cals = (amount * (item.p*4 + item.f*9)).toFixed(0);
+                     } else {
+                         amount = ((remainingP / item.p) * 100).toFixed(0); label = 'g ' + name;
+                         fat = ((amount/100) * item.f).toFixed(1); cals = ((amount/100) * (item.p*4 + item.f*9)).toFixed(0);
+                     }
+                     const li = document.createElement('li'); li.style.marginBottom = '4px'; li.style.listStyle = 'disc';
+                     li.innerHTML = `<b>${amount}</b> ${label} <span>(~${fat}g Fat, ${cals} kcal)</span>`;
+                     list.appendChild(li);
+                 });
+             },
+             toggleInput(chk, inp) { const c = document.getElementById(chk); const i = document.getElementById(inp); i.disabled = !c.checked; if(!c.checked) i.value = i.getAttribute('placeholder'); },
+             generatePlan() {
+                 const eggs = parseInt(document.getElementById('sug-eggs').value); const meals = parseInt(document.getElementById('sug-meals').value); let bP=0, bC=0;
+                 let list = ''; if(eggs>0) { const p = eggs*6, c=eggs*0.6; bP+=p; bC+=c; list += `<li>${eggs} Eggs: <b>${p.toFixed(1)}g P</b></li>`; }
+                 const opts = [ {chk:'chk-prot', inp:'inp-prot', name:'Protein Drink', db:'Protein Drink'}, {chk:'chk-milk', inp:'inp-milk', name:'Milk', db:'Milk'}, {chk:'chk-yogurt', inp:'inp-yogurt', name:'Yogurt', db:'Greek Yogurt'} ];
+                 opts.forEach(o => { if(document.getElementById(o.chk).checked) { const v = parseFloat(document.getElementById(o.inp).value)||0; let p=0; if(o.db && FOOD_DB[o.db].u === 'g') p = (v/100)*FOOD_DB[o.db].p; else if (o.db && FOOD_DB[o.db].u === 'g Protein') p = v; else p=v; bP += p; } });
+                 // Carbs
+                 const r=parseFloat(document.getElementById('inp-rice').value)||0; const b=parseFloat(document.getElementById('inp-bread').value)||0; const v=parseFloat(document.getElementById('inp-veg').value)||0; const f=parseFloat(document.getElementById('inp-fruit').value)||0;
+                 bC += (r/100)*FOOD_DB["Rice (Cooked)"].c + (b/100)*FOOD_DB["Bread"].c + (v/100)*FOOD_DB["Vegetables (Avg)"].c + (f/100)*FOOD_DB["Fruit (Avg)"].c;
+                 const tP = this.state.profile.weight * this.state.profile.ageMult; const remP = Math.max(0, tP - bP); const perMeal = remP / meals;
+                 let html = `<div style="margin-bottom:1rem;"><div style="display:flex; justify-content:space-between;"><span>Target</span><b>${tP.toFixed(1)}g</b></div><div style="display:flex; justify-content:space-between; color:var(--primary);"><span>Base</span><span>-${bP.toFixed(1)}g</span></div><div style="display:flex; justify-content:space-between; font-weight:bold; border-top:1px solid var(--gray-200); margin-top:4px; padding-top:4px;"><span>Remaining</span><span style="color:var(--danger);">${remP.toFixed(1)}g</span></div></div>`;
+                 if(remP<=0) { html += `<div style="background:var(--success); color:white; padding:0.5rem; border-radius:0.25rem; text-align:center;">Target Met!</div>`; } 
+                 else { html += `<div style="background:var(--primary-light); padding:1rem; border-radius:0.5rem; margin-bottom:1rem; text-align:center;"><div style="font-size:1.25rem; font-weight:bold; color:var(--primary-dark);">${perMeal.toFixed(1)}g Protein</div><div style="font-size:0.75rem; text-transform:uppercase; color:var(--primary);">Needed per meal (${meals})</div></div><h4 class="font-bold" style="font-size:0.9rem; margin-bottom:0.5rem;">Meat Options (per meal):</h4><ul style="padding-left:1.25rem; font-size:0.9rem; color:var(--gray-700);">`;
+                 MEAT_LIST.forEach(m => { const info = FOOD_DB[m]; let g, fat, cal; if(info.u==='qty') { g = (perMeal / info.p).toFixed(1); fat=(g*info.f).toFixed(1); cal=(g*(info.p*4+info.f*9)).toFixed(0); html+=`<li><b>${g}</b> Eggs <span style="color:#9CA3AF; font-size:0.75rem;">(~${fat}g F, ${cal}kcal)</span></li>`;} else { g = ((perMeal / info.p)*100).toFixed(0); fat=((g/100)*info.f).toFixed(1); cal=((g/100)*(info.p*4+info.f*9)).toFixed(0); html+=`<li><b>${g}g</b> ${m} <span style="color:#9CA3AF; font-size:0.75rem;">(~${fat}g F, ${cal}kcal)</span></li>`;} }); html += `</ul>`; }
+                 html += `<div style="margin-top:1rem; padding-top:1rem; border-top:1px solid var(--gray-200); font-size:0.75rem; text-align:center; color:var(--gray-500);">Total Planned Carbs: ${bC.toFixed(1)}g</div>`;
+                 document.getElementById('sug-result-content').innerHTML = html;
+             },
+             setChartRange(r) { this.state.chartRange = r; document.querySelectorAll('.range-controls button').forEach(b => { b.classList.toggle('active', b.dataset.range === r); }); this.renderCustomChart(); },
+             // ... [Custom Chart Renderer logic identical to previous version] ...
+             renderCustomChart() {
+                 const cvs = document.getElementById('customChart'); const ctx = cvs.getContext('2d'); const dpr = window.devicePixelRatio || 1; const rect = cvs.getBoundingClientRect(); cvs.width = rect.width * dpr; cvs.height = rect.height * dpr; ctx.scale(dpr, dpr); const W = rect.width; const H = rect.height; const pad = { top: 20, right: 40, bottom: 30, left: 40 };
+                 const today = new Date(); today.setHours(23,59,59,999); let cutoff = new Date(today); const r = this.state.chartRange;
+                 if(r==='1w') cutoff.setDate(today.getDate()-6); else if(r==='1m') cutoff.setDate(today.getDate()-29); else if(r==='3m') cutoff.setDate(today.getDate()-90); else if(r==='all') cutoff = new Date(0);
+                 cutoff.setHours(0,0,0,0);
+                 const dayMap = {}; const logs = this.state.logs.filter(l => new Date(l.date) >= cutoff);
+                 logs.forEach(l => { if(!dayMap[l.date]) dayMap[l.date] = { p:0, c:0, f:0, w:0 }; if(l.meal !== 'Biometrics') { dayMap[l.date].p += l.p; dayMap[l.date].c += l.c; dayMap[l.date].f += (l.f||0); } if(l.w) dayMap[l.date].w = l.w; });
+                 const dates = Object.keys(dayMap).sort();
+                 if(dates.length === 0) { ctx.font = "14px sans-serif"; ctx.fillStyle = "#aaa"; ctx.textAlign = "center"; ctx.fillText("No data", W/2, H/2); this.renderTrendTable([], r); return; }
+                 let lastW = this.state.profile.weight; const data = dates.map(d => { const obj = dayMap[d]; if(obj.w > 0) lastW = obj.w; return { date: d, p: obj.p, c: obj.c, f: obj.f, w: lastW }; });
+                 const maxNutrient = Math.max(200, ...data.map(d => d.p + d.c + d.f)) * 1.1; const wVals = data.map(d => d.w); const minW = Math.min(...wVals) - 2; const maxW = Math.max(...wVals) + 2;
+                 const graphH = H - pad.top - pad.bottom; const graphW = W - pad.left - pad.right; const barWidth = (graphW / data.length) * 0.6; const stepX = graphW / data.length;
+                 ctx.lineWidth = 1; ctx.strokeStyle = "#e5e7eb"; ctx.beginPath(); for(let i=0; i<=5; i++) { const y = pad.top + (graphH * i / 5); ctx.moveTo(pad.left, y); ctx.lineTo(W-pad.right, y); ctx.fillStyle = "#9ca3af"; ctx.font = "10px sans-serif"; ctx.textAlign = "right"; const val = Math.round(maxNutrient - (maxNutrient * i / 5)); ctx.fillText(val, pad.left - 5, y + 3); } ctx.stroke();
+                 data.forEach((d, i) => { const x = pad.left + (i * stepX) + (stepX - barWidth)/2; const scale = graphH / maxNutrient; const hP = d.p * scale; const hC = d.c * scale; const hF = d.f * scale;
+                     ctx.fillStyle = "#F97316"; ctx.fillRect(x, H - pad.bottom - hF, barWidth, hF);
+                     ctx.fillStyle = "#EAB308"; ctx.fillRect(x, H - pad.bottom - hF - hC, barWidth, hC);
+                     ctx.fillStyle = "#22C55E"; ctx.fillRect(x, H - pad.bottom - hF - hC - hP, barWidth, hP);
+                     if(data.length < 15 || i % Math.ceil(data.length/10) === 0) { ctx.fillStyle = "#6b7280"; ctx.textAlign = "center"; const dateLabel = d.date.substring(5); ctx.fillText(dateLabel, x + barWidth/2, H - 10); }
+                 });
+                 ctx.beginPath(); ctx.strokeStyle = "#7C3AED"; ctx.lineWidth = 3; data.forEach((d, i) => { const x = pad.left + (i * stepX) + stepX/2; const wRange = maxW - minW; const wRatio = (d.w - minW) / wRange; const y = H - pad.bottom - (wRatio * graphH); if(i===0) ctx.moveTo(x, y); else ctx.lineTo(x, y); }); ctx.stroke();
+                 ctx.fillStyle = "#7C3AED"; ctx.textAlign = "left"; ctx.fillText(maxW.toFixed(1) + "kg", W - pad.right + 2, pad.top + 10); ctx.fillText(minW.toFixed(1) + "kg", W - pad.right + 2, H - pad.bottom);
+                 this.renderTrendTable(data, r);
+             },
+             renderTrendTable(dailyData, range) {
+                 const container = document.getElementById('trend-table-container'); if(!dailyData || dailyData.length === 0) { container.innerHTML = ''; return; }
+                 let tableData = []; let headers = []; let title = ""; const isDaily = (range === '1d' || range === '1w');
+                 if(isDaily) { title = "Daily Breakdown"; headers = ["Date", "Protein", "Carbs", "Fat", "Weight"]; tableData = [...dailyData].reverse().map(d => ({ col1: d.date, p: d.p, c: d.c, f: d.f, w: d.w })); } 
+                 else { title = "Weekly Cumulative Summary"; headers = ["Week Of", "Protein", "Carbs", "Fat", "Avg Weight"]; const weeks = {}; dailyData.forEach(d => { const dateObj = new Date(d.date); const day = dateObj.getDay(); const diff = dateObj.getDate() - day + (day == 0 ? -6 : 1); const monday = new Date(dateObj.setDate(diff)).toISOString().split('T')[0]; if(!weeks[monday]) weeks[monday] = { p:0, c:0, f:0, wSum:0, wCount:0 }; weeks[monday].p += d.p; weeks[monday].c += d.c; weeks[monday].f += d.f; if(d.w > 0) { weeks[monday].wSum += d.w; weeks[monday].wCount++; } }); tableData = Object.keys(weeks).sort().reverse().map(k => { const w = weeks[k]; return { col1: k, p: w.p, c: w.c, f: w.f, w: w.wCount > 0 ? (w.wSum / w.wCount) : 0 }; }); }
+                 let html = `<h4 class="font-bold text-gray-700 text-sm mt-6 mb-2">${title}</h4><div style="overflow-x:auto;"><table class="trend-table"><thead><tr>`;
+                 headers.forEach(h => html += `<th>${h}</th>`); html += `</tr></thead><tbody>`;
+                 tableData.forEach(row => { html += `<tr><td style="font-weight:500;">${row.col1}</td><td class="text-green-600">${row.p.toFixed(0)}g</td><td class="text-yellow-600">${row.c.toFixed(0)}g</td><td class="text-orange-600">${row.f.toFixed(0)}g</td><td class="text-gray-600 font-bold">${row.w > 0 ? row.w.toFixed(1)+'kg' : '-'}</td></tr>`; });
+                 html += `</tbody></table></div>`; container.innerHTML = html;
+             },
+             exportCSV() {
+                 if(!this.state.logs.length) return alert("No data."); const p = this.state.profile;
+                 let csv = "#PROFILE_HEADER,Weight,Height,Gender,AgeMult\n"; csv += `#PROFILE_DATA,${p.weight},${p.height},${p.gender},${p.ageMult}\n\n`; csv += "Date,Meal,Food Item,Amount,Unit,Protein (g),Carbs (g),Fat (g),Body Weight (kg)\n";
+                 const sorted = [...this.state.logs].sort((a,b)=>a.id-b.id); let lastW = p.weight;
+                 sorted.forEach(r => { let w = r.w; if(!w || w<=0) w = lastW; else lastW = w; csv += `${r.date},${r.meal},${r.food},${r.amount},${r.unit},${r.p.toFixed(2)},${r.c.toFixed(2)},${(r.f||0).toFixed(2)},${w}\n`; });
+                 const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'}); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = "meal_logs.csv"; a.click();
+             },
+             processImport(input) {
+                 const f = input.files[0]; if(!f) return; const r = new FileReader();
+                 r.onload = e => { const lines = e.target.result.split('\n'); let count = 0; for(let i=0; i<lines.length; i++) { const l = lines[i].trim(); if(!l) continue; if(l.startsWith("#PROFILE_DATA")) { const p = l.split(','); if(p.length>=5) { this.state.profile.weight = parseFloat(p[1]); this.state.profile.height = parseFloat(p[2]); this.state.profile.gender = p[3]; this.state.profile.ageMult = parseFloat(p[4]); } continue; } if(l.startsWith("#") || l.startsWith("Date")) continue; const c = l.split(','); if(c.length>=7) { const fat = parseFloat(c[7])||0; const w = parseFloat(c[8])||0; this.state.logs.push({ id: Date.now()+i, date:c[0], meal:c[1], food:c[2], amount:parseFloat(c[3]), unit:c[4], p:parseFloat(c[5]), c:parseFloat(c[6]), f:fat, w:w }); count++; } } this.saveData(); this.initUI(); this.updateAll(); alert(`Imported ${count} records.`); input.value = ''; };
+                 r.readAsText(f);
+             }
+        };
+        app.init();
+    </script>
+</body>
+</html>
