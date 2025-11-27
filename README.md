@@ -4,4 +4,5 @@ Standalone Web application <BR>
 [EnergyConsumption-standalone](https://v3ct0r-8890.github.io/selfweb/EnergyConsumption-standalone.html) <BR>
 [DateCalculator](https://V3ct0r-8890.github.io/selfweb/datecalc.html) <BR>
 [Simple Password Generator](https://V3ct0r-8890.github.io/selfweb/pass-gen.html) <BR>
+[Password Validator (No info keep)](https://V3ct0r-8890.github.io/selfweb/PassCheck.html) <BR>
 [Simple Subnet and Bandwidth Calculator](https://V3ct0r-8890.github.io/selfweb/subnetcal.html) <BR>
