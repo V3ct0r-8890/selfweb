@@ -1,4 +1,3 @@
 Test Deploy Web application
-| # | webapp name |
-| --- | --- |
-| 1 | Date Calculator |
+https://chettaphong.github.io/selfweb/INS-offlineDB.html
+
