@@ -1,6 +1,6 @@
 <!-- 
-  Program: Robust Single File RSS Feed Reader (v14)
-  Created: 2025-12-03 00:30:00 (Bangkok Time)
+  Program: Robust Single File RSS Feed Reader (v15)
+  Created: 2025-12-03 01:15:00 (Bangkok Time)
   
   Specifications:
   1. Input: URL field + Presets + Days Selector (1-15).
@@ -9,25 +9,24 @@
   4. Frame View: Preview website in iframe.
   5. Search: Filter feed items by title or content in real-time.
   6. Batch Load: "Load All" feature.
-  7. Date Logic: 
-     - Default: 3 Days.
-     - Configurable: 1-15 Days.
-     - Window: [Today - N Days (Midnight)] to [Now].
-  8. Pagination (Smart Stop): 
-     - Fetches up to 10 pages.
-     - STOPS EARLY if articles on a page exceed the selected day limit.
+  7. Date Logic: Default 3 days, configurable 1-15.
+  8. Pagination: Smart deep scan (up to 10 pages).
+  9. STORAGE & BACKGROUND: 
+     - Auto-saves feeds to LocalStorage.
+     - Loads cached data instantly on open.
+     - performs background refresh of all presets automatically.
   
   Usage:
-  - Select "Days" (default 3).
-  - Click "Load".
-  - System fetches only as far back as needed.
+  - Open app: Old data appears instantly.
+  - Watch status: "Background updating..." indicates fresh data is being pulled.
+  - The list refreshes automatically when done.
 -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RSS Feed Reader v14 (Adjustable History)</title>
+    <title>RSS Feed Reader v15 (Cached & Background)</title>
     <style>
         :root {
             --bg-color: #f4f4f9;
@@ -61,7 +60,7 @@
             gap: 10px;
             box-shadow: 0 2px 5px rgba(0,0,0,0.1);
             z-index: 10;
-            flex-wrap: wrap; /* Allow wrapping on small screens */
+            flex-wrap: wrap; 
         }
 
         select, input[type="text"], input[type="number"] {
@@ -125,7 +124,7 @@
         #main-container {
             display: flex;
             flex: 1;
-            height: calc(100vh - 60px); /* Adjusted for header */
+            height: calc(100vh - 60px); 
         }
 
         /* --- Sidebar --- */
@@ -209,7 +208,6 @@
             flex-direction: column;
         }
 
-        /* Standard Article View */
         .article-view {
             padding: 40px;
             overflow-y: auto;
@@ -303,22 +301,48 @@
             border: 4px solid #f3f3f3;
             border-top: 4px solid var(--accent-color);
             border-radius: 50%;
-            width: 30px;
-            height: 30px;
+            width: 24px;
+            height: 24px;
             animation: spin 1s linear infinite;
-            margin: 20px auto;
+            margin: 10px auto;
+        }
+        
+        .mini-loader {
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid #555;
+            border-radius: 50%;
+            width: 14px;
+            height: 14px;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+            vertical-align: middle;
+            margin-right: 5px;
         }
 
         .status-text {
             font-size: 0.9em;
             color: #666;
-            margin-top: 10px;
+            margin-top: 5px;
         }
 
         .loading-progress {
             margin-top:5px; 
             font-size:0.8em; 
             color:#888;
+        }
+        
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background-color: #333;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 4px;
+            font-size: 0.9em;
+            opacity: 0;
+            transition: opacity 0.5s;
+            pointer-events: none;
         }
 
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
@@ -348,7 +372,7 @@
         </label>
 
         <button id="loadBtn" onclick="fetchFeed()">Load Single</button>
-        <button id="loadAllBtn" class="secondary" onclick="fetchAllPresets()">Load All Presets</button>
+        <button id="loadAllBtn" class="secondary" onclick="fetchAllPresets(false)">Refresh All</button>
     </header>
 
     <div id="main-container">
@@ -358,24 +382,92 @@
             </div>
             <div id="sidebar-list">
                 <div class="msg-box" style="padding:20px;">
-                    Select a feed or click "Load All Presets".
+                    Initializing...
                 </div>
             </div>
         </aside>
         
         <main id="content-area">
             <div class="msg-box">
-                <h2>RSS Reader v14</h2>
-                <p>Select a topic on the left to read.</p>
-                <p style="font-size: 0.9em; color: #888; margin-top: 10px;">Showing articles from selected day range up to current time.</p>
+                <h2>RSS Reader v15</h2>
+                <p><strong>Cached Mode Active</strong></p>
+                <p>Data loads from storage instantly.<br>Background refresh runs automatically.</p>
             </div>
         </main>
     </div>
+    
+    <div id="toast" class="toast">Message</div>
 
     <script>
         let currentFeedItems = [];
         let selectedIndex = -1;
         const MAX_PAGES = 10;
+        const STORAGE_KEY = "rss_reader_cache_v1";
+
+        // --- INITIALIZATION ---
+        window.onload = function() {
+            // 1. Load from cache immediately
+            loadFromCache();
+
+            // 2. Start background fetch (slight delay to let UI render)
+            setTimeout(() => {
+                showToast("Starting background update...");
+                fetchAllPresets(true); // true = isBackground
+            }, 1000);
+        };
+
+        // --- STORAGE LOGIC ---
+        function saveToCache(items) {
+            try {
+                const payload = JSON.stringify({
+                    timestamp: Date.now(),
+                    items: items
+                });
+                localStorage.setItem(STORAGE_KEY, payload);
+                console.log("Saved to cache.");
+            } catch (e) {
+                console.warn("Storage quota exceeded or error:", e);
+                // Simple strategy: if full, clear and try saving just the top 50 items
+                if (items.length > 50) {
+                     try {
+                        const reduced = items.slice(0, 50);
+                        localStorage.setItem(STORAGE_KEY, JSON.stringify({
+                            timestamp: Date.now(),
+                            items: reduced
+                        }));
+                     } catch(retryErr) {}
+                }
+            }
+        }
+
+        function loadFromCache() {
+            try {
+                const stored = localStorage.getItem(STORAGE_KEY);
+                if (stored) {
+                    const data = JSON.parse(stored);
+                    if (data.items && Array.isArray(data.items)) {
+                        currentFeedItems = data.items;
+                        // Filter logic might apply if user changed days setting, 
+                        // but generally we render what we have first
+                        renderSidebar(currentFeedItems);
+                        showToast(`Restored ${currentFeedItems.length} items from cache.`);
+                        return true;
+                    }
+                }
+            } catch (e) {
+                console.error("Cache load error:", e);
+            }
+            return false;
+        }
+
+        function showToast(msg) {
+            const t = document.getElementById('toast');
+            t.innerText = msg;
+            t.style.opacity = 1;
+            setTimeout(() => t.style.opacity = 0, 3000);
+        }
+
+        // --- EXISTING LOGIC ---
 
         function usePreset() {
             const select = document.getElementById('presetSelect');
@@ -388,11 +480,34 @@
 
         function updateSidebarStatus(msg, submsg="") {
             const sidebarList = document.getElementById('sidebar-list');
-            sidebarList.innerHTML = `
-                <div class="loader"></div>
-                <div style="text-align:center" class="status-text">${msg}</div>
-                <div style="text-align:center" class="loading-progress">${submsg}</div>
-            `;
+            // If we have items (background mode), prepend the loader instead of clearing
+            if (currentFeedItems.length > 0) {
+                // If there's already a status bar, update it. If not, create it.
+                let statusBar = document.getElementById('status-bar-overlay');
+                if (!statusBar) {
+                    statusBar = document.createElement('div');
+                    statusBar.id = 'status-bar-overlay';
+                    statusBar.style.background = '#eef';
+                    statusBar.style.padding = '10px';
+                    statusBar.style.borderBottom = '1px solid #ddd';
+                    statusBar.style.textAlign = 'center';
+                    statusBar.style.fontSize = '0.85em';
+                    sidebarList.insertBefore(statusBar, sidebarList.firstChild);
+                }
+                statusBar.innerHTML = `<div class="mini-loader"></div> ${msg} <span style='color:#888'>${submsg}</span>`;
+            } else {
+                // Empty state, full loader
+                sidebarList.innerHTML = `
+                    <div class="loader"></div>
+                    <div style="text-align:center" class="status-text">${msg}</div>
+                    <div style="text-align:center" class="loading-progress">${submsg}</div>
+                `;
+            }
+        }
+
+        function clearSidebarStatus() {
+            const statusBar = document.getElementById('status-bar-overlay');
+            if (statusBar) statusBar.remove();
         }
 
         function filterFeed() {
@@ -401,24 +516,20 @@
                 renderSidebar(currentFeedItems);
                 return;
             }
-            
             const filtered = currentFeedItems.filter(item => {
                 const titleMatch = item.title && item.title.toLowerCase().includes(term);
                 const sourceMatch = item.source && item.source.toLowerCase().includes(term);
                 const contentMatch = item.content && item.content.toLowerCase().includes(term);
                 return titleMatch || sourceMatch || contentMatch;
             });
-            
             renderSidebar(filtered);
         }
 
-        // --- TIME CALCULATION ---
         function getCutoffDate() {
             const daysInput = document.getElementById('daysFilter');
             let days = parseInt(daysInput.value, 10);
             if (isNaN(days) || days < 1) days = 1;
             if (days > 15) days = 15;
-            
             const now = new Date(); 
             const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
             const cutoff = new Date(todayMidnight);
@@ -426,30 +537,25 @@
             return cutoff;
         }
 
-        // Date Filter Logic
         function filterItemsByDate(items) {
             const now = new Date();
             const cutoff = getCutoffDate();
-            
             return items.filter(item => {
                 if(!item.date) return false; 
                 const itemDate = new Date(item.date);
                 if (isNaN(itemDate)) return false;
-                // Inclusive of current moment, exclusive of articles older than selected days
                 return itemDate >= cutoff && itemDate <= now;
             });
         }
 
-        // --- CORE FETCH LOGIC (With Smart Date Stop) ---
+        // --- FETCH LOGIC ---
         async function fetchFeedWithPagination(url, sourceName, deepScan) {
             let allItems = [];
             let seenLinks = new Set();
             let pageCount = deepScan ? MAX_PAGES : 1;
-            
             const cutoffDate = getCutoffDate();
 
             for (let page = 1; page <= pageCount; page++) {
-                // Construct URL
                 let pagedUrl = url;
                 if (page > 1) {
                     const separator = url.includes('?') ? '&' : '?';
@@ -462,7 +568,6 @@
                          if(progressDiv) progressDiv.innerText = `Fetching page ${page}/${pageCount}...`;
                     }
 
-                    // Network Request
                     let rawContent = "";
                     try {
                         const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(pagedUrl)}&_t=${Date.now()}`;
@@ -479,21 +584,16 @@
                     rawContent = decodeProxyContent(rawContent);
                     const newItems = parseXMLToItems(rawContent, sourceName);
 
-                    if (newItems.length === 0) break; // Empty page
+                    if (newItems.length === 0) break; 
 
                     let newUniqueItemsCount = 0;
                     let oldestItemDateOnPage = null;
 
                     for (let item of newItems) {
-                        // Track dates to check if we can stop
                         if (item.date) {
                             const d = new Date(item.date);
-                            if (!oldestItemDateOnPage || d < oldestItemDateOnPage) {
-                                oldestItemDateOnPage = d;
-                            }
+                            if (!oldestItemDateOnPage || d < oldestItemDateOnPage) oldestItemDateOnPage = d;
                         }
-
-                        // Deduplication
                         const uniqueKey = item.link || item.title;
                         if (!seenLinks.has(uniqueKey)) {
                             seenLinks.add(uniqueKey);
@@ -502,18 +602,8 @@
                         }
                     }
 
-                    // Stop condition 1: Server returned duplicate page
-                    if (page > 1 && newUniqueItemsCount === 0) {
-                        console.log(`Stop fetching ${sourceName}: Page ${page} was duplicate.`);
-                        break; 
-                    }
-
-                    // Stop condition 2: Oldest item on this page is older than our cutoff
-                    // RSS is usually sorted new->old. If we hit items older than cutoff, next page will be even older.
-                    if (oldestItemDateOnPage && oldestItemDateOnPage < cutoffDate) {
-                        console.log(`Stop fetching ${sourceName}: Page ${page} reached data older than limit.`);
-                        break;
-                    }
+                    if (page > 1 && newUniqueItemsCount === 0) break; 
+                    if (oldestItemDateOnPage && oldestItemDateOnPage < cutoffDate) break;
 
                 } catch (err) {
                     console.warn(`Stopped fetching ${sourceName} at page ${page}:`, err);
@@ -524,7 +614,7 @@
         }
 
         // --- BATCH LOADING ---
-        async function fetchAllPresets() {
+        async function fetchAllPresets(isBackground = false) {
             const select = document.getElementById('presetSelect');
             const loadAllBtn = document.getElementById('loadAllBtn');
             const searchInput = document.getElementById('searchInput');
@@ -544,12 +634,14 @@
             if(feedsToLoad.length === 0) return alert("No presets defined.");
 
             loadAllBtn.disabled = true;
-            searchInput.value = '';
-            currentFeedItems = [];
-            selectedIndex = -1;
-            document.getElementById('content-area').innerHTML = `<div class="msg-box">Loading all feeds...<br>Timeframe: ${days} Days</div>`;
+            if (!isBackground) {
+                // If user clicked manually, clear UI for fresh feel, or keep it? 
+                // Let's clear search but maybe keep items visible until new ones arrive.
+                searchInput.value = '';
+                document.getElementById('content-area').innerHTML = `<div class="msg-box">Refreshing all feeds...<br>Days: ${days}</div>`;
+            }
             
-            updateSidebarStatus(`Initializing batch fetch...`, `Targets: ${feedsToLoad.length}`);
+            updateSidebarStatus(isBackground ? "Background updating..." : "Fetching feeds...", `Targets: ${feedsToLoad.length}`);
 
             try {
                 const promises = feedsToLoad.map(feed => fetchFeedWithPagination(feed.url, feed.name, deepScan));
@@ -566,7 +658,9 @@
                     }
                 });
 
-                if (aggregatedItems.length === 0) throw new Error("Failed to load any feeds.");
+                if (aggregatedItems.length === 0) {
+                    if (!isBackground) throw new Error("Failed to load any feeds.");
+                }
 
                 const originalCount = aggregatedItems.length;
                 aggregatedItems = filterItemsByDate(aggregatedItems);
@@ -575,24 +669,35 @@
                 aggregatedItems.sort((a, b) => new Date(b.date) - new Date(a.date));
                 aggregatedItems.forEach((item, index) => item.id = index);
 
+                // Update State & Storage
                 currentFeedItems = aggregatedItems;
+                saveToCache(currentFeedItems);
+                
+                // Clear the status bar overlay
+                clearSidebarStatus();
+                
+                // Render
                 renderSidebar(currentFeedItems);
                 
-                let msg = `<div class="msg-box">Loaded ${aggregatedItems.length} articles from last ${days} days.`;
-                if(filteredCount > 0) msg += `<br><span style="font-size:0.8em; color:#888;">(${filteredCount} older articles hidden)</span>`;
-                if(failCount > 0) msg += `<br><span style="color:#e74c3c;">(${failCount} feeds failed)</span>`;
-                msg += `</div>`;
-                
-                document.getElementById('content-area').innerHTML = msg;
+                if (!isBackground) {
+                    let msg = `<div class="msg-box">Loaded ${aggregatedItems.length} articles from last ${days} days.`;
+                    if(filteredCount > 0) msg += `<br><span style="font-size:0.8em; color:#888;">(${filteredCount} older articles hidden)</span>`;
+                    if(failCount > 0) msg += `<br><span style="color:#e74c3c;">(${failCount} feeds failed)</span>`;
+                    msg += `</div>`;
+                    document.getElementById('content-area').innerHTML = msg;
+                } else {
+                    showToast("Background update complete.");
+                }
 
             } catch (err) {
-                renderError(err);
+                if (!isBackground) renderError(err);
+                console.error(err);
+                clearSidebarStatus();
             } finally {
                 loadAllBtn.disabled = false;
             }
         }
 
-        // --- SINGLE LOADING ---
         async function fetchFeed() {
             const url = document.getElementById('feedUrl').value.trim();
             const btn = document.getElementById('loadBtn');
@@ -605,8 +710,11 @@
             btn.disabled = true;
             searchInput.value = '';
             document.getElementById('content-area').innerHTML = '<div class="msg-box">Waiting for selection...</div>';
+            
+            // Clear current items for single load to avoid confusion
             currentFeedItems = [];
             selectedIndex = -1;
+            renderSidebar([]); // Clear sidebar
 
             updateSidebarStatus("Loading feed...", "Page 1");
 
@@ -621,11 +729,15 @@
                 
                 const beforeFilter = items.length;
                 items = filterItemsByDate(items);
-                const hidden = beforeFilter - items.length;
 
                 items.forEach((item, index) => item.id = index);
                 
                 currentFeedItems = items;
+                // Note: We don't save single manual loads to the main "Preset Cache" to avoid overwriting the full set. 
+                // Or we could, but let's keep cache for the "All Presets" set usually.
+                // For simplicity here, we won't overwrite cache on single load.
+
+                clearSidebarStatus();
                 renderSidebar(currentFeedItems);
                 
                 if(currentFeedItems.length === 0) {
@@ -638,7 +750,7 @@
             }
         }
 
-        // --- PARSING HELPERS ---
+        // --- PARSING & UI ---
         function decodeProxyContent(content) {
             if (!content) return "";
             const trimmed = content.trim();
@@ -661,16 +773,11 @@
             const parser = new DOMParser();
             const xmlDoc = parser.parseFromString(xmlString, "text/xml");
             if (xmlDoc.querySelector('parsererror')) throw new Error("XML Parse Error");
-
             let items = [];
             const rssItems = xmlDoc.querySelectorAll("item");
             const atomEntries = xmlDoc.querySelectorAll("entry");
-
-            if (rssItems.length > 0) {
-                items = Array.from(rssItems).map(node => parseRSSItem(node, 0, sourceName));
-            } else if (atomEntries.length > 0) {
-                items = Array.from(atomEntries).map(node => parseAtomEntry(node, 0, sourceName));
-            }
+            if (rssItems.length > 0) items = Array.from(rssItems).map(node => parseRSSItem(node, 0, sourceName));
+            else if (atomEntries.length > 0) items = Array.from(atomEntries).map(node => parseAtomEntry(node, 0, sourceName));
             return items;
         }
 
@@ -704,21 +811,27 @@
                 const [prefix, localName] = tagName.split(":");
                 const collections = parent.getElementsByTagName("*");
                 for (let i = 0; i < collections.length; i++) {
-                    if (collections[i].nodeName === tagName || collections[i].localName === localName) {
-                        return collections[i].textContent.trim();
-                    }
+                    if (collections[i].nodeName === tagName || collections[i].localName === localName) return collections[i].textContent.trim();
                 }
             }
             return node ? node.textContent.trim() : "";
         }
 
-        // --- UI HELPERS ---
         function renderSidebar(items) {
             const sidebarList = document.getElementById('sidebar-list');
+            
+            // If overlay exists, preserve it.
+            const overlay = document.getElementById('status-bar-overlay');
             sidebarList.innerHTML = "";
+            if (overlay) sidebarList.appendChild(overlay);
 
             if (items.length === 0) {
-                sidebarList.innerHTML = '<div class="msg-box" style="padding:15px; font-size:0.9em;">No items found.</div>';
+                const empty = document.createElement('div');
+                empty.className = 'msg-box';
+                empty.style.padding = '15px';
+                empty.style.fontSize = '0.9em';
+                empty.innerText = "No items found.";
+                sidebarList.appendChild(empty);
                 return;
             }
 
@@ -727,10 +840,8 @@
                 div.className = 'feed-item';
                 div.onclick = () => showContent(item.id);
                 if (selectedIndex === item.id) div.classList.add('active');
-
                 let dateStr = item.date;
                 try { if (dateStr) dateStr = new Date(dateStr).toLocaleDateString(); } catch(e) {}
-
                 div.innerHTML = `
                     <div class="item-meta">
                         <span class="source-badge">${item.source}</span>
@@ -746,10 +857,8 @@
             selectedIndex = originalId;
             const item = currentFeedItems.find(i => i.id === originalId);
             if(!item) return;
-
             const contentArea = document.getElementById('content-area');
-            filterFeed();
-
+            filterFeed(); // Update active class
             contentArea.innerHTML = `
                 <div class="article-view">
                     <span style="background:#eee; padding:2px 8px; border-radius:4px; font-size:0.8em; color:#555;">${item.source}</span>
