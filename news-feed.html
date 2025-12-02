@@ -1,0 +1,694 @@
+<!-- 
+  Program: Robust Single File RSS Feed Reader (v9)
+  Created: 2025-12-02 23:30:00 (Bangkok Time)
+  
+  Specifications:
+  1. Input: URL field + Presets dropdown.
+  2. Logic: Uses Multi-Proxy Fallback (AllOrigins -> CORSProxy.io).
+  3. Parsing: Handles RSS 2.0, Atom, RDF + Base64 decoding.
+  4. Frame View: Preview website in iframe.
+  5. Search: Filter feed items by title or content in real-time.
+  6. Batch Load: "Load All" feature to fetch text-only data from all presets at once.
+  
+  Usage:
+  - Click "Load All Presets" to fetch headlines from all sources.
+  - Use the search bar to find specific topics across all feeds.
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RSS Feed Reader v9 (Batch Load)</title>
+    <style>
+        :root {
+            --bg-color: #f4f4f9;
+            --sidebar-bg: #ffffff;
+            --header-bg: #2c3e50;
+            --text-color: #333;
+            --accent-color: #e74c3c;
+            --hover-color: #ecf0f1;
+            --border-color: #ddd;
+            --badge-bg: #34495e;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* --- Header --- */
+        header {
+            background-color: var(--header-bg);
+            padding: 15px 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            z-index: 10;
+        }
+
+        select, input[type="text"] {
+            padding: 10px;
+            border-radius: 4px;
+            border: 1px solid #555;
+            background-color: #34495e;
+            color: white;
+            font-size: 14px;
+            outline: none;
+        }
+
+        input[type="text"] {
+            flex-grow: 1;
+            background-color: #fff;
+            color: #333;
+            border-color: white;
+        }
+
+        button {
+            padding: 10px 15px;
+            background-color: var(--accent-color);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            text-transform: uppercase;
+            font-size: 12px;
+            transition: background 0.2s;
+            white-space: nowrap;
+        }
+
+        button:hover {
+            background-color: #c0392b;
+        }
+        
+        button.secondary {
+            background-color: #7f8c8d;
+        }
+        button.secondary:hover {
+            background-color: #95a5a6;
+        }
+
+        /* --- Main Layout --- */
+        #main-container {
+            display: flex;
+            flex: 1;
+            height: calc(100vh - 70px);
+        }
+
+        /* --- Sidebar --- */
+        #sidebar {
+            width: 380px;
+            background-color: var(--sidebar-bg);
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden; 
+        }
+
+        #sidebar-search {
+            padding: 15px;
+            border-bottom: 1px solid var(--border-color);
+            background-color: #f8f9fa;
+        }
+
+        #searchInput {
+            width: 100%;
+            padding: 8px;
+            box-sizing: border-box; 
+            background-color: #fff;
+            color: #333;
+            border: 1px solid #ccc;
+        }
+        
+        #searchInput::placeholder { color: #999; }
+
+        #sidebar-list {
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .feed-item {
+            padding: 15px;
+            border-bottom: 1px solid #eee;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .feed-item:hover {
+            background-color: var(--hover-color);
+        }
+
+        .feed-item.active {
+            background-color: #fff0ef;
+            border-left: 4px solid var(--accent-color);
+        }
+
+        .item-meta {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.75em;
+            color: #888;
+            margin-bottom: 6px;
+        }
+
+        .source-badge {
+            background-color: var(--badge-bg);
+            color: white;
+            padding: 1px 6px;
+            border-radius: 3px;
+            font-size: 0.9em;
+        }
+
+        .item-title {
+            font-weight: 600;
+            font-size: 0.95em;
+            color: #2c3e50;
+            line-height: 1.4;
+        }
+
+        /* --- Content Area --- */
+        #content-area {
+            flex: 1;
+            background-color: white;
+            position: relative;
+            overflow: hidden; 
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Standard Article View */
+        .article-view {
+            padding: 40px;
+            overflow-y: auto;
+            height: 100%;
+        }
+
+        .article-view h1 {
+            color: #2c3e50;
+            border-bottom: 2px solid var(--accent-color);
+            padding-bottom: 15px;
+            margin-top: 0;
+        }
+
+        .article-content {
+            font-size: 1.1em;
+            line-height: 1.8;
+            color: #444;
+            max-width: 800px;
+        }
+
+        .article-content img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 5px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            margin: 10px 0;
+        }
+
+        /* Frame Preview Mode */
+        .preview-container {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+
+        .preview-header {
+            background-color: #ecf0f1;
+            padding: 10px 20px;
+            border-bottom: 1px solid #ccc;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .preview-warning {
+            background-color: #fff3cd;
+            color: #856404;
+            padding: 8px 20px;
+            font-size: 0.85em;
+            border-bottom: 1px solid #ffeeba;
+        }
+
+        iframe.web-frame {
+            border: none;
+            flex: 1;
+            width: 100%;
+            background-color: #fff;
+        }
+
+        .btn-preview-sec {
+            background-color: #95a5a6;
+            margin-left: 10px;
+        }
+        .btn-preview-sec:hover { background-color: #7f8c8d; }
+
+        .btn-preview-pri {
+            background-color: var(--accent-color);
+        }
+
+        /* --- Utility --- */
+        .msg-box {
+            padding: 40px;
+            text-align: center;
+            color: #777;
+        }
+        
+        .error-box {
+            background-color: #ffeaea;
+            color: #c0392b;
+            padding: 20px;
+            border-radius: 5px;
+            border: 1px solid #ffcccc;
+            margin: 20px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            text-align: left;
+            word-break: break-all;
+        }
+
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid var(--accent-color);
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+
+        .status-text {
+            font-size: 0.9em;
+            color: #666;
+            margin-top: 10px;
+        }
+
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+
+    <header>
+        <select id="presetSelect" onchange="usePreset()">
+            <option value="">-- Single Feed --</option>
+            <option value="http://www.blognone.com/atom.xml">Blognone</option>
+            <option value="https://droidsans.com/feed/">DroidSans</option>
+            <option value="http://www.macrumors.com/macrumors.xml">MacRumors</option>
+            <option value="http://www.dpreview.com/feeds/news.xml">DPReview</option>
+            <option value="https://brandinside.asia/feed/">Brand Inside</option>
+            <option value="https://www.bleepingcomputer.com/feed/">BleepingComputer</option>
+        </select>
+        <input type="text" id="feedUrl" placeholder="Or enter RSS URL here..." value="http://www.blognone.com/atom.xml">
+        <button id="loadBtn" onclick="fetchFeed()">Load Single</button>
+        <button id="loadAllBtn" class="secondary" onclick="fetchAllPresets()">Load All Presets</button>
+    </header>
+
+    <div id="main-container">
+        <aside id="sidebar">
+            <div id="sidebar-search">
+                <input type="text" id="searchInput" placeholder="Search loaded topics..." onkeyup="filterFeed()">
+            </div>
+            <div id="sidebar-list">
+                <div class="msg-box" style="padding:20px;">
+                    Select a feed or click "Load All Presets" to start.
+                </div>
+            </div>
+        </aside>
+        
+        <main id="content-area">
+            <div class="msg-box">
+                <h2>RSS Reader v9</h2>
+                <p>Select a topic on the left to read.</p>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        let currentFeedItems = [];
+        let selectedIndex = -1;
+
+        function usePreset() {
+            const select = document.getElementById('presetSelect');
+            const input = document.getElementById('feedUrl');
+            if(select.value) {
+                input.value = select.value;
+                fetchFeed();
+            }
+        }
+
+        function updateSidebarStatus(msg) {
+            const sidebarList = document.getElementById('sidebar-list');
+            sidebarList.innerHTML = `
+                <div class="loader"></div>
+                <div style="text-align:center" class="status-text">${msg}</div>
+            `;
+        }
+
+        function filterFeed() {
+            const term = document.getElementById('searchInput').value.toLowerCase();
+            if (!term) {
+                renderSidebar(currentFeedItems);
+                return;
+            }
+            
+            const filtered = currentFeedItems.filter(item => {
+                const titleMatch = item.title && item.title.toLowerCase().includes(term);
+                const sourceMatch = item.source && item.source.toLowerCase().includes(term);
+                const contentMatch = item.content && item.content.toLowerCase().includes(term);
+                return titleMatch || sourceMatch || contentMatch;
+            });
+            
+            renderSidebar(filtered);
+        }
+
+        // --- BATCH LOADING FEATURE ---
+        async function fetchAllPresets() {
+            const select = document.getElementById('presetSelect');
+            const sidebarList = document.getElementById('sidebar-list');
+            const loadAllBtn = document.getElementById('loadAllBtn');
+            const searchInput = document.getElementById('searchInput');
+
+            // Collect all non-empty preset values
+            const feedsToLoad = [];
+            for(let i=0; i<select.options.length; i++) {
+                if(select.options[i].value) {
+                    feedsToLoad.push({
+                        url: select.options[i].value,
+                        name: select.options[i].text
+                    });
+                }
+            }
+
+            if(feedsToLoad.length === 0) return alert("No presets defined.");
+
+            // UI Reset
+            loadAllBtn.disabled = true;
+            searchInput.value = '';
+            currentFeedItems = [];
+            selectedIndex = -1;
+            document.getElementById('content-area').innerHTML = '<div class="msg-box">Loading all feeds...</div>';
+            
+            updateSidebarStatus(`Fetching ${feedsToLoad.length} feeds...<br>This may take a few seconds.`);
+
+            try {
+                // Fetch in parallel (Promise.all)
+                const promises = feedsToLoad.map(feed => fetchSingleFeedText(feed.url, feed.name));
+                const results = await Promise.allSettled(promises);
+
+                let aggregatedItems = [];
+                let failCount = 0;
+
+                results.forEach(res => {
+                    if (res.status === 'fulfilled') {
+                        aggregatedItems = aggregatedItems.concat(res.value);
+                    } else {
+                        failCount++;
+                        console.warn(res.reason);
+                    }
+                });
+
+                if (aggregatedItems.length === 0) {
+                    throw new Error("Failed to load any feeds.");
+                }
+
+                // Sort by Date (Newest first)
+                aggregatedItems.sort((a, b) => {
+                    return new Date(b.date) - new Date(a.date);
+                });
+
+                // Assign new IDs for the UI
+                aggregatedItems.forEach((item, index) => item.id = index);
+
+                currentFeedItems = aggregatedItems;
+                renderSidebar(currentFeedItems);
+                
+                // Show summary in content area if there were failures
+                if(failCount > 0) {
+                    document.getElementById('content-area').innerHTML = `<div class="msg-box">Loaded ${aggregatedItems.length} articles.<br>(${failCount} feeds failed to load)</div>`;
+                } else {
+                    document.getElementById('content-area').innerHTML = `<div class="msg-box">Loaded ${aggregatedItems.length} articles from all sources.</div>`;
+                }
+
+            } catch (err) {
+                renderError(err);
+            } finally {
+                loadAllBtn.disabled = false;
+            }
+        }
+
+        // Helper to fetch a single feed (returns Promise resolving to Array of items)
+        async function fetchSingleFeedText(url, sourceName) {
+            let rawContent = "";
+            
+            // Attempt 1: AllOrigins
+            try {
+                const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s timeout for batch
+                
+                const response = await fetch(proxyUrl, { signal: controller.signal });
+                clearTimeout(timeoutId);
+                
+                if(!response.ok) throw new Error("Proxy error");
+                const data = await response.json();
+                rawContent = data.contents;
+            } catch(e) {
+                // Attempt 2: CORSProxy.io
+                console.log(`Retrying ${sourceName} via backup...`);
+                const backupUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
+                const response = await fetch(backupUrl);
+                rawContent = await response.text();
+            }
+
+            rawContent = decodeProxyContent(rawContent);
+            return parseXMLToItems(rawContent, sourceName);
+        }
+
+        function parseXMLToItems(xmlString, sourceName) {
+            const parser = new DOMParser();
+            const xmlDoc = parser.parseFromString(xmlString, "text/xml");
+            
+            if (xmlDoc.querySelector('parsererror')) throw new Error("XML Parse Error");
+
+            let items = [];
+            const rssItems = xmlDoc.querySelectorAll("item");
+            const atomEntries = xmlDoc.querySelectorAll("entry");
+
+            if (rssItems.length > 0) {
+                items = Array.from(rssItems).map(node => parseRSSItem(node, 0, sourceName));
+            } else if (atomEntries.length > 0) {
+                items = Array.from(atomEntries).map(node => parseAtomEntry(node, 0, sourceName));
+            }
+            return items;
+        }
+
+        // --- SINGLE FEED LOADING (Maintains original functionality) ---
+        async function fetchFeed() {
+            const url = document.getElementById('feedUrl').value.trim();
+            const btn = document.getElementById('loadBtn');
+            const searchInput = document.getElementById('searchInput');
+
+            if (!url) return alert("Please enter a URL");
+
+            btn.disabled = true;
+            searchInput.value = '';
+            document.getElementById('content-area').innerHTML = '<div class="msg-box">Waiting for selection...</div>';
+            currentFeedItems = [];
+            selectedIndex = -1;
+
+            updateSidebarStatus("Loading single feed...");
+
+            try {
+                const select = document.getElementById('presetSelect');
+                let sourceName = "Feed";
+                // Try to find name in select, otherwise generic
+                for(let opt of select.options) {
+                    if(opt.value === url) sourceName = opt.text;
+                }
+
+                const items = await fetchSingleFeedText(url, sourceName);
+                
+                // Assign IDs
+                items.forEach((item, index) => item.id = index);
+                
+                currentFeedItems = items;
+                renderSidebar(currentFeedItems);
+            } catch (err) {
+                renderError(err);
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        function decodeProxyContent(content) {
+            if (!content) return "";
+            const trimmed = content.trim();
+            if (trimmed.startsWith("data:")) {
+                const commaIndex = trimmed.indexOf(",");
+                if (commaIndex !== -1) {
+                    const base64Data = trimmed.substring(commaIndex + 1);
+                    try {
+                        const binaryString = atob(base64Data);
+                        const bytes = new Uint8Array(binaryString.length);
+                        for (let i = 0; i < binaryString.length; i++) {
+                            bytes[i] = binaryString.charCodeAt(i);
+                        }
+                        const decoder = new TextDecoder('utf-8');
+                        return decoder.decode(bytes);
+                    } catch (e) { return content; }
+                }
+            }
+            return content;
+        }
+
+        function parseRSSItem(node, index, sourceName) {
+            return {
+                id: index, // Will be overwritten in batch
+                source: sourceName,
+                title: getChildText(node, "title"),
+                link: getChildText(node, "link"),
+                date: getChildText(node, "pubDate") || getChildText(node, "dc:date"),
+                content: getChildText(node, "content:encoded") || 
+                         getChildText(node, "description") || 
+                         "No content."
+            };
+        }
+
+        function parseAtomEntry(node, index, sourceName) {
+            const linkNode = node.querySelector("link");
+            const link = linkNode ? linkNode.getAttribute("href") : "";
+
+            return {
+                id: index,
+                source: sourceName,
+                title: getChildText(node, "title"),
+                link: link,
+                date: getChildText(node, "updated") || getChildText(node, "published"),
+                content: getChildText(node, "content") || 
+                         getChildText(node, "summary") || 
+                         "No content."
+            };
+        }
+
+        function getChildText(parent, tagName) {
+            const node = parent.getElementsByTagName(tagName)[0];
+            if (!node && tagName.includes(":")) {
+                const [prefix, localName] = tagName.split(":");
+                const collections = parent.getElementsByTagName("*");
+                for (let i = 0; i < collections.length; i++) {
+                    if (collections[i].nodeName === tagName || collections[i].localName === localName) {
+                        return collections[i].textContent.trim();
+                    }
+                }
+            }
+            return node ? node.textContent.trim() : "";
+        }
+
+        function renderSidebar(items) {
+            const sidebarList = document.getElementById('sidebar-list');
+            sidebarList.innerHTML = "";
+
+            if (items.length === 0) {
+                sidebarList.innerHTML = '<div class="msg-box" style="padding:15px; font-size:0.9em;">No matching items found.</div>';
+                return;
+            }
+
+            items.forEach((item) => {
+                const div = document.createElement('div');
+                div.className = 'feed-item';
+                div.onclick = () => showContent(item.id);
+
+                if (selectedIndex === item.id) {
+                    div.classList.add('active');
+                }
+
+                let dateStr = item.date;
+                try { if (dateStr) dateStr = new Date(dateStr).toLocaleDateString(); } catch(e) {}
+
+                div.innerHTML = `
+                    <div class="item-meta">
+                        <span class="source-badge">${item.source}</span>
+                        <span>${dateStr || ''}</span>
+                    </div>
+                    <div class="item-title">${item.title}</div>
+                `;
+                sidebarList.appendChild(div);
+            });
+        }
+
+        function showContent(originalId) {
+            selectedIndex = originalId;
+            const item = currentFeedItems.find(i => i.id === originalId); // Robust lookup
+            if(!item) return;
+
+            const contentArea = document.getElementById('content-area');
+            
+            // Re-render sidebar to update highlighting
+            filterFeed();
+
+            contentArea.innerHTML = `
+                <div class="article-view">
+                    <span style="background:#eee; padding:2px 8px; border-radius:4px; font-size:0.8em; color:#555;">${item.source}</span>
+                    <h1>${item.title}</h1>
+                    <div style="color:#666; margin-bottom:20px;">
+                        ${item.date ? new Date(item.date).toLocaleString() : ''}
+                    </div>
+                    <div class="article-content">
+                        ${item.content}
+                    </div>
+                    <div style="margin-top:40px; padding-top:20px; border-top:1px solid #ddd;">
+                        <p style="margin-bottom:10px; color:#555;"><strong>Option 1:</strong> View original site inside this window:</p>
+                        <button class="btn-preview-pri" onclick="openPreview('${item.link}')">Preview Website</button>
+                        
+                        <p style="margin-top:20px; margin-bottom:10px; color:#555;"><strong>Option 2:</strong> Open in new browser tab:</p>
+                        <a href="${item.link}" target="_blank" style="color:var(--accent-color); text-decoration:underline;">Open in New Tab &rarr;</a>
+                    </div>
+                </div>
+            `;
+        }
+
+        function openPreview(url) {
+            if(!url) return alert("No URL available for this item.");
+            const contentArea = document.getElementById('content-area');
+            contentArea.innerHTML = `
+                <div class="preview-container">
+                    <div class="preview-header">
+                        <strong>Previewing:</strong>
+                        <div>
+                            <button class="btn-preview-sec" onclick="closePreview()">Close Preview</button>
+                            <a href="${url}" target="_blank" style="margin-left:10px; color:var(--accent-color);">Open in New Tab</a>
+                        </div>
+                    </div>
+                    <div class="preview-warning">
+                        <strong>Note:</strong> If the area below is blank, the website (${new URL(url).hostname}) blocks embedded frames. Please use "Open in New Tab".
+                    </div>
+                    <iframe src="${url}" class="web-frame" title="Article Preview"></iframe>
+                </div>
+            `;
+        }
+
+        function closePreview() {
+            if(selectedIndex > -1) showContent(selectedIndex);
+            else document.getElementById('content-area').innerHTML = '<div class="msg-box">Select a topic.</div>';
+        }
+
+        function renderError(error) {
+            const sidebarList = document.getElementById('sidebar-list');
+            sidebarList.innerHTML = '';
+            const errDiv = document.createElement('div');
+            errDiv.className = 'error-box';
+            errDiv.innerHTML = `<strong>Error:</strong><br>${error.message}`;
+            sidebarList.appendChild(errDiv);
+            document.getElementById('content-area').innerHTML = '';
+        }
+    </script>
+</body>
+</html>
