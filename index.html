@@ -106,12 +106,14 @@
 
             // 3. Update active state
             if (currentActiveToolId) {
-                document.getElementById(`btn-${currentActiveToolId}`).classList.remove('bg-indigo-500', 'text-white');
+                // FIX: Remove the correct active classes (bg-indigo-600, text-white, shadow-md)
+                document.getElementById(`btn-${currentActiveToolId}`).classList.remove('bg-indigo-600', 'text-white', 'shadow-md');
                 document.getElementById(`btn-${currentActiveToolId}`).classList.add('hover:bg-indigo-50', 'text-gray-700');
             }
 
             const newActiveButton = document.getElementById(`btn-${toolId}`);
             newActiveButton.classList.remove('hover:bg-indigo-50', 'text-gray-700');
+            // Add the active classes
             newActiveButton.classList.add('bg-indigo-600', 'text-white', 'shadow-md');
             currentActiveToolId = toolId;
             
