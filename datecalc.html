@@ -1,142 +1,364 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>Date Calculator – Calendar Picker + DD‑MM‑YYYY Display</title>
-<style>
-  body{
-    font-family:Arial,Helvetica,sans-serif;
-    max-width:560px;margin:auto;padding:15px;line-height:1.4;
-  }
-  h1{margin:0 0 10px;font-size:1.4rem;text-align:center;}
-
-  .tabs{
-    border:1px solid #bbb;border-radius:4px;overflow:hidden;background:#fafafa;
-  }
-  .tab-header{
-    display:flex;background:#e0e0e0;
-  }
-  .tab-header button{
-    flex:1;padding:6px 0;border:none;background:#e0e0e0;cursor:pointer;
-    font-size:.95rem;
-  }
-  .tab-header button.active{background:#fff;font-weight:bold;}
-  .tab-content{padding:8px;display:none;}
-  .tab-content.active{display:block;}
-
-  label, input, button{
-    display:block;width:100%;margin:4px 0;
-  }
-  input[type=date],
-  input[type=number]{
-    padding:4px 6px;font-size:.93rem;
-  }
-  button{
-    padding:6px 10px;font-size:.93rem;
-    background:#0066ff;color:#fff;border:none;border-radius:3px;cursor:pointer;
-  }
-  button:hover{background:#0052cc;}
-
-  .result{
-    margin-top:10px;font-weight:bold;word-break:break-word;
-  }
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Compact Calendar Calculator</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Configure Tailwind for Inter font -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Custom styles for better readability and feel */
+        body {
+            background-color: #f7f9fb;
+            font-family: 'Inter', sans-serif;
+        }
+        .tab-button {
+            transition: all 0.2s ease-in-out;
+            padding: 0.75rem 1rem;
+            border-radius: 0.5rem 0.5rem 0 0;
+            cursor: pointer;
+            text-align: center;
+        }
+        .tab-button.active {
+            background-color: #ffffff;
+            color: #1d4ed8;
+            border-bottom: 2px solid #3b82f6;
+            font-weight: 600;
+        }
+        .tab-button:not(.active) {
+            background-color: #e5e7eb;
+            color: #4b5563;
+        }
+        .tab-content {
+            display: none;
+            padding: 1.5rem;
+            background-color: white;
+            border-radius: 0 0.75rem 0.75rem 0.75rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+        }
+        .tab-content.active {
+            display: block;
+        }
+    </style>
 </head>
-<body>
+<body class="p-4 flex items-start justify-center min-h-screen">
 
-<h1>🗓️ Date Calculator</h1>
+    <div class="w-full max-w-lg bg-white rounded-xl shadow-2xl mt-10">
+        <header class="p-4 bg-gray-50 rounded-t-xl border-b border-gray-100">
+            <h1 class="text-2xl font-bold text-gray-800">Date Calculator</h1>
+            <p class="text-sm text-gray-500">Compact tool for essential calendar calculations.</p>
+        </header>
 
-<div class="tabs">
-  <div class="tab-header">
-    <button class="active" data-tab="between">Days Between</button>
-    <button data-tab="offset">Add / Subtract</button>
-  </div>
+        <!-- Tab Buttons (DOY is first) -->
+        <div class="flex border-b border-gray-200 bg-gray-50">
+            <div id="tab-doy" class="tab-button active w-1/3" onclick="showTab('doy')">Day/Week of Year</div>
+            <div id="tab-diff" class="tab-button w-1/3" onclick="showTab('diff')">Days Between</div>
+            <div id="tab-offset" class="tab-button w-1/3" onclick="showTab('offset')">Offset Date</div>
+        </div>
 
-  <!-- ----- Days Between ----- -->
-  <div id="between" class="tab-content active">
-    <label for="start">Start date</label>
-    <input type="date" id="start">
-    <label for="end">End date</label>
-    <input type="date" id="end">
-    <button onclick="calcDaysBetween()">Calculate</button>
-  </div>
+        <!-- Tab Content Containers -->
+        <div class="p-4">
+            
+            <!-- 3. Day of Year Tab (DOY) -->
+            <div id="content-doy" class="tab-content active">
+                <h2 class="text-xl font-semibold mb-4 text-gray-700">Day & Week of Year (DOY)</h2>
+                <div class="space-y-4">
+                    <div>
+                        <label for="target_date_doy" class="block text-sm font-medium text-gray-700">Target Date</label>
+                        <input type="date" id="target_date_doy" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border focus:border-blue-500 focus:ring-blue-500" onchange="calculateDayOfYear()">
+                    </div>
+                    <button onclick="calculateDayOfYear()" class="w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition duration-150">
+                        Calculate Day/Week of Year
+                    </button>
+                </div>
+            </div>
+            
+            <!-- 1. Date Difference Tab -->
+            <div id="content-diff" class="tab-content">
+                <h2 class="text-xl font-semibold mb-4 text-gray-700">Date Difference (Days Between)</h2>
+                <div class="space-y-4">
+                    <div>
+                        <label for="start_date_diff" class="block text-sm font-medium text-gray-700">Start Date</label>
+                        <input type="date" id="start_date_diff" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border focus:border-blue-500 focus:ring-blue-500">
+                    </div>
+                    <div>
+                        <label for="end_date_diff" class="block text-sm font-medium text-gray-700">End Date</label>
+                        <input type="date" id="end_date_diff" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border focus:border-blue-500 focus:ring-blue-500">
+                    </div>
+                    <button onclick="calculateDateDifference()" class="w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition duration-150">
+                        Calculate Difference
+                    </button>
+                </div>
+            </div>
 
-  <!-- ----- Add / Subtract ----- -->
-  <div id="offset" class="tab-content">
-    <label for="base">Base date</label>
-    <input type="date" id="base">
-    <label for="delta">Offset (± days)</label>
-    <input type="number" id="delta" placeholder="e.g., 5 or -3">
-    <button onclick="calcOffsetDate()">Get New Date</button>
-  </div>
-</div>
+            <!-- 2. Date Offset Tab (Updated with Radio Buttons) -->
+            <div id="content-offset" class="tab-content">
+                <h2 class="text-xl font-semibold mb-4 text-gray-700">Date Before/After (Offset)</h2>
+                <div class="space-y-4">
+                    <div>
+                        <label for="start_date_offset" class="block text-sm font-medium text-gray-700">Reference Date</label>
+                        <input type="date" id="start_date_offset" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border focus:border-blue-500 focus:ring-blue-500">
+                    </div>
+                    
+                    <!-- Radio Button for Direction -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Direction</label>
+                        <div class="flex space-x-4">
+                            <label class="inline-flex items-center">
+                                <input type="radio" name="offset_direction" value="after" checked class="form-radio text-blue-600 h-4 w-4" id="offset_after">
+                                <span class="ml-2 text-gray-700">After (Forward)</span>
+                            </label>
+                            <label class="inline-flex items-center">
+                                <input type="radio" name="offset_direction" value="before" class="form-radio text-blue-600 h-4 w-4" id="offset_before">
+                                <span class="ml-2 text-gray-700">Before (Backward)</span>
+                            </label>
+                        </div>
+                    </div>
 
-<div class="result" id="output"></div>
+                    <div>
+                        <label for="days_offset" class="block text-sm font-medium text-gray-700">Number of Days</label>
+                        <input type="number" id="days_offset" placeholder="e.g., 50 or 30" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border focus:border-blue-500 focus:ring-blue-500 min-w-0">
+                    </div>
 
-<script>
-/* ---------- Helpers for display format ---------- */
-function isoToDisplay(iso){               // "2025-11-26" → "26-11-2025"
-  const [y,m,d] = iso.split('-');
-  return `${d}-${m}-${y}`;
-}
+                    <button onclick="calculateDateOffset()" class="w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition duration-150">
+                        Calculate Offset Date
+                    </button>
+                </div>
+            </div>
 
-/* ---------- Set today as default (ISO value) ---------- */
-function setTodayDefaults(){
-  const today = new Date();
-  const iso   = today.toISOString().slice(0,10);   // "2025-11-26"
-  document.getElementById('start').value = iso;
-  document.getElementById('base').value  = iso;
-}
-setTodayDefaults();
+            <!-- Global Result Display -->
+            <div id="result-box" class="mt-6 p-4 bg-gray-50 border border-gray-200 rounded-lg shadow-inner min-h-[5rem]">
+                <p id="result-title" class="text-lg font-bold text-gray-700 mb-1">Results:</p>
+                <div id="result-output" class="text-gray-600 space-y-1">
+                    Please select a calculation method and input the dates.
+                </div>
+            </div>
+            
+        </div>
+    </div>
 
-/* ---------- Core date math (UTC midnight) ---------- */
-const MS_PER_DAY = 86400000;
-function utcMidnight(dateStr){
-  const d = new Date(dateStr);
-  return Date.UTC(d.getFullYear(), d.getMonth(), d.getDate());
-}
-function daysBetween(a,b){
-  return Math.abs(Math.round((utcMidnight(b)-utcMidnight(a))/MS_PER_DAY));
-}
-function offsetDate(base,n){
-  const newMs = utcMidnight(base) + n*MS_PER_DAY;
-  return new Date(newMs).toISOString().slice(0,10);
-}
+    <script>
+        // Set today's date in YYYY-MM-DD format
+        const today = new Date();
+        const todayISO = today.toISOString().split('T')[0];
 
-/* ---------- UI callbacks ---------- */
-function setOut(txt){ document.getElementById('output').textContent = txt; }
+        // --- Utility Functions ---
 
-function calcDaysBetween(){
-  const s=document.getElementById('start').value,
-        e=document.getElementById('end').value;
-  if(!s||!e){ setOut('Please select both dates.'); return; }
-  const d = daysBetween(s,e);
-  setOut(`${d} day${d!==1?'s':''} between ${isoToDisplay(s)} and ${isoToDisplay(e)}.`);
-}
+        /**
+         * Sets the default date (today) for all relevant input fields.
+         */
+        function initializeDates() {
+            document.getElementById('start_date_diff').value = todayISO;
+            document.getElementById('end_date_diff').value = todayISO;
+            document.getElementById('start_date_offset').value = todayISO;
+            document.getElementById('target_date_doy').value = todayISO;
+        }
 
-function calcOffsetDate(){
-  const b=document.getElementById('base').value,
-        o=parseInt(document.getElementById('delta').value,10);
-  if(!b||isNaN(o)){ setOut('Enter a base date and a numeric offset.'); return; }
-  const newIso = offsetDate(b,o);
-  const dir    = o>=0?'after':'before';
-  const n      = Math.abs(o);
-  setOut(`${n} day${n!==1?'s':''} ${dir} ${isoToDisplay(b)} → ${isoToDisplay(newIso)}.`);
-}
+        /**
+         * Converts YYYY-MM-DD input string to a Date object.
+         * @param {string} dateString - Date in YYYY-MM-DD format.
+         * @returns {Date} The parsed Date object.
+         */
+        function parseDate(dateString) {
+            // Using the new Date(year, monthIndex, day) constructor to avoid
+            // timezone issues that often plague Date.parse(dateString).
+            const parts = dateString.split('-');
+            // Parts[1] is 0-indexed month (0=Jan, 11=Dec)
+            return new Date(parts[0], parts[1] - 1, parts[2]);
+        }
 
-/* ---------- Tab switching ---------- */
-document.querySelectorAll('.tab-header button').forEach(btn=>{
-  btn.addEventListener('click',()=>{
-    document.querySelectorAll('.tab-header button')
-            .forEach(b=>b.classList.remove('active'));
-    btn.classList.add('active');
+        /**
+         * Clears and updates the result box.
+         * @param {string} htmlContent - The HTML string to display in the result output.
+         */
+        function updateResult(htmlContent) {
+            document.getElementById('result-output').innerHTML = htmlContent;
+        }
 
-    const target = btn.dataset.tab;
-    document.querySelectorAll('.tab-content')
-            .forEach(p=>p.classList.toggle('active', p.id===target));
-  });
-});
-</script>
+        /**
+         * Calculates the ISO 8601 Week Number for a given date.
+         * @param {Date} date - The date object.
+         * @returns {number} The week number (1-53).
+         */
+        function getWeekOfYear(date) {
+            // Copy date to avoid modifying the original object
+            const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+            
+            // Set to nearest Thursday: current date + 4 - current day number.
+            // (d.getUTCDay() || 7) ensures Sunday (0) becomes 7 for ISO standard, where Monday is 1.
+            d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7)); 
+            
+            // Get first day of year
+            const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+            
+            // Calculate full weeks to go + 1
+            // 86400000 = milliseconds in a day
+            const weekNo = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+            return weekNo;
+        }
 
+        // --- Core Calculation Functions ---
+
+        /**
+         * 1. Calculates the difference in days between two dates.
+         * This handles leap years automatically via standard Date arithmetic.
+         */
+        function calculateDateDifference() {
+            const startDateStr = document.getElementById('start_date_diff').value;
+            const endDateStr = document.getElementById('end_date_diff').value;
+
+            if (!startDateStr || !endDateStr) {
+                updateResult('<span class="text-red-500 font-medium">Please enter both a Start Date and an End Date.</span>');
+                return;
+            }
+
+            const startDate = parseDate(startDateStr);
+            const endDate = parseDate(endDateStr);
+
+            // Calculate the difference in milliseconds
+            const diffTime = endDate.getTime() - startDate.getTime();
+
+            // Convert milliseconds to days (1000ms * 60s * 60m * 24h)
+            // Math.round is used to account for potential DST changes.
+            const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+            const absDiffDays = Math.abs(diffDays);
+
+            let note = '';
+            if (diffDays > 0) {
+                note = `<span class="text-green-600 font-medium">${endDateStr} is ${diffDays} days AFTER ${startDateStr}.</span>`;
+            } else if (diffDays < 0) {
+                note = `<span class="text-red-600 font-medium">${endDateStr} is ${absDiffDays} days BEFORE ${startDateStr}.</span>`;
+            } else {
+                note = `<span class="text-gray-600 font-medium">The dates are the same.</span>`;
+            }
+
+            const output = `
+                <p>Start Date: <span class="font-semibold">${startDateStr}</span></p>
+                <p>End Date: <span class="font-semibold">${endDateStr}</span></p>
+                <p class="text-xl font-extrabold text-blue-700 mt-2">Total Difference: ${absDiffDays} days</p>
+                <p class="text-sm mt-1">${note}</p>
+            `;
+            updateResult(output);
+        }
+
+        /**
+         * 2. Calculates the date before/after a given number of days.
+         * This handles leap years automatically via Date object manipulation.
+         */
+        function calculateDateOffset() {
+            const startDateStr = document.getElementById('start_date_offset').value;
+            let daysOffsetStr = document.getElementById('days_offset').value;
+            let daysOffset = parseInt(daysOffsetStr, 10);
+            const direction = document.querySelector('input[name="offset_direction"]:checked').value;
+
+            if (!startDateStr || isNaN(daysOffset) || daysOffset <= 0) {
+                updateResult('<span class="text-red-500 font-medium">Please enter a Reference Date and a valid positive number of Days.</span>');
+                return;
+            }
+            
+            // Apply direction: if 'before', make the offset negative
+            const finalOffset = direction === 'before' ? -daysOffset : daysOffset;
+
+            const startDate = parseDate(startDateStr);
+            const resultDate = new Date(startDate);
+            
+            // Adding/subtracting days. The Date object automatically handles month/year rollovers, including leap years.
+            resultDate.setDate(startDate.getDate() + finalOffset);
+
+            const resultDateISO = resultDate.toISOString().split('T')[0];
+
+            const output = `
+                <p>Reference Date: <span class="font-semibold">${startDateStr}</span></p>
+                <p>Days Offset: <span class="font-semibold">${daysOffset} days ${direction}</span></p>
+                <p class="text-xl font-extrabold text-blue-700 mt-2">Result Date: ${resultDateISO}</p>
+                <p class="text-sm mt-1">Calculated ${daysOffset} days ${direction} the reference date.</p>
+            `;
+            updateResult(output);
+        }
+
+        /**
+         * 3. Calculates the day number of the year (DOY) and Week of Year.
+         * This function is now run automatically on page load.
+         */
+        function calculateDayOfYear() {
+            const targetDateStr = document.getElementById('target_date_doy').value;
+
+            if (!targetDateStr) {
+                updateResult('<span class="text-red-500 font-medium">Please enter a Target Date.</span>');
+                return;
+            }
+
+            const targetDate = parseDate(targetDateStr);
+            const year = targetDate.getFullYear();
+            
+            // Start of the year (Jan 1st of the same year)
+            const startOfYear = new Date(year, 0, 1);
+
+            // Calculate the difference in milliseconds
+            const diffTime = targetDate.getTime() - startOfYear.getTime();
+
+            // Convert milliseconds to days and add 1 (since Jan 1st is day 1, not day 0)
+            const dayOfYear = Math.round(diffTime / (1000 * 60 * 60 * 24)) + 1;
+            
+            // Calculate Week of Year
+            const weekOfYear = getWeekOfYear(targetDate);
+
+            // Check for leap year
+            const isLeapYear = (year % 4 === 0 && year % 100 !== 0) || (year % 400 === 0);
+
+            const output = `
+                <p>Target Date: <span class="font-semibold">${targetDateStr}</span></p>
+                <p>Year: <span class="font-semibold">${year}</span> (${isLeapYear ? 'Leap Year' : 'Common Year'})</p>
+                <p class="text-xl font-extrabold text-blue-700 mt-2">Day of Year (DOY): ${dayOfYear}</p>
+                <p class="text-xl font-extrabold text-blue-700 mt-2">Week of Year (ISO): ${weekOfYear}</p>
+                <p class="text-sm mt-1">There are ${isLeapYear ? 366 : 365} days in ${year}.</p>
+            `;
+            updateResult(output);
+        }
+
+        // --- UI/Tab Logic ---
+
+        let activeTab = 'doy'; // Default to DOY tab
+
+        /**
+         * Switches the active content tab.
+         * @param {string} tabId - The ID suffix of the tab to activate ('diff', 'offset', 'doy').
+         */
+        function showTab(tabId) {
+            if (activeTab === tabId) return;
+
+            // Deactivate current tab and content
+            document.getElementById(`tab-${activeTab}`).classList.remove('active');
+            document.getElementById(`content-${activeTab}`).classList.remove('active');
+
+            // Activate new tab and content
+            document.getElementById(`tab-${tabId}`).classList.add('active');
+            document.getElementById(`content-${tabId}`).classList.add('active');
+
+            activeTab = tabId;
+            // Clear result box when switching tabs
+            updateResult('Please enter your details for this calculation.'); 
+        }
+
+        // --- Initialization ---
+        window.onload = () => {
+            initializeDates();
+            // Run the default calculation (Day of Year) on load
+            calculateDayOfYear(); 
+        };
+
+    </script>
 </body>
 </html>
