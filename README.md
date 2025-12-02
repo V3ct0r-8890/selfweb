@@ -1,4 +1,4 @@
-# My Standalone Web application <BR>
+# My Standalone Web application 
 ---
 * [Main Menu](https://v3ct0r-8890.github.io/selfweb/index.html) <BR>
 # Individule Tools list
