@@ -3,140 +3,161 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Developer Tools Dashboard</title>
+    <title>Tool Selector Menu</title>
+    <!-- Load Tailwind CSS via CDN for modern styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet">
     <style>
-        /* Modern CSS Reset for Consistency */
-        *, *::before, *::after {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
+        /* Custom Styles for Inter font and general reset */
+        :root {
+            font-family: 'Inter', sans-serif;
+        }
+        /* Style for the main content frame */
+        #main-iframe {
+            height: calc(100vh - 80px); /* Full height minus header height */
         }
 
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #f4f7f6;
-            color: #333;
-            min-height: 100vh;
-            padding: 20px;
+        /* Hide the scrollbar for the menu on specific devices */
+        #tool-menu::-webkit-scrollbar {
+            display: none;
         }
-
-        header {
-            text-align: center;
-            margin-bottom: 30px;
-            padding: 20px;
-            background-color: #ffffff;
-            border-radius: 12px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-        }
-
-        h1 {
-            color: #007bff;
-            font-weight: 300;
-        }
-
-        /* -------------------------------------- */
-        /* CSS Grid Layout for Tool Cards */
-        /* -------------------------------------- */
-        .tools-grid {
-            display: grid;
-            /* Default: 1 column for small screens/mobile */
-            grid-template-columns: 1fr;
-            gap: 20px;
-            padding: 10px;
-        }
-
-        /* Tablet and larger: 2 columns */
-        @media (min-width: 768px) {
-            .tools-grid {
-                grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
-            }
-        }
-        
-        /* Tool Card Styling */
-        .tool-card {
-            background-color: #ffffff;
-            border-radius: 12px;
-            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.08);
-            overflow: hidden; /* Ensures iframe respects border-radius */
-            display: flex;
-            flex-direction: column;
-            min-height: 450px; /* Minimum height for the tool card */
-        }
-
-        .tool-card h2 {
-            padding: 15px;
-            background-color: #e9ecef;
-            color: #495057;
-            font-size: 1.2em;
-            border-bottom: 1px solid #dee2e6;
-            text-align: center;
-        }
-
-        /* Iframe Styling */
-        .tool-frame {
-            flex-grow: 1; /* Allows iframe to fill available space */
-            border: none;
-            width: 100%;
-            height: 100%; /* Important for the flex layout to work */
-            background-color: #ffffff; /* Fallback background */
+        #tool-menu {
+            -ms-overflow-style: none;  /* IE and Edge */
+            scrollbar-width: none;  /* Firefox */
         }
     </style>
 </head>
-<body>
+<body class="bg-gray-50 flex flex-col min-h-screen">
 
-    <header>
-        <h1>🛠️ Local Development Tools Dashboard</h1>
-        <p>A collection of standalone utility pages embedded below.</p>
+    <!-- Header -->
+    <header class="bg-white shadow-md p-4 flex items-center justify-between z-10">
+        <h1 class="text-2xl font-bold text-indigo-700">
+            Developer Utilities
+        </h1>
+        <div class="md:hidden">
+            <button id="menu-toggle" class="p-2 rounded-md hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7" />
+                </svg>
+            </button>
+        </div>
     </header>
 
-    ---
+    <!-- Main Layout (Sidebar + Content) -->
+    <div class="flex flex-1 overflow-hidden">
 
-    <main class="tools-grid">
+        <!-- Sidebar Menu -->
+        <nav id="tool-menu" class="fixed inset-y-0 left-0 transform -translate-x-full md:relative md:translate-x-0 transition-transform duration-300 ease-in-out w-64 bg-white shadow-lg p-4 overflow-y-auto border-r border-gray-200 md:flex flex-col z-20">
+            <h2 class="text-lg font-semibold text-gray-800 mb-4 border-b pb-2">Tools List</h2>
+            <div id="menu-items" class="flex flex-col space-y-2">
+                <!-- Menu items will be inserted here by JavaScript -->
+            </div>
+        </nav>
+
+        <!-- Main Content Area -->
+        <main class="flex-1 p-4 md:p-6 overflow-hidden">
+            <!-- Loading Indicator -->
+            <div id="loading-spinner" class="absolute inset-0 flex items-center justify-center bg-gray-50/75 z-40 hidden">
+                <div class="animate-spin rounded-full h-16 w-16 border-b-4 border-indigo-600"></div>
+                <p class="ml-4 text-indigo-600 font-medium">Loading tool...</p>
+            </div>
+
+            <!-- Iframe Container -->
+            <div class="h-full w-full rounded-xl overflow-hidden shadow-xl border border-gray-200 bg-white">
+                <iframe id="main-iframe" class="w-full h-full" frameborder="0" src="" title="Selected Tool Frame"></iframe>
+            </div>
+        </main>
+
+    </div>
+
+    <script>
+        const tools = [
+            { id: 'datecalc', title: 'Date Calculator', file: 'datecalc.html' },
+            { id: 'passgen', title: 'Password Generator', file: 'pass-gen.html' },
+            { id: 'passcheck', title: 'Password Strength Checker', file: 'PassCheck.html' },
+            { id: 'subnetcal', title: 'Subnet Calculator', file: 'subnetcal.html' },
+            { id: 'energy', title: 'Energy Consumption Tracker', file: 'EnergyConsumption-standalone.html' },
+            { id: 'insdb', title: 'INS Offline DB Tool', file: 'INS-offlineDB.html' },
+            { id: 'mealsugg', title: 'Meal Suggestion Tool', file: 'Meal suggest tool-standalone.html' },
+        ];
+
+        const menuItemsContainer = document.getElementById('menu-items');
+        const mainIframe = document.getElementById('main-iframe');
+        const loadingSpinner = document.getElementById('loading-spinner');
+        const menuToggle = document.getElementById('menu-toggle');
+        const toolMenu = document.getElementById('tool-menu');
         
-        <div class="tool-card">
-            <h2>Date Calculator</h2>
-            <iframe class="tool-frame" src="datecalc.html" title="Date Calculator Tool"></iframe>
-        </div>
+        let currentActiveToolId = '';
 
-        <div class="tool-card">
-            <h2>Password Generator</h2>
-            <iframe class="tool-frame" src="pass-gen.html" title="Password Generator Tool"></iframe>
-        </div>
+        /**
+         * Updates the iframe source and highlights the active menu item.
+         * @param {string} toolId - The ID of the tool to load.
+         */
+        function loadTool(toolId) {
+            const tool = tools.find(t => t.id === toolId);
+            if (!tool) return;
 
-        <div class="tool-card">
-            <h2>Password Strength Checker</h2>
-            <iframe class="tool-frame" src="PassCheck.html" title="Password Strength Checker Tool"></iframe>
-        </div>
+            // 1. Show loading spinner
+            loadingSpinner.classList.remove('hidden');
+            mainIframe.style.opacity = '0';
+            
+            // 2. Set new iframe source
+            mainIframe.src = tool.file;
 
-        <div class="tool-card">
-            <h2>Subnet Calculator</h2>
-            <iframe class="tool-frame" src="subnetcal.html" title="Subnet Calculator Tool"></iframe>
-        </div>
+            // 3. Update active state
+            if (currentActiveToolId) {
+                document.getElementById(`btn-${currentActiveToolId}`).classList.remove('bg-indigo-500', 'text-white');
+                document.getElementById(`btn-${currentActiveToolId}`).classList.add('hover:bg-indigo-50', 'text-gray-700');
+            }
 
-        <div class="tool-card">
-            <h2>Energy Consumption Tracker</h2>
-            <iframe class="tool-frame" src="EnergyConsumption-standalone.html" title="Energy Consumption Tool"></iframe>
-        </div>
+            const newActiveButton = document.getElementById(`btn-${toolId}`);
+            newActiveButton.classList.remove('hover:bg-indigo-50', 'text-gray-700');
+            newActiveButton.classList.add('bg-indigo-600', 'text-white', 'shadow-md');
+            currentActiveToolId = toolId;
+            
+            // On mobile, close the menu after selection
+            if (window.innerWidth < 768) {
+                toolMenu.classList.add('-translate-x-full');
+            }
+        }
 
-        <div class="tool-card">
-            <h2>Offline DB Tool (INS)</h2>
-            <iframe class="tool-frame" src="INS-offlineDB.html" title="Offline Database Tool"></iframe>
-        </div>
+        /**
+         * Populates the menu items in the sidebar.
+         */
+        function populateMenu() {
+            tools.forEach(tool => {
+                const button = document.createElement('button');
+                button.id = `btn-${tool.id}`;
+                button.className = 'w-full text-left p-3 rounded-lg transition duration-150 ease-in-out font-medium text-gray-700 hover:bg-indigo-50';
+                button.textContent = tool.title;
+                button.onclick = () => loadTool(tool.id);
+                menuItemsContainer.appendChild(button);
+            });
+        }
 
-        <div class="tool-card">
-            <h2>Meal Suggestion Tool</h2>
-            <iframe class="tool-frame" src="Meal suggest tool-standalone.html" title="Meal Suggestion Tool"></iframe>
-        </div>
+        // Toggle mobile menu visibility
+        menuToggle.addEventListener('click', () => {
+            toolMenu.classList.toggle('-translate-x-full');
+        });
 
-    </main>
+        // Initialize the app
+        document.addEventListener('DOMContentLoaded', () => {
+            populateMenu();
+            
+            // Add listener to hide loading spinner once iframe content loads
+            mainIframe.onload = () => {
+                // Hide spinner and fade in iframe
+                loadingSpinner.classList.add('hidden');
+                mainIframe.style.opacity = '1';
+                mainIframe.focus(); // Set focus for keyboard users
+            };
 
-    ---
-
-    <footer>
-        <p style="text-align: center; margin-top: 30px; font-size: 0.9em; color: #6c757d;">
-            Dashboard generated by AI for a senior developer.
-        </p>
-    </footer>
+            // Load the first tool by default
+            if (tools.length > 0) {
+                loadTool(tools[0].id);
+            }
+        });
+    </script>
 
 </body>
 </html>
