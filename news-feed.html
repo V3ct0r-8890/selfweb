@@ -1,25 +1,33 @@
 <!-- 
-  Program: Robust Single File RSS Feed Reader (v9)
-  Created: 2025-12-02 23:30:00 (Bangkok Time)
+  Program: Robust Single File RSS Feed Reader (v14)
+  Created: 2025-12-03 00:30:00 (Bangkok Time)
   
   Specifications:
-  1. Input: URL field + Presets dropdown.
+  1. Input: URL field + Presets + Days Selector (1-15).
   2. Logic: Uses Multi-Proxy Fallback (AllOrigins -> CORSProxy.io).
   3. Parsing: Handles RSS 2.0, Atom, RDF + Base64 decoding.
   4. Frame View: Preview website in iframe.
   5. Search: Filter feed items by title or content in real-time.
-  6. Batch Load: "Load All" feature to fetch text-only data from all presets at once.
+  6. Batch Load: "Load All" feature.
+  7. Date Logic: 
+     - Default: 3 Days.
+     - Configurable: 1-15 Days.
+     - Window: [Today - N Days (Midnight)] to [Now].
+  8. Pagination (Smart Stop): 
+     - Fetches up to 10 pages.
+     - STOPS EARLY if articles on a page exceed the selected day limit.
   
   Usage:
-  - Click "Load All Presets" to fetch headlines from all sources.
-  - Use the search bar to find specific topics across all feeds.
+  - Select "Days" (default 3).
+  - Click "Load".
+  - System fetches only as far back as needed.
 -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RSS Feed Reader v9 (Batch Load)</title>
+    <title>RSS Feed Reader v14 (Adjustable History)</title>
     <style>
         :root {
             --bg-color: #f4f4f9;
@@ -47,21 +55,22 @@
         /* --- Header --- */
         header {
             background-color: var(--header-bg);
-            padding: 15px 20px;
+            padding: 10px 20px;
             display: flex;
             align-items: center;
             gap: 10px;
             box-shadow: 0 2px 5px rgba(0,0,0,0.1);
             z-index: 10;
+            flex-wrap: wrap; /* Allow wrapping on small screens */
         }
 
-        select, input[type="text"] {
-            padding: 10px;
+        select, input[type="text"], input[type="number"] {
+            padding: 8px;
             border-radius: 4px;
             border: 1px solid #555;
             background-color: #34495e;
             color: white;
-            font-size: 14px;
+            font-size: 13px;
             outline: none;
         }
 
@@ -70,10 +79,25 @@
             background-color: #fff;
             color: #333;
             border-color: white;
+            min-width: 150px;
+        }
+        
+        input[type="number"] {
+            width: 50px;
+            text-align: center;
+        }
+
+        label {
+            font-size: 0.85em;
+            color: #ecf0f1;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            white-space: nowrap;
         }
 
         button {
-            padding: 10px 15px;
+            padding: 8px 15px;
             background-color: var(--accent-color);
             color: white;
             border: none;
@@ -101,7 +125,7 @@
         #main-container {
             display: flex;
             flex: 1;
-            height: calc(100vh - 70px);
+            height: calc(100vh - 60px); /* Adjusted for header */
         }
 
         /* --- Sidebar --- */
@@ -291,6 +315,12 @@
             margin-top: 10px;
         }
 
+        .loading-progress {
+            margin-top:5px; 
+            font-size:0.8em; 
+            color:#888;
+        }
+
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
@@ -307,6 +337,16 @@
             <option value="https://www.bleepingcomputer.com/feed/">BleepingComputer</option>
         </select>
         <input type="text" id="feedUrl" placeholder="Or enter RSS URL here..." value="http://www.blognone.com/atom.xml">
+        
+        <label title="Fetch items for how many days back?">
+            Days:
+            <input type="number" id="daysFilter" value="3" min="1" max="15">
+        </label>
+
+        <label style="font-size:0.8em; color:white; display:flex; align-items:center;">
+            <input type="checkbox" id="deepScanToggle" checked style="width:auto; margin-right:5px;"> Scan Pgs
+        </label>
+
         <button id="loadBtn" onclick="fetchFeed()">Load Single</button>
         <button id="loadAllBtn" class="secondary" onclick="fetchAllPresets()">Load All Presets</button>
     </header>
@@ -318,15 +358,16 @@
             </div>
             <div id="sidebar-list">
                 <div class="msg-box" style="padding:20px;">
-                    Select a feed or click "Load All Presets" to start.
+                    Select a feed or click "Load All Presets".
                 </div>
             </div>
         </aside>
         
         <main id="content-area">
             <div class="msg-box">
-                <h2>RSS Reader v9</h2>
+                <h2>RSS Reader v14</h2>
                 <p>Select a topic on the left to read.</p>
+                <p style="font-size: 0.9em; color: #888; margin-top: 10px;">Showing articles from selected day range up to current time.</p>
             </div>
         </main>
     </div>
@@ -334,6 +375,7 @@
     <script>
         let currentFeedItems = [];
         let selectedIndex = -1;
+        const MAX_PAGES = 10;
 
         function usePreset() {
             const select = document.getElementById('presetSelect');
@@ -344,11 +386,12 @@
             }
         }
 
-        function updateSidebarStatus(msg) {
+        function updateSidebarStatus(msg, submsg="") {
             const sidebarList = document.getElementById('sidebar-list');
             sidebarList.innerHTML = `
                 <div class="loader"></div>
                 <div style="text-align:center" class="status-text">${msg}</div>
+                <div style="text-align:center" class="loading-progress">${submsg}</div>
             `;
         }
 
@@ -369,14 +412,125 @@
             renderSidebar(filtered);
         }
 
-        // --- BATCH LOADING FEATURE ---
+        // --- TIME CALCULATION ---
+        function getCutoffDate() {
+            const daysInput = document.getElementById('daysFilter');
+            let days = parseInt(daysInput.value, 10);
+            if (isNaN(days) || days < 1) days = 1;
+            if (days > 15) days = 15;
+            
+            const now = new Date(); 
+            const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            const cutoff = new Date(todayMidnight);
+            cutoff.setDate(todayMidnight.getDate() - days);
+            return cutoff;
+        }
+
+        // Date Filter Logic
+        function filterItemsByDate(items) {
+            const now = new Date();
+            const cutoff = getCutoffDate();
+            
+            return items.filter(item => {
+                if(!item.date) return false; 
+                const itemDate = new Date(item.date);
+                if (isNaN(itemDate)) return false;
+                // Inclusive of current moment, exclusive of articles older than selected days
+                return itemDate >= cutoff && itemDate <= now;
+            });
+        }
+
+        // --- CORE FETCH LOGIC (With Smart Date Stop) ---
+        async function fetchFeedWithPagination(url, sourceName, deepScan) {
+            let allItems = [];
+            let seenLinks = new Set();
+            let pageCount = deepScan ? MAX_PAGES : 1;
+            
+            const cutoffDate = getCutoffDate();
+
+            for (let page = 1; page <= pageCount; page++) {
+                // Construct URL
+                let pagedUrl = url;
+                if (page > 1) {
+                    const separator = url.includes('?') ? '&' : '?';
+                    pagedUrl = `${url}${separator}paged=${page}`;
+                }
+
+                try {
+                    if(page > 1) {
+                         const progressDiv = document.querySelector('.loading-progress');
+                         if(progressDiv) progressDiv.innerText = `Fetching page ${page}/${pageCount}...`;
+                    }
+
+                    // Network Request
+                    let rawContent = "";
+                    try {
+                        const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(pagedUrl)}&_t=${Date.now()}`;
+                        const response = await fetch(proxyUrl);
+                        if(!response.ok) throw new Error("Proxy error");
+                        const data = await response.json();
+                        rawContent = data.contents;
+                    } catch(e) {
+                        const backupUrl = `https://corsproxy.io/?${encodeURIComponent(pagedUrl)}`;
+                        const response = await fetch(backupUrl);
+                        rawContent = await response.text();
+                    }
+
+                    rawContent = decodeProxyContent(rawContent);
+                    const newItems = parseXMLToItems(rawContent, sourceName);
+
+                    if (newItems.length === 0) break; // Empty page
+
+                    let newUniqueItemsCount = 0;
+                    let oldestItemDateOnPage = null;
+
+                    for (let item of newItems) {
+                        // Track dates to check if we can stop
+                        if (item.date) {
+                            const d = new Date(item.date);
+                            if (!oldestItemDateOnPage || d < oldestItemDateOnPage) {
+                                oldestItemDateOnPage = d;
+                            }
+                        }
+
+                        // Deduplication
+                        const uniqueKey = item.link || item.title;
+                        if (!seenLinks.has(uniqueKey)) {
+                            seenLinks.add(uniqueKey);
+                            allItems.push(item);
+                            newUniqueItemsCount++;
+                        }
+                    }
+
+                    // Stop condition 1: Server returned duplicate page
+                    if (page > 1 && newUniqueItemsCount === 0) {
+                        console.log(`Stop fetching ${sourceName}: Page ${page} was duplicate.`);
+                        break; 
+                    }
+
+                    // Stop condition 2: Oldest item on this page is older than our cutoff
+                    // RSS is usually sorted new->old. If we hit items older than cutoff, next page will be even older.
+                    if (oldestItemDateOnPage && oldestItemDateOnPage < cutoffDate) {
+                        console.log(`Stop fetching ${sourceName}: Page ${page} reached data older than limit.`);
+                        break;
+                    }
+
+                } catch (err) {
+                    console.warn(`Stopped fetching ${sourceName} at page ${page}:`, err);
+                    break;
+                }
+            }
+            return allItems;
+        }
+
+        // --- BATCH LOADING ---
         async function fetchAllPresets() {
             const select = document.getElementById('presetSelect');
-            const sidebarList = document.getElementById('sidebar-list');
             const loadAllBtn = document.getElementById('loadAllBtn');
             const searchInput = document.getElementById('searchInput');
+            const deepScan = document.getElementById('deepScanToggle').checked;
+            const days = document.getElementById('daysFilter').value;
 
-            // Collect all non-empty preset values
             const feedsToLoad = [];
             for(let i=0; i<select.options.length; i++) {
                 if(select.options[i].value) {
@@ -389,18 +543,16 @@
 
             if(feedsToLoad.length === 0) return alert("No presets defined.");
 
-            // UI Reset
             loadAllBtn.disabled = true;
             searchInput.value = '';
             currentFeedItems = [];
             selectedIndex = -1;
-            document.getElementById('content-area').innerHTML = '<div class="msg-box">Loading all feeds...</div>';
+            document.getElementById('content-area').innerHTML = `<div class="msg-box">Loading all feeds...<br>Timeframe: ${days} Days</div>`;
             
-            updateSidebarStatus(`Fetching ${feedsToLoad.length} feeds...<br>This may take a few seconds.`);
+            updateSidebarStatus(`Initializing batch fetch...`, `Targets: ${feedsToLoad.length}`);
 
             try {
-                // Fetch in parallel (Promise.all)
-                const promises = feedsToLoad.map(feed => fetchSingleFeedText(feed.url, feed.name));
+                const promises = feedsToLoad.map(feed => fetchFeedWithPagination(feed.url, feed.name, deepScan));
                 const results = await Promise.allSettled(promises);
 
                 let aggregatedItems = [];
@@ -411,31 +563,27 @@
                         aggregatedItems = aggregatedItems.concat(res.value);
                     } else {
                         failCount++;
-                        console.warn(res.reason);
                     }
                 });
 
-                if (aggregatedItems.length === 0) {
-                    throw new Error("Failed to load any feeds.");
-                }
+                if (aggregatedItems.length === 0) throw new Error("Failed to load any feeds.");
 
-                // Sort by Date (Newest first)
-                aggregatedItems.sort((a, b) => {
-                    return new Date(b.date) - new Date(a.date);
-                });
+                const originalCount = aggregatedItems.length;
+                aggregatedItems = filterItemsByDate(aggregatedItems);
+                const filteredCount = originalCount - aggregatedItems.length;
 
-                // Assign new IDs for the UI
+                aggregatedItems.sort((a, b) => new Date(b.date) - new Date(a.date));
                 aggregatedItems.forEach((item, index) => item.id = index);
 
                 currentFeedItems = aggregatedItems;
                 renderSidebar(currentFeedItems);
                 
-                // Show summary in content area if there were failures
-                if(failCount > 0) {
-                    document.getElementById('content-area').innerHTML = `<div class="msg-box">Loaded ${aggregatedItems.length} articles.<br>(${failCount} feeds failed to load)</div>`;
-                } else {
-                    document.getElementById('content-area').innerHTML = `<div class="msg-box">Loaded ${aggregatedItems.length} articles from all sources.</div>`;
-                }
+                let msg = `<div class="msg-box">Loaded ${aggregatedItems.length} articles from last ${days} days.`;
+                if(filteredCount > 0) msg += `<br><span style="font-size:0.8em; color:#888;">(${filteredCount} older articles hidden)</span>`;
+                if(failCount > 0) msg += `<br><span style="color:#e74c3c;">(${failCount} feeds failed)</span>`;
+                msg += `</div>`;
+                
+                document.getElementById('content-area').innerHTML = msg;
 
             } catch (err) {
                 renderError(err);
@@ -444,38 +592,74 @@
             }
         }
 
-        // Helper to fetch a single feed (returns Promise resolving to Array of items)
-        async function fetchSingleFeedText(url, sourceName) {
-            let rawContent = "";
-            
-            // Attempt 1: AllOrigins
-            try {
-                const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s timeout for batch
-                
-                const response = await fetch(proxyUrl, { signal: controller.signal });
-                clearTimeout(timeoutId);
-                
-                if(!response.ok) throw new Error("Proxy error");
-                const data = await response.json();
-                rawContent = data.contents;
-            } catch(e) {
-                // Attempt 2: CORSProxy.io
-                console.log(`Retrying ${sourceName} via backup...`);
-                const backupUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
-                const response = await fetch(backupUrl);
-                rawContent = await response.text();
-            }
+        // --- SINGLE LOADING ---
+        async function fetchFeed() {
+            const url = document.getElementById('feedUrl').value.trim();
+            const btn = document.getElementById('loadBtn');
+            const searchInput = document.getElementById('searchInput');
+            const deepScan = document.getElementById('deepScanToggle').checked;
+            const days = document.getElementById('daysFilter').value;
 
-            rawContent = decodeProxyContent(rawContent);
-            return parseXMLToItems(rawContent, sourceName);
+            if (!url) return alert("Please enter a URL");
+
+            btn.disabled = true;
+            searchInput.value = '';
+            document.getElementById('content-area').innerHTML = '<div class="msg-box">Waiting for selection...</div>';
+            currentFeedItems = [];
+            selectedIndex = -1;
+
+            updateSidebarStatus("Loading feed...", "Page 1");
+
+            try {
+                const select = document.getElementById('presetSelect');
+                let sourceName = "Feed";
+                for(let opt of select.options) {
+                    if(opt.value === url) sourceName = opt.text;
+                }
+
+                let items = await fetchFeedWithPagination(url, sourceName, deepScan);
+                
+                const beforeFilter = items.length;
+                items = filterItemsByDate(items);
+                const hidden = beforeFilter - items.length;
+
+                items.forEach((item, index) => item.id = index);
+                
+                currentFeedItems = items;
+                renderSidebar(currentFeedItems);
+                
+                if(currentFeedItems.length === 0) {
+                    document.getElementById('content-area').innerHTML = `<div class="msg-box">Fetched ${beforeFilter} items.<br>0 items found in the last ${days} days.</div>`;
+                }
+            } catch (err) {
+                renderError(err);
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        // --- PARSING HELPERS ---
+        function decodeProxyContent(content) {
+            if (!content) return "";
+            const trimmed = content.trim();
+            if (trimmed.startsWith("data:")) {
+                const commaIndex = trimmed.indexOf(",");
+                if (commaIndex !== -1) {
+                    try {
+                        const base64Data = trimmed.substring(commaIndex + 1);
+                        const binaryString = atob(base64Data);
+                        const bytes = new Uint8Array(binaryString.length);
+                        for (let i = 0; i < binaryString.length; i++) bytes[i] = binaryString.charCodeAt(i);
+                        return new TextDecoder('utf-8').decode(bytes);
+                    } catch (e) { return content; }
+                }
+            }
+            return content;
         }
 
         function parseXMLToItems(xmlString, sourceName) {
             const parser = new DOMParser();
             const xmlDoc = parser.parseFromString(xmlString, "text/xml");
-            
             if (xmlDoc.querySelector('parsererror')) throw new Error("XML Parse Error");
 
             let items = [];
@@ -490,91 +674,27 @@
             return items;
         }
 
-        // --- SINGLE FEED LOADING (Maintains original functionality) ---
-        async function fetchFeed() {
-            const url = document.getElementById('feedUrl').value.trim();
-            const btn = document.getElementById('loadBtn');
-            const searchInput = document.getElementById('searchInput');
-
-            if (!url) return alert("Please enter a URL");
-
-            btn.disabled = true;
-            searchInput.value = '';
-            document.getElementById('content-area').innerHTML = '<div class="msg-box">Waiting for selection...</div>';
-            currentFeedItems = [];
-            selectedIndex = -1;
-
-            updateSidebarStatus("Loading single feed...");
-
-            try {
-                const select = document.getElementById('presetSelect');
-                let sourceName = "Feed";
-                // Try to find name in select, otherwise generic
-                for(let opt of select.options) {
-                    if(opt.value === url) sourceName = opt.text;
-                }
-
-                const items = await fetchSingleFeedText(url, sourceName);
-                
-                // Assign IDs
-                items.forEach((item, index) => item.id = index);
-                
-                currentFeedItems = items;
-                renderSidebar(currentFeedItems);
-            } catch (err) {
-                renderError(err);
-            } finally {
-                btn.disabled = false;
-            }
-        }
-
-        function decodeProxyContent(content) {
-            if (!content) return "";
-            const trimmed = content.trim();
-            if (trimmed.startsWith("data:")) {
-                const commaIndex = trimmed.indexOf(",");
-                if (commaIndex !== -1) {
-                    const base64Data = trimmed.substring(commaIndex + 1);
-                    try {
-                        const binaryString = atob(base64Data);
-                        const bytes = new Uint8Array(binaryString.length);
-                        for (let i = 0; i < binaryString.length; i++) {
-                            bytes[i] = binaryString.charCodeAt(i);
-                        }
-                        const decoder = new TextDecoder('utf-8');
-                        return decoder.decode(bytes);
-                    } catch (e) { return content; }
-                }
-            }
-            return content;
-        }
-
         function parseRSSItem(node, index, sourceName) {
             return {
-                id: index, // Will be overwritten in batch
+                id: index,
                 source: sourceName,
                 title: getChildText(node, "title"),
                 link: getChildText(node, "link"),
                 date: getChildText(node, "pubDate") || getChildText(node, "dc:date"),
-                content: getChildText(node, "content:encoded") || 
-                         getChildText(node, "description") || 
-                         "No content."
+                content: getChildText(node, "content:encoded") || getChildText(node, "description") || "No content."
             };
         }
 
         function parseAtomEntry(node, index, sourceName) {
             const linkNode = node.querySelector("link");
             const link = linkNode ? linkNode.getAttribute("href") : "";
-
             return {
                 id: index,
                 source: sourceName,
                 title: getChildText(node, "title"),
                 link: link,
                 date: getChildText(node, "updated") || getChildText(node, "published"),
-                content: getChildText(node, "content") || 
-                         getChildText(node, "summary") || 
-                         "No content."
+                content: getChildText(node, "content") || getChildText(node, "summary") || "No content."
             };
         }
 
@@ -592,12 +712,13 @@
             return node ? node.textContent.trim() : "";
         }
 
+        // --- UI HELPERS ---
         function renderSidebar(items) {
             const sidebarList = document.getElementById('sidebar-list');
             sidebarList.innerHTML = "";
 
             if (items.length === 0) {
-                sidebarList.innerHTML = '<div class="msg-box" style="padding:15px; font-size:0.9em;">No matching items found.</div>';
+                sidebarList.innerHTML = '<div class="msg-box" style="padding:15px; font-size:0.9em;">No items found.</div>';
                 return;
             }
 
@@ -605,10 +726,7 @@
                 const div = document.createElement('div');
                 div.className = 'feed-item';
                 div.onclick = () => showContent(item.id);
-
-                if (selectedIndex === item.id) {
-                    div.classList.add('active');
-                }
+                if (selectedIndex === item.id) div.classList.add('active');
 
                 let dateStr = item.date;
                 try { if (dateStr) dateStr = new Date(dateStr).toLocaleDateString(); } catch(e) {}
@@ -626,12 +744,10 @@
 
         function showContent(originalId) {
             selectedIndex = originalId;
-            const item = currentFeedItems.find(i => i.id === originalId); // Robust lookup
+            const item = currentFeedItems.find(i => i.id === originalId);
             if(!item) return;
 
             const contentArea = document.getElementById('content-area');
-            
-            // Re-render sidebar to update highlighting
             filterFeed();
 
             contentArea.innerHTML = `
@@ -645,10 +761,9 @@
                         ${item.content}
                     </div>
                     <div style="margin-top:40px; padding-top:20px; border-top:1px solid #ddd;">
-                        <p style="margin-bottom:10px; color:#555;"><strong>Option 1:</strong> View original site inside this window:</p>
+                        <p style="margin-bottom:10px; color:#555;"><strong>Option 1:</strong> View original site:</p>
                         <button class="btn-preview-pri" onclick="openPreview('${item.link}')">Preview Website</button>
-                        
-                        <p style="margin-top:20px; margin-bottom:10px; color:#555;"><strong>Option 2:</strong> Open in new browser tab:</p>
+                        <p style="margin-top:20px; margin-bottom:10px; color:#555;"><strong>Option 2:</strong> Open in new tab:</p>
                         <a href="${item.link}" target="_blank" style="color:var(--accent-color); text-decoration:underline;">Open in New Tab &rarr;</a>
                     </div>
                 </div>
@@ -656,7 +771,7 @@
         }
 
         function openPreview(url) {
-            if(!url) return alert("No URL available for this item.");
+            if(!url) return alert("No URL available.");
             const contentArea = document.getElementById('content-area');
             contentArea.innerHTML = `
                 <div class="preview-container">
@@ -666,9 +781,6 @@
                             <button class="btn-preview-sec" onclick="closePreview()">Close Preview</button>
                             <a href="${url}" target="_blank" style="margin-left:10px; color:var(--accent-color);">Open in New Tab</a>
                         </div>
-                    </div>
-                    <div class="preview-warning">
-                        <strong>Note:</strong> If the area below is blank, the website (${new URL(url).hostname}) blocks embedded frames. Please use "Open in New Tab".
                     </div>
                     <iframe src="${url}" class="web-frame" title="Article Preview"></iframe>
                 </div>
