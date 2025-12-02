@@ -1,7 +1,7 @@
 # My Standalone Web application <BR>
 ---
 * [Main Menu](https://v3ct0r-8890.github.io/selfweb/index.html) <BR>
-Individule Tools list
+# Individule Tools list
 * [INS Database (Offline)](https://v3ct0r-8890.github.io/selfweb/INS-offlineDB.html) <BR>
 * [Meal suggest Tool](https://v3ct0r-8890.github.io/selfweb/Meal%20suggest%20tool-standalone.html) <BR>
 * [EnergyConsumption-standalone](https://v3ct0r-8890.github.io/selfweb/EnergyConsumption-standalone.html) <BR>
