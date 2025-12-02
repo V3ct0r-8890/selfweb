@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Loan and Investment Calculator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Use Inter font for a modern look -->
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f7f7f7;
+        }
+        /* Custom scrollbar for table container */
+        .table-container::-webkit-scrollbar {
+            height: 8px;
+        }
+        .table-container::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 10px;
+        }
+        /* Fixed-width font for numerical alignment */
+        .font-mono-numbers {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+        }
+    </style>
+</head>
+<body class="p-4 sm:p-8 flex justify-center items-start min-h-screen">
+
+    <div class="w-full max-w-5xl bg-white shadow-xl rounded-2xl p-6 md:p-10 border border-gray-100">
+
+        <!-- Title and Description -->
+        <h1 class="text-3xl font-extrabold text-gray-900 mb-2 border-b pb-2">Financial Mode Calculator</h1>
+        <p class="text-gray-500 mb-6">Switch between Loan Amortization and Investment Growth modes.</p>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- INPUTS COLUMN -->
+            <div class="lg:col-span-1 space-y-6">
+
+                <!-- Mode Selector (Investment is now first and default) -->
+                <div class="bg-indigo-50 p-3 rounded-lg shadow-inner">
+                    <label class="block text-sm font-bold text-indigo-700 mb-2">Calculation Mode</label>
+                    <div class="flex space-x-4">
+                        <label class="flex items-center space-x-2 cursor-pointer">
+                            <input type="radio" name="calcMode" value="investment" id="modeInvestment" checked class="form-radio text-indigo-600 focus:ring-indigo-500" onchange="updateUI()">
+                            <span class="text-gray-700 font-medium">Investment</span>
+                        </label>
+                        <label class="flex items-center space-x-2 cursor-pointer">
+                            <input type="radio" name="calcMode" value="loan" id="modeLoan" class="form-radio text-indigo-600 focus:ring-indigo-500" onchange="updateUI()">
+                            <span class="text-gray-700 font-medium">Loan</span>
+                        </label>
+                    </div>
+                </div>
+                
+                <!-- Currency Selector -->
+                <div>
+                    <label for="currency" class="block text-sm font-medium text-gray-700 mb-1">Currency</label>
+                    <select id="currency" class="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 transition duration-150 ease-in-out bg-white">
+                        <option value="THB" selected>Thai Baht (THB)</option>
+                        <option value="USD">US Dollar (USD)</option>
+                        <option value="EUR">Euro (EUR)</option>
+                        <option value="JPY">Japanese Yen (JPY)</option>
+                        <option value="GBP">British Pound (GBP)</option>
+                        <option value="AUD">Australian Dollar (AUD)</option>
+                        <option value="CAD">Canadian Dollar (CAD)</option>
+                    </select>
+                </div>
+
+                <!-- Principal Input (Dynamic Label) - Default updated to 1,000,000 -->
+                <div>
+                    <label for="principal" id="labelPrincipal" class="block text-sm font-medium text-gray-700 mb-1">Loan Principal Amount</label>
+                    <input type="number" id="principal" value="1000000" min="0" class="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500" placeholder="1,000,000">
+                </div>
+
+                <!-- Rate Input - Default updated to 0 -->
+                <div>
+                    <label for="rate" class="block text-sm font-medium text-gray-700 mb-1">Annual Interest Rate (%)</label>
+                    <input type="number" id="rate" value="0" min="0" step="0.01" class="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500" placeholder="0.0">
+                </div>
+
+                <!-- Duration Input -->
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label for="duration" class="block text-sm font-medium text-gray-700 mb-1">Duration</label>
+                        <input type="number" id="duration" value="5" min="1" class="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500" placeholder="5">
+                    </div>
+                    <div>
+                        <label for="durationUnit" class="block text-sm font-medium text-gray-700 mb-1">Unit</label>
+                        <select id="durationUnit" class="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 transition duration-150 ease-in-out bg-white">
+                            <option value="years">Years</option>
+                            <option value="months">Months</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Monthly Contribution/Payment Input (Dynamic Label) -->
+                <div id="divMonthlyPayment" style="display: none;">
+                    <label for="monthlyPayment" id="labelMonthlyPayment" class="block text-sm font-medium text-gray-700 mb-1">Monthly Contribution (Optional)</label>
+                    <input type="number" id="monthlyPayment" value="0" min="0" class="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500" placeholder="0">
+                    <p id="hintMonthlyPayment" class="text-xs text-gray-500 mt-1">
+                        Add a fixed amount contributed monthly.
+                    </p>
+                </div>
+                
+                <!-- Interest Type Selector (Dynamic Options) -->
+                <div>
+                    <label for="interestType" class="block text-sm font-medium text-gray-700 mb-1">Type of Rate</label>
+                    <select id="interestType" class="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 transition duration-150 ease-in-out bg-white">
+                        <!-- Options updated dynamically -->
+                    </select>
+                </div>
+
+                <button id="calculateBtn" class="w-full py-3 bg-indigo-600 text-white font-semibold rounded-lg shadow-lg hover:bg-indigo-700 transition duration-300 ease-in-out transform hover:scale-[1.01]">
+                    Calculate Schedule
+                </button>
+
+            </div>
+
+            <!-- OUTPUTS & SUMMARY COLUMN -->
+            <div class="lg:col-span-2 space-y-6">
+                <!-- Summary Card -->
+                <div class="bg-gray-50 border border-gray-200 p-5 rounded-xl shadow-md">
+                    <h2 class="text-xl font-bold text-gray-800 mb-3" id="summaryTitle">Loan Summary</h2>
+                    <div id="summaryContent" class="space-y-2">
+                        <!-- Summary items injected here -->
+                    </div>
+                </div>
+
+                <!-- Monthly Schedule Table -->
+                <div class="table-container w-full overflow-x-auto border border-gray-200 rounded-xl shadow-md">
+                    <h2 class="text-lg font-bold text-gray-800 p-4 bg-gray-100 rounded-t-xl sticky top-0 z-10" id="tableTitle">Amortization Schedule</h2>
+                    <table id="resultsTable" class="min-w-full divide-y divide-gray-200">
+                        <thead id="tableHead" class="bg-gray-50 sticky top-[3rem] z-10">
+                            <!-- Headers injected here -->
+                        </thead>
+                        <!-- Added font-mono-numbers class for fixed-width numerical alignment -->
+                        <tbody id="tableBody" class="bg-white divide-y divide-gray-200 font-mono-numbers">
+                            <tr><td colspan="6" class="p-4 text-center text-gray-500 italic">Select mode and enter parameters to see the schedule.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Set up the required global variables for the Firebase environment
+        const __app_id = typeof globalThis.__app_id !== 'undefined' ? globalThis.__app_id : 'default-app-id';
+        const __firebase_config = typeof globalThis.__firebase_config !== 'undefined' ? globalThis.__firebase_config : '{}';
+        const __initial_auth_token = typeof globalThis.__initial_auth_token !== 'undefined' ? globalThis.__initial_auth_token : '';
+        
+        // --- Formatting and Utility Functions ---
+
+        function getLocale(currencyCode) {
+            switch (currencyCode) {
+                case 'THB': return 'th-TH';
+                case 'JPY': return 'ja-JP';
+                case 'EUR': return 'fr-FR'; 
+                default: return 'en-US';
+            }
+        }
+
+        function formatNumber(amount, currencyCode) {
+            if (typeof amount !== 'number' || isNaN(amount)) {
+                return '0.00';
+            }
+            const options = {
+                style: 'decimal',
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+            };
+            return new Intl.NumberFormat(getLocale(currencyCode), options).format(amount);
+        }
+
+        /**
+         * Calculates the fixed monthly payment for a compounding (amortized) loan.
+         */
+        function calculateMonthlyPayment(principal, monthlyRate, totalMonths) {
+            if (monthlyRate === 0) {
+                return principal / totalMonths;
+            }
+            const ratePowerN = Math.pow(1 + monthlyRate, totalMonths);
+            const payment = principal * (monthlyRate * ratePowerN) / (ratePowerN - 1);
+            return payment;
+        }
+
+        // --- Core Calculation Logic ---
+
+        function calculateLoan(principal, annualRate, totalMonths, monthlyRate, interestType) {
+            let remainingBalance = principal;
+            let totalInterest = 0;
+            let monthlyPayment = 0;
+            let schedule = [];
+
+            if (interestType === 'compound') {
+                // Effective Rate (Amortized Loan): Calculate a fixed payment
+                monthlyPayment = calculateMonthlyPayment(principal, monthlyRate, totalMonths);
+            } else {
+                // Fixed Rate (Simple Interest Loan): Constant total interest
+                const totalSimpleInterest = principal * (annualRate / 100) * (totalMonths / 12);
+                monthlyPayment = (principal + totalSimpleInterest) / totalMonths;
+            }
+
+            for (let month = 1; month <= totalMonths; month++) {
+                if (remainingBalance <= 0) break;
+
+                const startingBalance = remainingBalance;
+                let interestPaid = 0;
+                let principalPaid = 0;
+                let payment = monthlyPayment;
+
+                if (interestType === 'compound') {
+                    interestPaid = startingBalance * monthlyRate;
+                    principalPaid = payment - interestPaid;
+                    
+                    // Final month adjustment for amortization
+                    if (month === totalMonths || principalPaid > startingBalance) {
+                        principalPaid = startingBalance;
+                        payment = startingBalance + interestPaid;
+                    }
+                } else {
+                    // Simple Interest Calculation
+                    const totalSimpleInterest = principal * (annualRate / 100) * (totalMonths / 12);
+                    const fixedMonthlyInterest = totalSimpleInterest / totalMonths;
+                    
+                    interestPaid = fixedMonthlyInterest;
+                    principalPaid = monthlyPayment - interestPaid;
+
+                    // Final month adjustment
+                    if (month === totalMonths) {
+                        principalPaid = startingBalance;
+                        interestPaid = startingBalance * monthlyRate; // Use compounding logic for final interest portion
+                        payment = principalPaid + interestPaid;
+                    }
+                }
+
+                remainingBalance -= principalPaid;
+                totalInterest += interestPaid;
+                remainingBalance = Math.max(0, remainingBalance);
+
+                schedule.push({
+                    month: month,
+                    startingBalance: startingBalance,
+                    payment: payment,
+                    interestPaid: interestPaid,
+                    principalPaid: principalPaid,
+                    endingBalance: remainingBalance,
+                });
+            }
+            
+            return {
+                type: 'loan',
+                schedule: schedule,
+                totalMonths: totalMonths,
+                totalInterest: totalInterest,
+                finalAmount: principal + totalInterest,
+                initialAmount: principal,
+                monthlyFixedAmount: monthlyPayment,
+                totalPrincipal: principal,
+            };
+        }
+
+        function calculateInvestment(principal, annualRate, totalMonths, monthlyRate, interestType, monthlyContribution) {
+            let currentBalance = principal;
+            let totalInterest = 0;
+            let totalContributions = monthlyContribution * totalMonths;
+            let schedule = [];
+
+            for (let month = 1; month <= totalMonths; month++) {
+                const startingBalance = currentBalance;
+                let interestEarned = 0;
+                
+                if (interestType === 'compound') {
+                    // Effective Rate (Compounding)
+                    interestEarned = startingBalance * monthlyRate;
+                } else {
+                    // Fixed Rate (Simple Interest on Initial Principal)
+                    interestEarned = principal * monthlyRate;
+                }
+
+                currentBalance += interestEarned;
+                currentBalance += monthlyContribution;
+                totalInterest += interestEarned;
+
+                schedule.push({
+                    month: month,
+                    startingBalance: startingBalance,
+                    interestEarned: interestEarned,
+                    contribution: monthlyContribution,
+                    endingBalance: currentBalance,
+                });
+            }
+
+            return {
+                type: 'investment',
+                schedule: schedule,
+                totalMonths: totalMonths,
+                totalInterest: totalInterest,
+                finalAmount: currentBalance,
+                initialAmount: principal,
+                monthlyFixedAmount: monthlyContribution,
+                totalContributions: totalContributions,
+            };
+        }
+        
+        // --- UI and Rendering ---
+        
+        function getInputs() {
+            const mode = document.querySelector('input[name="calcMode"]:checked').value;
+            const principal = parseFloat(document.getElementById('principal').value) || 0;
+            const annualRate = parseFloat(document.getElementById('rate').value) || 0;
+            const duration = parseInt(document.getElementById('duration').value) || 0;
+            const durationUnit = document.getElementById('durationUnit').value;
+            const monthlyContribution = parseFloat(document.getElementById('monthlyPayment').value) || 0;
+            const interestType = document.getElementById('interestType').value;
+
+            // Note: We allow principal to be 0 for investment mode if there's a monthly contribution,
+            // but for a loan, principal must be > 0. For simplicity, we check the common case.
+            if ((mode === 'loan' && principal <= 0) || annualRate < 0 || duration <= 0) {
+                return null;
+            }
+
+            const totalMonths = durationUnit === 'years' ? duration * 12 : duration;
+            const monthlyRate = (annualRate / 100) / 12;
+
+            return { mode, principal, annualRate, totalMonths, monthlyRate, interestType, monthlyContribution };
+        }
+
+        function calculateResults() {
+            const inputs = getInputs();
+            if (!inputs) {
+                return { schedule: [], totalMonths: 0, initialAmount: 0 };
+            }
+
+            const { mode, principal, annualRate, totalMonths, monthlyRate, interestType, monthlyContribution } = inputs;
+            
+            if (mode === 'loan') {
+                return calculateLoan(principal, annualRate, totalMonths, monthlyRate, interestType);
+            } else {
+                return calculateInvestment(principal, annualRate, totalMonths, monthlyRate, interestType, monthlyContribution);
+            }
+        }
+
+        function renderResults() {
+            const results = calculateResults();
+            const mode = document.querySelector('input[name="calcMode"]:checked').value;
+            const tableBody = document.getElementById('tableBody');
+            const currencyCode = document.getElementById('currency').value;
+            const inputs = getInputs();
+            
+            tableBody.innerHTML = '';
+            
+            // Render Head
+            renderTableHeader(mode);
+            
+            if (!inputs || results.schedule.length === 0) {
+                tableBody.innerHTML = `<tr><td colspan="${mode === 'loan' ? 6 : 5}" class="p-4 text-center text-gray-500 italic">Please enter valid positive values for ${mode === 'loan' ? 'Principal and Duration.' : 'Initial Investment and Duration.'}</td></tr>`;
+                renderSummary(mode, null, currencyCode);
+                return;
+            }
+            
+            // Render Body
+            if (mode === 'loan') {
+                results.schedule.forEach(row => {
+                    const newRow = tableBody.insertRow();
+                    newRow.className = 'hover:bg-blue-50 transition duration-100 text-right text-sm';
+
+                    newRow.insertCell(0).textContent = row.month;
+                    newRow.cells[0].className = 'text-left font-medium';
+                    
+                    newRow.insertCell(1).textContent = formatNumber(row.startingBalance, currencyCode);
+                    newRow.insertCell(2).textContent = formatNumber(row.payment, currencyCode);
+                    
+                    const interestCell = newRow.insertCell(3);
+                    interestCell.textContent = formatNumber(row.interestPaid, currencyCode);
+                    interestCell.className = 'text-right text-red-600'; 
+
+                    newRow.insertCell(4).textContent = formatNumber(row.principalPaid, currencyCode);
+
+                    const endBalanceCell = newRow.insertCell(5);
+                    endBalanceCell.textContent = formatNumber(row.endingBalance, currencyCode);
+                    endBalanceCell.className = row.endingBalance <= 0.01 ? 'text-right font-bold text-green-700' : 'text-right';
+                });
+            } else { // investment mode
+                results.schedule.forEach(row => {
+                    const newRow = tableBody.insertRow();
+                    newRow.className = 'hover:bg-blue-50 transition duration-100 text-right text-sm';
+
+                    newRow.insertCell(0).textContent = row.month;
+                    newRow.cells[0].className = 'text-left font-medium';
+                    
+                    newRow.insertCell(1).textContent = formatNumber(row.startingBalance, currencyCode);
+                    
+                    const contributionCell = newRow.insertCell(2);
+                    contributionCell.textContent = formatNumber(row.contribution, currencyCode);
+                    contributionCell.className = 'text-right text-indigo-600';
+                    
+                    const interestCell = newRow.insertCell(3);
+                    interestCell.textContent = formatNumber(row.interestEarned, currencyCode);
+                    interestCell.className = 'text-right text-green-600';
+                    
+                    newRow.insertCell(4).textContent = formatNumber(row.endingBalance, currencyCode);
+                });
+            }
+
+            // Render Summary
+            renderSummary(mode, results, currencyCode);
+        }
+
+        function renderTableHeader(mode) {
+            const tableHead = document.getElementById('tableHead');
+            const headers = mode === 'loan'
+                ? [
+                    'Month', 'Start Balance', 'Payment', 'Interest Paid', 'Principal Paid', 'End Balance'
+                  ]
+                : [
+                    'Month', 'Start Balance', 'Contribution', 'Interest Earned', 'End Balance'
+                  ];
+
+            tableHead.innerHTML = `
+                <tr>
+                    ${headers.map((h, index) => `
+                        <th class="px-3 py-3 ${index === 0 ? 'text-left' : 'text-right'} text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            ${h}
+                        </th>
+                    `).join('')}
+                </tr>
+            `;
+            document.getElementById('tableTitle').textContent = mode === 'loan' ? 'Amortization Schedule' : 'Growth Schedule';
+        }
+
+        function renderSummary(mode, results, currencyCode) {
+            const summaryContent = document.getElementById('summaryContent');
+            document.getElementById('summaryTitle').textContent = mode === 'loan' ? 'Loan Summary' : 'Investment Summary';
+            
+            if (!results) {
+                summaryContent.innerHTML = '<p class="text-center text-gray-500 italic">Awaiting calculation input.</p>';
+                return;
+            }
+
+            let html = '';
+            
+            // Shared duration
+            html += `<p class="text-sm text-gray-600 flex justify-between">
+                        <span>Duration:</span>
+                        <span id="summaryDuration" class="font-semibold text-gray-800">${results.totalMonths} Months</span>
+                    </p>`;
+            
+            if (mode === 'loan') {
+                html += `
+                    <p class="text-sm text-gray-600 flex justify-between">
+                        <span>Loan Principal:</span>
+                        <span class="font-semibold text-gray-800">${formatNumber(results.initialAmount, currencyCode)}</span>
+                    </p>
+                    <p class="text-sm text-gray-600 flex justify-between border-y py-2 my-2">
+                        <span class="font-bold text-base">Monthly Payment:</span>
+                        <span class="font-extrabold text-indigo-700 text-xl">${formatNumber(results.monthlyFixedAmount, currencyCode)}</span>
+                    </p>
+                    <p class="text-sm text-gray-600 flex justify-between">
+                        <span class="font-bold text-base">Total Interest Paid:</span>
+                        <span class="font-extrabold text-red-600 text-lg">${formatNumber(results.totalInterest, currencyCode)}</span>
+                    </p>
+                    <p class="text-sm text-gray-600 flex justify-between">
+                        <span class="font-bold text-base">Total Repayment:</span>
+                        <span class="font-extrabold text-green-600 text-xl">${formatNumber(results.finalAmount, currencyCode)}</span>
+                    </p>
+                `;
+            } else { // investment mode
+                html += `
+                    <p class="text-sm text-gray-600 flex justify-between">
+                        <span>Initial Investment:</span>
+                        <span class="font-semibold text-gray-800">${formatNumber(results.initialAmount, currencyCode)}</span>
+                    </p>
+                    <p class="text-sm text-gray-600 flex justify-between">
+                        <span>Total Contributions:</span>
+                        <span class="font-semibold text-gray-800">${formatNumber(results.totalContributions, currencyCode)}</span>
+                    </p>
+                    <p class="text-sm text-gray-600 flex justify-between border-y py-2 my-2">
+                        <span class="font-bold text-base">Total Interest Earned:</span>
+                        <span class="font-extrabold text-green-600 text-lg">${formatNumber(results.totalInterest, currencyCode)}</span>
+                    </p>
+                    <p class="text-sm text-gray-600 flex justify-between">
+                        <span class="font-bold text-base">Final Balance:</span>
+                        <span class="font-extrabold text-indigo-600 text-xl">${formatNumber(results.finalAmount, currencyCode)}</span>
+                    </p>
+                `;
+            }
+            summaryContent.innerHTML = html;
+        }
+
+        function updateUI() {
+            const mode = document.querySelector('input[name="calcMode"]:checked').value;
+            
+            // Dynamic labels for Principal
+            const labelPrincipal = document.getElementById('labelPrincipal');
+            labelPrincipal.textContent = mode === 'loan' ? 'Loan Principal Amount' : 'Initial Investment Amount';
+            
+            // Dynamic Monthly Payment/Contribution field
+            const divMonthlyPayment = document.getElementById('divMonthlyPayment');
+            const labelMonthlyPayment = document.getElementById('labelMonthlyPayment');
+            const hintMonthlyPayment = document.getElementById('hintMonthlyPayment');
+            
+            if (mode === 'loan') {
+                divMonthlyPayment.style.display = 'none';
+                document.getElementById('monthlyPayment').value = 0; // Clear value if hidden
+            } else {
+                divMonthlyPayment.style.display = 'block';
+                labelMonthlyPayment.textContent = 'Monthly Contribution (Optional)';
+                hintMonthlyPayment.textContent = 'Add a fixed amount contributed monthly.';
+            }
+
+            // Dynamic Interest Type options
+            const interestTypeSelect = document.getElementById('interestType');
+            interestTypeSelect.innerHTML = ''; // Clear existing options
+            
+            if (mode === 'loan') {
+                interestTypeSelect.add(new Option('Effective Rate (Amortized)', 'compound'));
+                interestTypeSelect.add(new Option('Fixed Rate (Simple Interest)', 'simple'));
+                // Set default to Fixed Rate (simple) as requested
+                interestTypeSelect.value = 'simple'; 
+            } else {
+                interestTypeSelect.add(new Option('Effective Rate (Compounding)', 'compound'));
+                interestTypeSelect.add(new Option('Fixed Rate (Simple Interest)', 'simple'));
+                // Default to Compounding for investment mode
+                interestTypeSelect.value = 'compound'; 
+            }
+
+            // Recalculate and re-render the whole UI
+            renderResults();
+        }
+
+        // --- Event Listeners and Initialization ---
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const inputs = [
+                'principal', 'rate', 'duration', 'currency', 'durationUnit', 'interestType', 'monthlyPayment'
+            ];
+            
+            // Attach the renderResults function to all calculation-triggering inputs
+            inputs.forEach(id => {
+                const element = document.getElementById(id);
+                if (element) {
+                    element.addEventListener('input', renderResults);
+                }
+            });
+
+            document.getElementById('calculateBtn').addEventListener('click', renderResults);
+            
+            // Initial UI setup and calculation (defaults to Investment mode with new defaults)
+            updateUI(); 
+        });
+
+    </script>
+</body>
+</html>
