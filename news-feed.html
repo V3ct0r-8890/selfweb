@@ -1,6 +1,6 @@
 <!-- 
-  Program: Robust Single File RSS Feed Reader (v15)
-  Created: 2025-12-03 01:15:00 (Bangkok Time)
+  Program: Robust Single File RSS Feed Reader (v16)
+  Created: 2025-12-03 01:30:00 (Bangkok Time)
   
   Specifications:
   1. Input: URL field + Presets + Days Selector (1-15).
@@ -15,18 +15,21 @@
      - Auto-saves feeds to LocalStorage.
      - Loads cached data instantly on open.
      - performs background refresh of all presets automatically.
+  10. STORAGE MONITOR & INSTANT FILTER:
+     - Shows LocalStorage usage (KB).
+     - Dropdown filters cached data instead of re-fetching network if data exists.
   
   Usage:
   - Open app: Old data appears instantly.
-  - Watch status: "Background updating..." indicates fresh data is being pulled.
-  - The list refreshes automatically when done.
+  - Check Sidebar Footer: See storage usage.
+  - Select Dropdown: Instantly filters view without reloading (if data exists).
 -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RSS Feed Reader v15 (Cached & Background)</title>
+    <title>RSS Feed Reader v16 (Storage Monitor)</title>
     <style>
         :root {
             --bg-color: #f4f4f9;
@@ -157,6 +160,15 @@
         #sidebar-list {
             flex: 1;
             overflow-y: auto;
+        }
+
+        #sidebar-footer {
+            padding: 10px;
+            background-color: #f1f1f1;
+            border-top: 1px solid #ddd;
+            font-size: 0.8em;
+            color: #666;
+            text-align: center;
         }
 
         .feed-item {
@@ -352,7 +364,7 @@
 
     <header>
         <select id="presetSelect" onchange="usePreset()">
-            <option value="">-- Single Feed --</option>
+            <option value="">-- Show All Feeds --</option>
             <option value="http://www.blognone.com/atom.xml">Blognone</option>
             <option value="https://droidsans.com/feed/">DroidSans</option>
             <option value="http://www.macrumors.com/macrumors.xml">MacRumors</option>
@@ -385,11 +397,14 @@
                     Initializing...
                 </div>
             </div>
+            <div id="sidebar-footer">
+                Storage: Calculating...
+            </div>
         </aside>
         
         <main id="content-area">
             <div class="msg-box">
-                <h2>RSS Reader v15</h2>
+                <h2>RSS Reader v16</h2>
                 <p><strong>Cached Mode Active</strong></p>
                 <p>Data loads from storage instantly.<br>Background refresh runs automatically.</p>
             </div>
@@ -399,8 +414,11 @@
     <div id="toast" class="toast">Message</div>
 
     <script>
-        let currentFeedItems = [];
+        // GLOBAL STATE
+        let allCachedItems = [];  // Stores the complete dataset (Show All)
+        let currentFeedItems = []; // Stores the currently visible dataset (Filtered)
         let selectedIndex = -1;
+        
         const MAX_PAGES = 10;
         const STORAGE_KEY = "rss_reader_cache_v1";
 
@@ -425,9 +443,10 @@
                 });
                 localStorage.setItem(STORAGE_KEY, payload);
                 console.log("Saved to cache.");
+                updateStorageDisplay();
             } catch (e) {
                 console.warn("Storage quota exceeded or error:", e);
-                // Simple strategy: if full, clear and try saving just the top 50 items
+                // Simple strategy: trim oldest
                 if (items.length > 50) {
                      try {
                         const reduced = items.slice(0, 50);
@@ -435,6 +454,7 @@
                             timestamp: Date.now(),
                             items: reduced
                         }));
+                        updateStorageDisplay();
                      } catch(retryErr) {}
                 }
             }
@@ -446,10 +466,10 @@
                 if (stored) {
                     const data = JSON.parse(stored);
                     if (data.items && Array.isArray(data.items)) {
+                        allCachedItems = data.items;
                         currentFeedItems = data.items;
-                        // Filter logic might apply if user changed days setting, 
-                        // but generally we render what we have first
                         renderSidebar(currentFeedItems);
+                        updateStorageDisplay();
                         showToast(`Restored ${currentFeedItems.length} items from cache.`);
                         return true;
                     }
@@ -457,7 +477,28 @@
             } catch (e) {
                 console.error("Cache load error:", e);
             }
+            updateStorageDisplay(); // Show 0kb if empty
             return false;
+        }
+
+        function updateStorageDisplay() {
+            const footer = document.getElementById('sidebar-footer');
+            if(!footer) return;
+
+            let size = 0;
+            if (localStorage.getItem(STORAGE_KEY)) {
+                size = localStorage.getItem(STORAGE_KEY).length;
+            }
+            
+            // Approximate size in KB
+            const kb = (size / 1024).toFixed(1);
+            const count = allCachedItems.length;
+            
+            footer.innerHTML = `Items: ${count} | Storage: ${kb} KB / 5000 KB (Approx)`;
+            
+            // Warn if getting close to limit (5MB is typical browser limit)
+            if (kb > 4500) footer.style.color = "red";
+            else footer.style.color = "#666";
         }
 
         function showToast(msg) {
@@ -467,22 +508,72 @@
             setTimeout(() => t.style.opacity = 0, 3000);
         }
 
-        // --- EXISTING LOGIC ---
+        // --- DROPDOWN & FILTER LOGIC ---
 
         function usePreset() {
             const select = document.getElementById('presetSelect');
             const input = document.getElementById('feedUrl');
-            if(select.value) {
-                input.value = select.value;
+            const selectedName = select.options[select.selectedIndex].text;
+            const selectedVal = select.value;
+
+            if(selectedVal) {
+                input.value = selectedVal;
+                // TRY LOCAL FILTER FIRST
+                if (filterBySource(selectedName)) {
+                    // Data found in cache, no reload needed
+                    return; 
+                } 
+                // Not found in cache, must fetch
                 fetchFeed();
+            } else {
+                // "Show All Feeds" selected
+                resetToAll();
             }
+        }
+
+        // Returns true if filtering was successful (data existed), false if fetch needed
+        function filterBySource(sourceName) {
+            if (allCachedItems.length === 0) return false;
+
+            const filtered = allCachedItems.filter(i => i.source === sourceName);
+            
+            if (filtered.length > 0) {
+                currentFeedItems = filtered;
+                renderSidebar(currentFeedItems);
+                updateSidebarStatus(`Showing cached: ${sourceName}`, `Items: ${filtered.length}`);
+                
+                // Clear search box since we changed context
+                document.getElementById('searchInput').value = '';
+                
+                // Update Main Area
+                document.getElementById('content-area').innerHTML = `
+                    <div class="msg-box">
+                        <h2>${sourceName}</h2>
+                        <p>Showing ${filtered.length} cached articles.</p>
+                        <p style="font-size:0.9em; color:#888;">(No network request made)</p>
+                    </div>`;
+                return true;
+            }
+            return false;
+        }
+
+        function resetToAll() {
+            currentFeedItems = allCachedItems;
+            renderSidebar(currentFeedItems);
+            document.getElementById('searchInput').value = '';
+            document.getElementById('feedUrl').value = ''; // clear url input logic
+            clearSidebarStatus();
+            document.getElementById('content-area').innerHTML = `
+                <div class="msg-box">
+                    <h2>All Feeds</h2>
+                    <p>Showing timeline from all cached sources.</p>
+                </div>`;
         }
 
         function updateSidebarStatus(msg, submsg="") {
             const sidebarList = document.getElementById('sidebar-list');
             // If we have items (background mode), prepend the loader instead of clearing
             if (currentFeedItems.length > 0) {
-                // If there's already a status bar, update it. If not, create it.
                 let statusBar = document.getElementById('status-bar-overlay');
                 if (!statusBar) {
                     statusBar = document.createElement('div');
@@ -496,7 +587,6 @@
                 }
                 statusBar.innerHTML = `<div class="mini-loader"></div> ${msg} <span style='color:#888'>${submsg}</span>`;
             } else {
-                // Empty state, full loader
                 sidebarList.innerHTML = `
                     <div class="loader"></div>
                     <div style="text-align:center" class="status-text">${msg}</div>
@@ -621,8 +711,9 @@
             const deepScan = document.getElementById('deepScanToggle').checked;
             const days = document.getElementById('daysFilter').value;
 
+            // Collect Sources (Skipping the first "Show All" option)
             const feedsToLoad = [];
-            for(let i=0; i<select.options.length; i++) {
+            for(let i=1; i<select.options.length; i++) {
                 if(select.options[i].value) {
                     feedsToLoad.push({
                         url: select.options[i].value,
@@ -631,12 +722,10 @@
                 }
             }
 
-            if(feedsToLoad.length === 0) return alert("No presets defined.");
+            if(feedsToLoad.length === 0) return;
 
             loadAllBtn.disabled = true;
             if (!isBackground) {
-                // If user clicked manually, clear UI for fresh feel, or keep it? 
-                // Let's clear search but maybe keep items visible until new ones arrive.
                 searchInput.value = '';
                 document.getElementById('content-area').innerHTML = `<div class="msg-box">Refreshing all feeds...<br>Days: ${days}</div>`;
             }
@@ -669,9 +758,10 @@
                 aggregatedItems.sort((a, b) => new Date(b.date) - new Date(a.date));
                 aggregatedItems.forEach((item, index) => item.id = index);
 
-                // Update State & Storage
+                // Update Master State & Storage
+                allCachedItems = aggregatedItems;
                 currentFeedItems = aggregatedItems;
-                saveToCache(currentFeedItems);
+                saveToCache(allCachedItems);
                 
                 // Clear the status bar overlay
                 clearSidebarStatus();
@@ -679,6 +769,9 @@
                 // Render
                 renderSidebar(currentFeedItems);
                 
+                // Reset Dropdown to "Show All" since we just loaded all
+                select.selectedIndex = 0;
+
                 if (!isBackground) {
                     let msg = `<div class="msg-box">Loaded ${aggregatedItems.length} articles from last ${days} days.`;
                     if(filteredCount > 0) msg += `<br><span style="font-size:0.8em; color:#888;">(${filteredCount} older articles hidden)</span>`;
@@ -711,10 +804,10 @@
             searchInput.value = '';
             document.getElementById('content-area').innerHTML = '<div class="msg-box">Waiting for selection...</div>';
             
-            // Clear current items for single load to avoid confusion
+            // Note: Single fetch does NOT update global 'allCachedItems' to preserve the main "Batch" state
             currentFeedItems = [];
             selectedIndex = -1;
-            renderSidebar([]); // Clear sidebar
+            renderSidebar([]); 
 
             updateSidebarStatus("Loading feed...", "Page 1");
 
@@ -733,9 +826,6 @@
                 items.forEach((item, index) => item.id = index);
                 
                 currentFeedItems = items;
-                // Note: We don't save single manual loads to the main "Preset Cache" to avoid overwriting the full set. 
-                // Or we could, but let's keep cache for the "All Presets" set usually.
-                // For simplicity here, we won't overwrite cache on single load.
 
                 clearSidebarStatus();
                 renderSidebar(currentFeedItems);
