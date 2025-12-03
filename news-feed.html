@@ -1,35 +1,32 @@
 <!-- 
-  Program: Robust Single File RSS Feed Reader (v18)
-  Created: 2025-12-03 07:45:00 (Bangkok Time)
+  Program: Robust Single File RSS Feed Reader (v21)
+  Created: 2025-12-03 09:40:00 (Bangkok Time)
   
   Specifications:
   1. Input: URL field + Presets + Days Selector (1-15).
   2. Logic: Uses Multi-Proxy Fallback (AllOrigins -> CORSProxy.io).
   3. Parsing: Handles RSS 2.0, Atom, RDF + Base64 decoding.
-  4. Frame View: Preview website in iframe.
+  4. Frame View: Preview website in Overlay Modal.
   5. Search: Filter feed items by title or content in real-time.
   6. Batch Load: "Load All" feature.
-  7. Date Logic (Smart Fallback): 
-     - Tries user selected days (e.g., 3 days).
-     - If NO items found, automatically falls back to last 3 Months (90 days) for that specific feed.
-  8. Pagination: Smart deep scan (up to 10 pages).
-  9. STORAGE & BACKGROUND: 
-     - Auto-saves feeds to LocalStorage.
-     - Loads cached data instantly on open.
-     - Performs background refresh of all presets automatically.
-  10. STORAGE MONITOR: Shows LocalStorage usage (KB).
+  7. Date Logic: Smart Fallback (User Days -> 90 Days).
+  8. Pagination: Smart deep scan.
+  9. STORAGE: Auto-saves, cached load.
+  10. LAYOUT: 
+      - REVISED: Action buttons moved to a horizontal TOOLBAR on TOP of the content.
+      - Removed the wide right-side column to save space.
   
   Usage:
   - Select "Days" (default 3).
-  - Feeds with recent news show 3 days of history.
-  - Feeds with no recent news show up to 90 days of history automatically.
+  - Select an article.
+  - Buttons are now located at the top right of the article pane.
 -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RSS Feed Reader v18 (Smart Fallback)</title>
+    <title>RSS Feed Reader v21 (Top Toolbar)</title>
     <style>
         :root {
             --bg-color: #f4f4f9;
@@ -130,7 +127,7 @@
             height: calc(100vh - 60px); 
         }
 
-        /* --- Sidebar --- */
+        /* --- Sidebar (Left List) --- */
         #sidebar {
             width: 380px;
             background-color: var(--sidebar-bg);
@@ -138,6 +135,7 @@
             display: flex;
             flex-direction: column;
             overflow: hidden; 
+            flex-shrink: 0;
         }
 
         #sidebar-search {
@@ -210,7 +208,7 @@
             line-height: 1.4;
         }
 
-        /* --- Content Area --- */
+        /* --- Content Area (Right Main) --- */
         #content-area {
             flex: 1;
             background-color: white;
@@ -220,10 +218,47 @@
             flex-direction: column;
         }
 
+        /* Redesigned Article View: Column Layout with Top Toolbar */
         .article-view {
-            padding: 40px;
-            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
             height: 100%;
+            width: 100%;
+            overflow: hidden;
+        }
+
+        /* New Top Toolbar */
+        .article-toolbar {
+            width: 100%;
+            padding: 10px 20px;
+            background-color: #fcfcfc;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            flex-direction: row;
+            gap: 10px;
+            align-items: center;
+            justify-content: space-between; /* Space out items */
+            flex-shrink: 0;
+            box-sizing: border-box;
+        }
+
+        .toolbar-info {
+            font-size: 0.85em;
+            color: #666;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .toolbar-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .article-scroll-area {
+            flex: 1;
+            padding: 30px 40px;
+            overflow-y: auto;
         }
 
         .article-view h1 {
@@ -248,11 +283,77 @@
             margin: 10px 0;
         }
 
-        /* Frame Preview Mode */
+        /* Compact Toolbar Buttons */
+        .btn-action-primary {
+            width: auto;
+            padding: 6px 12px;
+            background-color: var(--accent-color);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            transition: background 0.2s;
+        }
+        .btn-action-primary:hover { background-color: #c0392b; }
+
+        .btn-action-secondary {
+            width: auto;
+            padding: 5px 12px;
+            background-color: white;
+            color: #333;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            cursor: pointer;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            box-sizing: border-box;
+            transition: background 0.2s;
+        }
+        .btn-action-secondary:hover { background-color: #f1f1f1; }
+
+        /* --- Frame Preview (Modal) --- */
         .preview-container {
             display: flex;
             flex-direction: column;
             height: 100%;
+        }
+
+        /* --- OVERLAY (POP-OUT) STYLES --- */
+        .overlay-backdrop {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background-color: rgba(0,0,0,0.7);
+            z-index: 2000;
+            display: none; /* Hidden by default */
+            justify-content: center;
+            align-items: center;
+            backdrop-filter: blur(2px);
+        }
+        
+        .overlay-content {
+            background-color: white;
+            width: 90%;
+            height: 90%;
+            display: flex;
+            flex-direction: column;
+            border-radius: 8px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            overflow: hidden;
+            animation: slideUp 0.3s ease-out;
+        }
+
+        @keyframes slideUp {
+            from { transform: translateY(20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
         }
 
         .preview-header {
@@ -279,15 +380,16 @@
             background-color: #fff;
         }
 
-        .btn-preview-sec {
+        .btn-close-overlay {
             background-color: #95a5a6;
             margin-left: 10px;
+            padding: 8px 15px;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
         }
-        .btn-preview-sec:hover { background-color: #7f8c8d; }
-
-        .btn-preview-pri {
-            background-color: var(--accent-color);
-        }
+        .btn-close-overlay:hover { background-color: #7f8c8d; }
 
         /* --- Utility --- */
         .msg-box {
@@ -355,6 +457,7 @@
             opacity: 0;
             transition: opacity 0.5s;
             pointer-events: none;
+            z-index: 3000;
         }
 
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
@@ -407,11 +510,28 @@
         
         <main id="content-area">
             <div class="msg-box">
-                <h2>RSS Reader v18</h2>
+                <h2>RSS Reader v21</h2>
                 <p><strong>Cached Mode Active</strong></p>
                 <p>Data loads from storage instantly.<br>Background refresh runs automatically.</p>
             </div>
         </main>
+    </div>
+    
+    <!-- OVERLAY CONTAINER -->
+    <div id="webPreviewOverlay" class="overlay-backdrop" onclick="if(event.target===this) closeOverlay()">
+        <div class="overlay-content">
+            <div class="preview-header">
+                <strong>Website Preview</strong>
+                <div>
+                    <a id="overlayExternalLink" href="#" target="_blank" style="margin-right:15px; color:var(--accent-color); text-decoration:none; font-size:0.9em;">Open in New Tab ↗</a>
+                    <button class="btn-close-overlay" onclick="closeOverlay()">Close</button>
+                </div>
+            </div>
+            <div class="preview-warning">
+                <strong>Note:</strong> If the area below is blank, the website blocks embedded frames. Please use "Open in New Tab".
+            </div>
+            <iframe id="overlayFrame" src="about:blank" class="web-frame" title="Article Preview"></iframe>
+        </div>
     </div>
     
     <div id="toast" class="toast">Message</div>
@@ -428,36 +548,26 @@
 
         // --- INITIALIZATION ---
         window.onload = function() {
-            // 1. Load from cache immediately
             loadFromCache();
-
-            // 2. Start background fetch (slight delay to let UI render)
             setTimeout(() => {
                 showToast("Starting background update...");
-                fetchAllPresets(true); // true = isBackground
+                fetchAllPresets(true);
             }, 1000);
         };
 
         // --- STORAGE LOGIC ---
         function saveToCache(items) {
             try {
-                const payload = JSON.stringify({
-                    timestamp: Date.now(),
-                    items: items
-                });
+                const payload = JSON.stringify({ timestamp: Date.now(), items: items });
                 localStorage.setItem(STORAGE_KEY, payload);
                 console.log("Saved to cache.");
                 updateStorageDisplay();
             } catch (e) {
                 console.warn("Storage quota exceeded or error:", e);
-                // Simple strategy: trim oldest
                 if (items.length > 50) {
                      try {
                         const reduced = items.slice(0, 50);
-                        localStorage.setItem(STORAGE_KEY, JSON.stringify({
-                            timestamp: Date.now(),
-                            items: reduced
-                        }));
+                        localStorage.setItem(STORAGE_KEY, JSON.stringify({ timestamp: Date.now(), items: reduced }));
                         updateStorageDisplay();
                      } catch(retryErr) {}
                 }
@@ -481,28 +591,19 @@
             } catch (e) {
                 console.error("Cache load error:", e);
             }
-            updateStorageDisplay(); // Show 0kb if empty
+            updateStorageDisplay();
             return false;
         }
 
         function updateStorageDisplay() {
             const footer = document.getElementById('sidebar-footer');
             if(!footer) return;
-
             let size = 0;
-            if (localStorage.getItem(STORAGE_KEY)) {
-                size = localStorage.getItem(STORAGE_KEY).length;
-            }
-            
-            // Approximate size in KB
+            if (localStorage.getItem(STORAGE_KEY)) size = localStorage.getItem(STORAGE_KEY).length;
             const kb = (size / 1024).toFixed(1);
             const count = allCachedItems.length;
-            
             footer.innerHTML = `Items: ${count} | Storage: ${kb} KB / 5000 KB (Approx)`;
-            
-            // Warn if getting close to limit (5MB is typical browser limit)
-            if (kb > 4500) footer.style.color = "red";
-            else footer.style.color = "#666";
+            if (kb > 4500) footer.style.color = "red"; else footer.style.color = "#666";
         }
 
         function showToast(msg) {
@@ -512,8 +613,7 @@
             setTimeout(() => t.style.opacity = 0, 3000);
         }
 
-        // --- DROPDOWN & FILTER LOGIC ---
-
+        // --- FILTER LOGIC ---
         function usePreset() {
             const select = document.getElementById('presetSelect');
             const input = document.getElementById('feedUrl');
@@ -522,15 +622,9 @@
 
             if(selectedVal) {
                 input.value = selectedVal;
-                // TRY LOCAL FILTER FIRST
-                if (filterBySource(selectedName)) {
-                    // Data found in cache, no reload needed
-                    return; 
-                } 
-                // Not found in cache, must fetch
+                if (filterBySource(selectedName)) return; 
                 fetchFeed();
             } else {
-                // "Show All Feeds" selected
                 resetToAll();
             }
         }
@@ -598,10 +692,7 @@
 
         function filterFeed() {
             const term = document.getElementById('searchInput').value.toLowerCase();
-            if (!term) {
-                renderSidebar(currentFeedItems);
-                return;
-            }
+            if (!term) { renderSidebar(currentFeedItems); return; }
             const filtered = currentFeedItems.filter(item => {
                 const titleMatch = item.title && item.title.toLowerCase().includes(term);
                 const sourceMatch = item.source && item.source.toLowerCase().includes(term);
@@ -611,7 +702,7 @@
             renderSidebar(filtered);
         }
 
-        // --- DATE CALCULATIONS ---
+        // --- FETCH & DATE LOGIC ---
         function calculateCutoff(days) {
             const now = new Date(); 
             const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -620,27 +711,17 @@
             return cutoff;
         }
 
-        // --- CORE FETCHING ---
-        
-        // Wrapper that handles the "Smart Fallback" logic
         async function fetchSmartFeed(url, name, deepScan, userDays) {
-            // 1. Try User Preference (e.g., 3 days)
             const shortCutoff = calculateCutoff(userDays);
             let items = await fetchFeedWithPagination(url, name, deepScan, shortCutoff);
             let filtered = filterItemsByDate(items, shortCutoff);
 
-            // 2. If no items found, retry with 3 Months Fallback
             if (filtered.length === 0) {
                 console.log(`${name}: No items in last ${userDays} days. Trying fallback (90 days).`);
-                
-                // We notify UI silently if in batch mode, or here if single
-                // (Note: UI updates mostly handled by caller or generic status)
-                
                 const longCutoff = calculateCutoff(FALLBACK_DAYS);
                 items = await fetchFeedWithPagination(url, name, deepScan, longCutoff);
                 filtered = filterItemsByDate(items, longCutoff);
             }
-            
             return filtered;
         }
 
@@ -665,13 +746,11 @@
                     const separator = url.includes('?') ? '&' : '?';
                     pagedUrl = `${url}${separator}paged=${page}`;
                 }
-
                 try {
                     if(page > 1) {
                          const progressDiv = document.querySelector('.loading-progress');
                          if(progressDiv) progressDiv.innerText = `Fetching page ${page}/${pageCount}...`;
                     }
-
                     let rawContent = "";
                     try {
                         const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(pagedUrl)}&_t=${Date.now()}`;
@@ -684,15 +763,12 @@
                         const response = await fetch(backupUrl);
                         rawContent = await response.text();
                     }
-
                     rawContent = decodeProxyContent(rawContent);
                     const newItems = parseXMLToItems(rawContent, sourceName);
-
                     if (newItems.length === 0) break; 
-
+                    
                     let newUniqueItemsCount = 0;
                     let oldestItemDateOnPage = null;
-
                     for (let item of newItems) {
                         if (item.date) {
                             const d = new Date(item.date);
@@ -705,10 +781,8 @@
                             newUniqueItemsCount++;
                         }
                     }
-
                     if (page > 1 && newUniqueItemsCount === 0) break; 
                     if (oldestItemDateOnPage && oldestItemDateOnPage < cutoffDate) break;
-
                 } catch (err) {
                     console.warn(`Stopped fetching ${sourceName} at page ${page}:`, err);
                     break;
@@ -717,7 +791,6 @@
             return allItems;
         }
 
-        // --- BATCH LOADING ---
         async function fetchAllPresets(isBackground = false) {
             const select = document.getElementById('presetSelect');
             const loadAllBtn = document.getElementById('loadAllBtn');
@@ -726,60 +799,45 @@
             const daysInput = document.getElementById('daysFilter');
             const days = parseInt(daysInput.value) || 3;
 
-            // Collect Sources (Skipping the first "Show All" option)
             const feedsToLoad = [];
             for(let i=1; i<select.options.length; i++) {
                 if(select.options[i].value) {
-                    feedsToLoad.push({
-                        url: select.options[i].value,
-                        name: select.options[i].text
-                    });
+                    feedsToLoad.push({ url: select.options[i].value, name: select.options[i].text });
                 }
             }
-
             if(feedsToLoad.length === 0) return;
 
             loadAllBtn.disabled = true;
             if (!isBackground) {
                 searchInput.value = '';
-                document.getElementById('content-area').innerHTML = `<div class="msg-box">Refreshing all feeds...<br>Days: ${days} (Fallback: 90)</div>`;
+                document.getElementById('content-area').innerHTML = `<div class="msg-box">Refreshing all feeds...<br>Days: ${days}</div>`;
             }
             
             updateSidebarStatus(isBackground ? "Background updating..." : "Fetching feeds...", `Targets: ${feedsToLoad.length}`);
 
             try {
-                // Map to Smart Fetcher
                 const promises = feedsToLoad.map(feed => fetchSmartFeed(feed.url, feed.name, deepScan, days));
                 const results = await Promise.allSettled(promises);
-
                 let aggregatedItems = [];
                 let failCount = 0;
-
                 results.forEach(res => {
-                    if (res.status === 'fulfilled') {
-                        aggregatedItems = aggregatedItems.concat(res.value);
-                    } else {
-                        failCount++;
-                    }
+                    if (res.status === 'fulfilled') aggregatedItems = aggregatedItems.concat(res.value);
+                    else failCount++;
                 });
 
                 if (aggregatedItems.length === 0) {
                     if (!isBackground) throw new Error("Failed to load any feeds.");
                 }
 
-                // Sort & Index
                 aggregatedItems.sort((a, b) => new Date(b.date) - new Date(a.date));
                 aggregatedItems.forEach((item, index) => item.id = index);
 
-                // Update Master State & Storage
                 allCachedItems = aggregatedItems;
                 currentFeedItems = aggregatedItems;
                 saveToCache(allCachedItems);
                 
                 clearSidebarStatus();
                 renderSidebar(currentFeedItems);
-                
-                // Reset Dropdown
                 select.selectedIndex = 0;
 
                 if (!isBackground) {
@@ -791,17 +849,14 @@
                 } else {
                     showToast("Background update complete.");
                 }
-
             } catch (err) {
                 if (!isBackground) renderError(err);
-                console.error(err);
                 clearSidebarStatus();
             } finally {
                 loadAllBtn.disabled = false;
             }
         }
 
-        // --- SINGLE FETCH ---
         async function fetchFeed() {
             const url = document.getElementById('feedUrl').value.trim();
             const btn = document.getElementById('loadBtn');
@@ -810,15 +865,12 @@
             const days = parseInt(document.getElementById('daysFilter').value) || 3;
 
             if (!url) return alert("Please enter a URL");
-
             btn.disabled = true;
             searchInput.value = '';
             document.getElementById('content-area').innerHTML = '<div class="msg-box">Waiting for selection...</div>';
-            
             currentFeedItems = [];
             selectedIndex = -1;
             renderSidebar([]); 
-
             updateSidebarStatus("Loading feed...", "Page 1");
 
             try {
@@ -827,19 +879,14 @@
                 for(let opt of select.options) {
                     if(opt.value === url) sourceName = opt.text;
                 }
-
-                // Use Smart Fetch Logic
                 let items = await fetchSmartFeed(url, sourceName, deepScan, days);
-                
                 items.forEach((item, index) => item.id = index);
-                
                 currentFeedItems = items;
-
                 clearSidebarStatus();
                 renderSidebar(currentFeedItems);
                 
                 if(currentFeedItems.length === 0) {
-                    document.getElementById('content-area').innerHTML = `<div class="msg-box">0 items found.<br>(Checked ${days} days and 3 months fallback).</div>`;
+                    document.getElementById('content-area').innerHTML = `<div class="msg-box">0 items found.</div>`;
                 } else {
                      document.getElementById('content-area').innerHTML = `<div class="msg-box">Loaded ${items.length} items.</div>`;
                 }
@@ -919,8 +966,6 @@
 
         function renderSidebar(items) {
             const sidebarList = document.getElementById('sidebar-list');
-            
-            // If overlay exists, preserve it.
             const overlay = document.getElementById('status-bar-overlay');
             sidebarList.innerHTML = "";
             if (overlay) sidebarList.appendChild(overlay);
@@ -958,47 +1003,52 @@
             const item = currentFeedItems.find(i => i.id === originalId);
             if(!item) return;
             const contentArea = document.getElementById('content-area');
-            filterFeed(); // Update active class
+            filterFeed(); 
             contentArea.innerHTML = `
                 <div class="article-view">
-                    <span style="background:#eee; padding:2px 8px; border-radius:4px; font-size:0.8em; color:#555;">${item.source}</span>
-                    <h1>${item.title}</h1>
-                    <div style="color:#666; margin-bottom:20px;">
-                        ${item.date ? new Date(item.date).toLocaleString() : ''}
-                    </div>
-                    <div class="article-content">
-                        ${item.content}
-                    </div>
-                    <div style="margin-top:40px; padding-top:20px; border-top:1px solid #ddd;">
-                        <p style="margin-bottom:10px; color:#555;"><strong>Option 1:</strong> View original site:</p>
-                        <button class="btn-preview-pri" onclick="openPreview('${item.link}')">Preview Website</button>
-                        <p style="margin-top:20px; margin-bottom:10px; color:#555;"><strong>Option 2:</strong> Open in new tab:</p>
-                        <a href="${item.link}" target="_blank" style="color:var(--accent-color); text-decoration:underline;">Open in New Tab &rarr;</a>
-                    </div>
-                </div>
-            `;
-        }
-
-        function openPreview(url) {
-            if(!url) return alert("No URL available.");
-            const contentArea = document.getElementById('content-area');
-            contentArea.innerHTML = `
-                <div class="preview-container">
-                    <div class="preview-header">
-                        <strong>Previewing:</strong>
-                        <div>
-                            <button class="btn-preview-sec" onclick="closePreview()">Close Preview</button>
-                            <a href="${url}" target="_blank" style="margin-left:10px; color:var(--accent-color);">Open in New Tab</a>
+                    <div class="article-toolbar">
+                        <div class="toolbar-info">
+                            <span style="background:#eee; padding:2px 8px; border-radius:4px; font-size:0.9em; color:#555;">${item.source}</span>
+                            <span>${item.date ? new Date(item.date).toLocaleString() : ''}</span>
+                        </div>
+                        <div class="toolbar-actions">
+                            <button class="btn-action-primary" onclick="openPreview('${item.link}')">
+                                <span>👁️</span> Preview
+                            </button>
+                            <a href="${item.link}" target="_blank" class="btn-action-secondary">
+                                <span>🔗</span> Open Tab
+                            </a>
                         </div>
                     </div>
-                    <iframe src="${url}" class="web-frame" title="Article Preview"></iframe>
+                    <div class="article-scroll-area">
+                        <h1>${item.title}</h1>
+                        <div class="article-content">
+                            ${item.content}
+                        </div>
+                    </div>
                 </div>
             `;
         }
 
-        function closePreview() {
-            if(selectedIndex > -1) showContent(selectedIndex);
-            else document.getElementById('content-area').innerHTML = '<div class="msg-box">Select a topic.</div>';
+        // --- NEW: OVERLAY LOGIC ---
+        function openPreview(url) {
+            if(!url) return alert("No URL available.");
+            
+            const overlay = document.getElementById('webPreviewOverlay');
+            const frame = document.getElementById('overlayFrame');
+            const extLink = document.getElementById('overlayExternalLink');
+            
+            frame.src = url;
+            extLink.href = url;
+            overlay.style.display = "flex";
+        }
+
+        function closeOverlay() {
+            const overlay = document.getElementById('webPreviewOverlay');
+            const frame = document.getElementById('overlayFrame');
+            
+            overlay.style.display = "none";
+            frame.src = "about:blank"; 
         }
 
         function renderError(error) {
