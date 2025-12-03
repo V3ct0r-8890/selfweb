@@ -184,19 +184,6 @@
             <!-- OUTPUTS & SUMMARY COLUMN (2/3 width on large screens) -->
             <div class="lg:col-span-2 space-y-6">
                 
-                <!-- COPY SCHEDULE BUTTONS (Now at the top) -->
-                <div id="exportContainer" style="display: none;" class="w-full bg-gray-100 p-4 rounded-xl shadow-md border border-gray-200">
-                    <h2 class="text-lg font-bold text-gray-800 mb-3">Export Schedule</h2>
-                    <div class="flex space-x-4">
-                        <button onclick="copySchedule('tab')" class="flex-1 py-2 bg-blue-500 text-white font-semibold rounded-lg shadow-md hover:bg-blue-600 transition duration-200">
-                            Copy to Excel (Tab-Separated)
-                        </button>
-                        <button onclick="copySchedule('markdown')" class="flex-1 py-2 bg-blue-500 text-white font-semibold rounded-lg shadow-md hover:bg-blue-600 transition duration-200">
-                            Copy as Markdown
-                        </button>
-                    </div>
-                </div>
-
                 <!-- Summary Card -->
                 <div class="bg-gray-50 border border-gray-200 p-5 rounded-xl shadow-md">
                     <h2 class="text-xl font-bold text-gray-800 mb-3" id="summaryTitle">Loan Summary</h2>
@@ -220,6 +207,19 @@
                             <tr><td colspan="7" class="p-4 text-center text-gray-500 italic">Select mode and enter parameters to see the schedule.</td></tr>
                         </tbody>
                     </table>
+                </div>
+                
+                <!-- COPY SCHEDULE BUTTONS (Moved to the bottom) -->
+                <div id="exportContainer" style="display: none;" class="w-full bg-gray-100 p-4 rounded-xl shadow-md border border-gray-200">
+                    <h2 class="text-lg font-bold text-gray-800 mb-3">Export Schedule</h2>
+                    <div class="flex space-x-4">
+                        <button onclick="copySchedule('tab')" class="flex-1 py-2 bg-blue-500 text-white font-semibold rounded-lg shadow-md hover:bg-blue-600 transition duration-200">
+                            Copy to Excel (Tab-Separated)
+                        </button>
+                        <button onclick="copySchedule('markdown')" class="flex-1 py-2 bg-blue-500 text-white font-semibold rounded-lg shadow-md hover:bg-blue-600 transition duration-200">
+                            Copy as Markdown
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
