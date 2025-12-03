@@ -1,6 +1,6 @@
 <!-- 
-  Program: Robust Single File RSS Feed Reader (v21)
-  Created: 2025-12-03 09:40:00 (Bangkok Time)
+  Program: Robust Single File RSS Feed Reader (v22)
+  Created: 2025-12-03 10:00:00 (Bangkok Time)
   
   Specifications:
   1. Input: URL field + Presets + Days Selector (1-15).
@@ -8,25 +8,26 @@
   3. Parsing: Handles RSS 2.0, Atom, RDF + Base64 decoding.
   4. Frame View: Preview website in Overlay Modal.
   5. Search: Filter feed items by title or content in real-time.
-  6. Batch Load: "Load All" feature.
+  6. Batch Load: "Load All" feature (Defaults + Custom).
   7. Date Logic: Smart Fallback (User Days -> 90 Days).
   8. Pagination: Smart deep scan.
-  9. STORAGE: Auto-saves, cached load.
-  10. LAYOUT: 
-      - REVISED: Action buttons moved to a horizontal TOOLBAR on TOP of the content.
-      - Removed the wide right-side column to save space.
+  9. STORAGE: Auto-saves cached articles.
+  10. LAYOUT: Top Toolbar for article actions.
+  11. FEED MANAGEMENT:
+      - Add/Remove Custom Feeds (Saved to LocalStorage).
+      - Export/Import Custom Feeds (JSON).
+      - Dynamic dropdown generation.
   
   Usage:
-  - Select "Days" (default 3).
-  - Select an article.
-  - Buttons are now located at the top right of the article pane.
+  - Click "⚙️ Feeds" to manage custom sources.
+  - "Refresh All" includes both Default and Custom feeds.
 -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RSS Feed Reader v21 (Top Toolbar)</title>
+    <title>RSS Feed Reader v22 (Custom Feeds)</title>
     <style>
         :root {
             --bg-color: #f4f4f9;
@@ -118,6 +119,15 @@
         }
         button.secondary:hover {
             background-color: #95a5a6;
+        }
+
+        button.icon-btn {
+            background-color: transparent;
+            border: 1px solid #7f8c8d;
+            padding: 8px 10px;
+        }
+        button.icon-btn:hover {
+            background-color: rgba(255,255,255,0.1);
         }
 
         /* --- Main Layout --- */
@@ -218,7 +228,6 @@
             flex-direction: column;
         }
 
-        /* Redesigned Article View: Column Layout with Top Toolbar */
         .article-view {
             display: flex;
             flex-direction: column;
@@ -227,7 +236,6 @@
             overflow: hidden;
         }
 
-        /* New Top Toolbar */
         .article-toolbar {
             width: 100%;
             padding: 10px 20px;
@@ -237,7 +245,7 @@
             flex-direction: row;
             gap: 10px;
             align-items: center;
-            justify-content: space-between; /* Space out items */
+            justify-content: space-between;
             flex-shrink: 0;
             box-sizing: border-box;
         }
@@ -283,7 +291,6 @@
             margin: 10px 0;
         }
 
-        /* Compact Toolbar Buttons */
         .btn-action-primary {
             width: auto;
             padding: 6px 12px;
@@ -319,21 +326,14 @@
         }
         .btn-action-secondary:hover { background-color: #f1f1f1; }
 
-        /* --- Frame Preview (Modal) --- */
-        .preview-container {
-            display: flex;
-            flex-direction: column;
-            height: 100%;
-        }
-
-        /* --- OVERLAY (POP-OUT) STYLES --- */
+        /* --- MODAL STYLES (Overlay & Settings) --- */
         .overlay-backdrop {
             position: fixed;
             top: 0; left: 0;
             width: 100%; height: 100%;
             background-color: rgba(0,0,0,0.7);
             z-index: 2000;
-            display: none; /* Hidden by default */
+            display: none;
             justify-content: center;
             align-items: center;
             backdrop-filter: blur(2px);
@@ -343,6 +343,20 @@
             background-color: white;
             width: 90%;
             height: 90%;
+            display: flex;
+            flex-direction: column;
+            border-radius: 8px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            overflow: hidden;
+            animation: slideUp 0.3s ease-out;
+        }
+
+        /* Settings Modal specific size */
+        .settings-content {
+            background-color: white;
+            width: 600px;
+            max-width: 90%;
+            max-height: 85%;
             display: flex;
             flex-direction: column;
             border-radius: 8px;
@@ -390,6 +404,27 @@
             cursor: pointer;
         }
         .btn-close-overlay:hover { background-color: #7f8c8d; }
+
+        /* Settings Modal UI */
+        .settings-body {
+            padding: 20px;
+            overflow-y: auto;
+        }
+        .settings-section {
+            margin-bottom: 20px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 20px;
+        }
+        .settings-section h3 { margin-top: 0; font-size: 1.1em; color: #2c3e50; }
+        .form-row { display: flex; gap: 10px; margin-bottom: 10px; }
+        .custom-feed-list { list-style: none; padding: 0; margin: 0; }
+        .custom-feed-item {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 8px; background: #f9f9f9; border: 1px solid #eee; margin-bottom: 5px; border-radius: 4px;
+        }
+        .custom-feed-info { display: flex; flex-direction: column; font-size: 0.9em; overflow: hidden;}
+        .custom-feed-url { color: #888; font-size: 0.85em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .btn-delete { background-color: #e74c3c; padding: 4px 8px; font-size: 0.8em; margin-left: 10px; }
 
         /* --- Utility --- */
         .msg-box {
@@ -467,18 +502,9 @@
 
     <header>
         <select id="presetSelect" onchange="usePreset()">
-            <option value="">-- Show All Feeds --</option>
-            <option value="http://www.blognone.com/atom.xml">IT News: Blognone</option>
-            <option value="https://droidsans.com/feed/">IT News: DroidSans</option>
-            <option value="http://www.macrumors.com/macrumors.xml">IT News: MacRumors</option>
-            <option value="http://www.dpreview.com/feeds/news.xml">Camera News: DPReview</option>
-            <option value="https://www.bleepingcomputer.com/feed/">Security News: BleepingComputer</option>
-            <option value="https://feeds.feedburner.com/TheHackersNews">Security News: The Hacker News</option>
-            <option value="https://www.darkreading.com/rss/all.xml">Security News: Dark Reading</option>
-            <option value="https://www.cisa.gov/news.xml">Security News: CISA News</option>
-            <option value="https://brandinside.asia/feed/">Other News: Brand Inside</option>
+            <!-- Options populated by JS -->
         </select>
-        <input type="text" id="feedUrl" placeholder="Or enter RSS URL here..." value="http://www.blognone.com/atom.xml">
+        <input type="text" id="feedUrl" placeholder="Enter RSS URL here..." value="http://www.blognone.com/atom.xml">
         
         <label title="Fetch items for how many days back?">
             Days:
@@ -491,6 +517,7 @@
 
         <button id="loadBtn" onclick="fetchFeed()">Load Single</button>
         <button id="loadAllBtn" class="secondary" onclick="fetchAllPresets(false)">Refresh All</button>
+        <button onclick="openSettings()" class="icon-btn" title="Manage Feeds">⚙️ Feeds</button>
     </header>
 
     <div id="main-container">
@@ -510,14 +537,14 @@
         
         <main id="content-area">
             <div class="msg-box">
-                <h2>RSS Reader v21</h2>
+                <h2>RSS Reader v22</h2>
                 <p><strong>Cached Mode Active</strong></p>
                 <p>Data loads from storage instantly.<br>Background refresh runs automatically.</p>
             </div>
         </main>
     </div>
     
-    <!-- OVERLAY CONTAINER -->
+    <!-- WEB PREVIEW MODAL -->
     <div id="webPreviewOverlay" class="overlay-backdrop" onclick="if(event.target===this) closeOverlay()">
         <div class="overlay-content">
             <div class="preview-header">
@@ -533,41 +560,252 @@
             <iframe id="overlayFrame" src="about:blank" class="web-frame" title="Article Preview"></iframe>
         </div>
     </div>
+
+    <!-- SETTINGS MODAL -->
+    <div id="settingsModal" class="overlay-backdrop" onclick="if(event.target===this) closeSettings()">
+        <div class="settings-content">
+            <div class="preview-header">
+                <strong>Manage Custom Feeds</strong>
+                <button class="btn-close-overlay" onclick="closeSettings()">Close</button>
+            </div>
+            <div class="settings-body">
+                <!-- Add Feed -->
+                <div class="settings-section">
+                    <h3>Add New Feed</h3>
+                    <div class="form-row">
+                        <input type="text" id="newFeedName" placeholder="Feed Name (e.g. My Blog)" style="flex:1; background:#f9f9f9; color:#333; border:1px solid #ccc;">
+                        <input type="text" id="newFeedUrl" placeholder="Feed URL (http://...)" style="flex:2; background:#f9f9f9; color:#333; border:1px solid #ccc;">
+                        <button class="btn-action-primary" onclick="addCustomFeed()">Add</button>
+                    </div>
+                </div>
+
+                <!-- List Feeds -->
+                <div class="settings-section">
+                    <h3>Your Custom Feeds</h3>
+                    <ul id="customFeedList" class="custom-feed-list">
+                        <!-- Populated by JS -->
+                    </ul>
+                    <div id="noCustomFeedsMsg" style="color:#888; font-style:italic;">No custom feeds added yet.</div>
+                </div>
+
+                <!-- Import/Export -->
+                <div class="settings-section" style="border-bottom:none; margin-bottom:0;">
+                    <h3>Backup / Restore</h3>
+                    <div class="form-row">
+                        <button class="secondary" onclick="exportFeeds()">⬇️ Export JSON</button>
+                        <button class="secondary" onclick="document.getElementById('importFile').click()">⬆️ Import JSON</button>
+                        <input type="file" id="importFile" accept=".json" style="display:none" onchange="importFeeds(this)">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
     
     <div id="toast" class="toast">Message</div>
 
     <script>
         // GLOBAL STATE
-        let allCachedItems = [];  // Stores the complete dataset (Show All)
-        let currentFeedItems = []; // Stores the currently visible dataset (Filtered)
+        let allCachedItems = [];  
+        let currentFeedItems = [];
         let selectedIndex = -1;
         
         const MAX_PAGES = 10;
-        const STORAGE_KEY = "rss_reader_cache_v1";
-        const FALLBACK_DAYS = 90; // 3 Months fallback
+        const CACHE_KEY = "rss_reader_cache_v1";
+        const CUSTOM_FEEDS_KEY = "rss_reader_custom_feeds";
+        const FALLBACK_DAYS = 90; 
+
+        // DEFAULT FEEDS
+        const defaultFeeds = [
+            { name: "IT News: Blognone", url: "http://www.blognone.com/atom.xml" },
+            { name: "IT News: DroidSans", url: "https://droidsans.com/feed/" },
+            { name: "IT News: MacRumors", url: "http://www.macrumors.com/macrumors.xml" },
+            { name: "Camera News: DPReview", url: "http://www.dpreview.com/feeds/news.xml" },
+            { name: "Security News: BleepingComputer", url: "https://www.bleepingcomputer.com/feed/" },
+            { name: "Security News: The Hacker News", url: "https://feeds.feedburner.com/TheHackersNews" },
+            { name: "Security News: Dark Reading", url: "https://www.darkreading.com/rss/all.xml" },
+            { name: "Security News: CISA News", url: "https://www.cisa.gov/news.xml" },
+            { name: "Other News: Brand Inside", url: "https://brandinside.asia/feed/" }
+        ];
+
+        let customFeeds = [];
 
         // --- INITIALIZATION ---
         window.onload = function() {
-            loadFromCache();
+            loadCustomFeeds();     // Load custom sources from storage
+            initFeedDropdown();    // Build the dropdown UI
+            loadFromCache();       // Load articles from storage
+            
             setTimeout(() => {
                 showToast("Starting background update...");
                 fetchAllPresets(true);
             }, 1000);
         };
 
-        // --- STORAGE LOGIC ---
+        // --- FEED MANAGEMENT ---
+        function loadCustomFeeds() {
+            const stored = localStorage.getItem(CUSTOM_FEEDS_KEY);
+            if (stored) {
+                try {
+                    customFeeds = JSON.parse(stored);
+                } catch(e) { console.error("Error loading custom feeds", e); }
+            }
+        }
+
+        function saveCustomFeeds() {
+            localStorage.setItem(CUSTOM_FEEDS_KEY, JSON.stringify(customFeeds));
+            initFeedDropdown(); // Rebuild dropdown
+            renderSettingsList(); // Update modal list
+        }
+
+        function initFeedDropdown() {
+            const select = document.getElementById('presetSelect');
+            // Keep the "Show All" option or selected option if possible
+            const currentVal = select.value;
+            
+            select.innerHTML = '<option value="">-- Show All Feeds --</option>';
+            
+            // Add Defaults
+            defaultFeeds.forEach(feed => {
+                const opt = document.createElement('option');
+                opt.value = feed.url;
+                opt.text = feed.name;
+                select.appendChild(opt);
+            });
+
+            // Separator
+            if (customFeeds.length > 0) {
+                const sep = document.createElement('option');
+                sep.disabled = true;
+                sep.text = "--- Custom Feeds ---";
+                select.appendChild(sep);
+
+                // Add Customs
+                customFeeds.forEach(feed => {
+                    const opt = document.createElement('option');
+                    opt.value = feed.url;
+                    opt.text = feed.name;
+                    select.appendChild(opt);
+                });
+            }
+
+            // Restore selection if it still exists
+            if (currentVal) select.value = currentVal;
+        }
+
+        function openSettings() {
+            renderSettingsList();
+            document.getElementById('settingsModal').style.display = "flex";
+        }
+
+        function closeSettings() {
+            document.getElementById('settingsModal').style.display = "none";
+        }
+
+        function renderSettingsList() {
+            const list = document.getElementById('customFeedList');
+            const emptyMsg = document.getElementById('noCustomFeedsMsg');
+            list.innerHTML = '';
+
+            if (customFeeds.length === 0) {
+                emptyMsg.style.display = 'block';
+                return;
+            }
+            emptyMsg.style.display = 'none';
+
+            customFeeds.forEach((feed, index) => {
+                const li = document.createElement('li');
+                li.className = 'custom-feed-item';
+                li.innerHTML = `
+                    <div class="custom-feed-info">
+                        <strong>${feed.name}</strong>
+                        <span class="custom-feed-url" title="${feed.url}">${feed.url}</span>
+                    </div>
+                    <button class="btn-delete" onclick="deleteCustomFeed(${index})">Delete</button>
+                `;
+                list.appendChild(li);
+            });
+        }
+
+        function addCustomFeed() {
+            const nameInput = document.getElementById('newFeedName');
+            const urlInput = document.getElementById('newFeedUrl');
+            const name = nameInput.value.trim();
+            const url = urlInput.value.trim();
+
+            if (!name || !url) return alert("Please enter both Name and URL.");
+
+            customFeeds.push({ name, url });
+            saveCustomFeeds();
+            
+            nameInput.value = '';
+            urlInput.value = '';
+            showToast("Feed added!");
+        }
+
+        function deleteCustomFeed(index) {
+            if (confirm("Remove this feed?")) {
+                customFeeds.splice(index, 1);
+                saveCustomFeeds();
+            }
+        }
+
+        // --- IMPORT / EXPORT ---
+        function exportFeeds() {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(customFeeds, null, 2));
+            const downloadAnchor = document.createElement('a');
+            downloadAnchor.setAttribute("href", dataStr);
+            downloadAnchor.setAttribute("download", "rss_custom_feeds.json");
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            downloadAnchor.remove();
+        }
+
+        function importFeeds(input) {
+            const file = input.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const imported = JSON.parse(e.target.result);
+                    if (Array.isArray(imported)) {
+                        // Merge logic: avoid duplicates by URL
+                        let count = 0;
+                        imported.forEach(newFeed => {
+                            if (newFeed.name && newFeed.url) {
+                                const exists = customFeeds.some(f => f.url === newFeed.url);
+                                if (!exists) {
+                                    customFeeds.push(newFeed);
+                                    count++;
+                                }
+                            }
+                        });
+                        saveCustomFeeds();
+                        alert(`Imported ${count} new feeds.`);
+                        input.value = ''; // Reset file input
+                        renderSettingsList(); // Refresh UI if open
+                    } else {
+                        alert("Invalid JSON format. Expected an array.");
+                    }
+                } catch (err) {
+                    alert("Error parsing JSON file.");
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        // --- STORAGE LOGIC (ARTICLES) ---
         function saveToCache(items) {
             try {
                 const payload = JSON.stringify({ timestamp: Date.now(), items: items });
-                localStorage.setItem(STORAGE_KEY, payload);
-                console.log("Saved to cache.");
+                localStorage.setItem(CACHE_KEY, payload);
                 updateStorageDisplay();
             } catch (e) {
-                console.warn("Storage quota exceeded or error:", e);
+                console.warn("Storage quota exceeded", e);
                 if (items.length > 50) {
                      try {
                         const reduced = items.slice(0, 50);
-                        localStorage.setItem(STORAGE_KEY, JSON.stringify({ timestamp: Date.now(), items: reduced }));
+                        localStorage.setItem(CACHE_KEY, JSON.stringify({ timestamp: Date.now(), items: reduced }));
                         updateStorageDisplay();
                      } catch(retryErr) {}
                 }
@@ -576,7 +814,7 @@
 
         function loadFromCache() {
             try {
-                const stored = localStorage.getItem(STORAGE_KEY);
+                const stored = localStorage.getItem(CACHE_KEY);
                 if (stored) {
                     const data = JSON.parse(stored);
                     if (data.items && Array.isArray(data.items)) {
@@ -584,13 +822,11 @@
                         currentFeedItems = data.items;
                         renderSidebar(currentFeedItems);
                         updateStorageDisplay();
-                        showToast(`Restored ${currentFeedItems.length} items from cache.`);
+                        showToast(`Restored ${currentFeedItems.length} items.`);
                         return true;
                     }
                 }
-            } catch (e) {
-                console.error("Cache load error:", e);
-            }
+            } catch (e) { console.error(e); }
             updateStorageDisplay();
             return false;
         }
@@ -599,10 +835,12 @@
             const footer = document.getElementById('sidebar-footer');
             if(!footer) return;
             let size = 0;
-            if (localStorage.getItem(STORAGE_KEY)) size = localStorage.getItem(STORAGE_KEY).length;
+            if (localStorage.getItem(CACHE_KEY)) size += localStorage.getItem(CACHE_KEY).length;
+            if (localStorage.getItem(CUSTOM_FEEDS_KEY)) size += localStorage.getItem(CUSTOM_FEEDS_KEY).length;
+            
             const kb = (size / 1024).toFixed(1);
             const count = allCachedItems.length;
-            footer.innerHTML = `Items: ${count} | Storage: ${kb} KB / 5000 KB (Approx)`;
+            footer.innerHTML = `Items: ${count} | Storage: ${kb} KB / 5000 KB`;
             if (kb > 4500) footer.style.color = "red"; else footer.style.color = "#666";
         }
 
@@ -613,7 +851,7 @@
             setTimeout(() => t.style.opacity = 0, 3000);
         }
 
-        // --- FILTER LOGIC ---
+        // --- FILTER & DISPLAY LOGIC ---
         function usePreset() {
             const select = document.getElementById('presetSelect');
             const input = document.getElementById('feedUrl');
@@ -631,17 +869,18 @@
 
         function filterBySource(sourceName) {
             if (allCachedItems.length === 0) return false;
+            // Handle custom feed names potentially matching defaults? rare but possible.
+            // Just filter by name string is simplest for this scope.
             const filtered = allCachedItems.filter(i => i.source === sourceName);
             if (filtered.length > 0) {
                 currentFeedItems = filtered;
                 renderSidebar(currentFeedItems);
-                updateSidebarStatus(`Showing cached: ${sourceName}`, `Items: ${filtered.length}`);
+                updateSidebarStatus(`Cached: ${sourceName}`, `Items: ${filtered.length}`);
                 document.getElementById('searchInput').value = '';
                 document.getElementById('content-area').innerHTML = `
                     <div class="msg-box">
                         <h2>${sourceName}</h2>
                         <p>Showing ${filtered.length} cached articles.</p>
-                        <p style="font-size:0.9em; color:#888;">(No network request made)</p>
                     </div>`;
                 return true;
             }
@@ -652,7 +891,6 @@
             currentFeedItems = allCachedItems;
             renderSidebar(currentFeedItems);
             document.getElementById('searchInput').value = '';
-            document.getElementById('feedUrl').value = '';
             clearSidebarStatus();
             document.getElementById('content-area').innerHTML = `
                 <div class="msg-box">
@@ -702,7 +940,7 @@
             renderSidebar(filtered);
         }
 
-        // --- FETCH & DATE LOGIC ---
+        // --- FETCH LOGIC ---
         function calculateCutoff(days) {
             const now = new Date(); 
             const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -717,7 +955,7 @@
             let filtered = filterItemsByDate(items, shortCutoff);
 
             if (filtered.length === 0) {
-                console.log(`${name}: No items in last ${userDays} days. Trying fallback (90 days).`);
+                console.log(`${name}: No items in last ${userDays} days. Fallback 90 days.`);
                 const longCutoff = calculateCutoff(FALLBACK_DAYS);
                 items = await fetchFeedWithPagination(url, name, deepScan, longCutoff);
                 filtered = filterItemsByDate(items, longCutoff);
@@ -784,7 +1022,7 @@
                     if (page > 1 && newUniqueItemsCount === 0) break; 
                     if (oldestItemDateOnPage && oldestItemDateOnPage < cutoffDate) break;
                 } catch (err) {
-                    console.warn(`Stopped fetching ${sourceName} at page ${page}:`, err);
+                    console.warn(`Fetch stop ${sourceName} pg ${page}:`, err);
                     break;
                 }
             }
@@ -799,9 +1037,11 @@
             const daysInput = document.getElementById('daysFilter');
             const days = parseInt(daysInput.value) || 3;
 
+            // Gather all feeds (Default + Custom)
             const feedsToLoad = [];
+            // Skip the first option ("Show All Feeds")
             for(let i=1; i<select.options.length; i++) {
-                if(select.options[i].value) {
+                if(select.options[i].value && !select.options[i].disabled) {
                     feedsToLoad.push({ url: select.options[i].value, name: select.options[i].text });
                 }
             }
@@ -842,7 +1082,6 @@
 
                 if (!isBackground) {
                     let msg = `<div class="msg-box">Loaded ${aggregatedItems.length} articles.`;
-                    msg += `<br><span style="font-size:0.8em; color:#888;">(Smart Filter: ${days} days or 3 mo fallback)</span>`;
                     if(failCount > 0) msg += `<br><span style="color:#e74c3c;">(${failCount} feeds failed)</span>`;
                     msg += `</div>`;
                     document.getElementById('content-area').innerHTML = msg;
@@ -867,18 +1106,19 @@
             if (!url) return alert("Please enter a URL");
             btn.disabled = true;
             searchInput.value = '';
-            document.getElementById('content-area').innerHTML = '<div class="msg-box">Waiting for selection...</div>';
+            document.getElementById('content-area').innerHTML = '<div class="msg-box">Waiting...</div>';
             currentFeedItems = [];
-            selectedIndex = -1;
             renderSidebar([]); 
             updateSidebarStatus("Loading feed...", "Page 1");
 
             try {
                 const select = document.getElementById('presetSelect');
                 let sourceName = "Feed";
+                // Try to match name from presets
                 for(let opt of select.options) {
                     if(opt.value === url) sourceName = opt.text;
                 }
+                
                 let items = await fetchSmartFeed(url, sourceName, deepScan, days);
                 items.forEach((item, index) => item.id = index);
                 currentFeedItems = items;
@@ -897,7 +1137,7 @@
             }
         }
 
-        // --- PARSING & UI ---
+        // --- PARSING & UI (UNCHANGED logic from v21, just ensuring consistency) ---
         function decodeProxyContent(content) {
             if (!content) return "";
             const trimmed = content.trim();
@@ -1030,14 +1270,11 @@
             `;
         }
 
-        // --- NEW: OVERLAY LOGIC ---
         function openPreview(url) {
             if(!url) return alert("No URL available.");
-            
             const overlay = document.getElementById('webPreviewOverlay');
             const frame = document.getElementById('overlayFrame');
             const extLink = document.getElementById('overlayExternalLink');
-            
             frame.src = url;
             extLink.href = url;
             overlay.style.display = "flex";
@@ -1046,9 +1283,12 @@
         function closeOverlay() {
             const overlay = document.getElementById('webPreviewOverlay');
             const frame = document.getElementById('overlayFrame');
-            
             overlay.style.display = "none";
             frame.src = "about:blank"; 
+        }
+
+        function closeSettings() {
+            document.getElementById('settingsModal').style.display = "none";
         }
 
         function renderError(error) {
