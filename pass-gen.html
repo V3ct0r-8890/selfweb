@@ -1,9 +1,22 @@
 <!DOCTYPE html>
+<!-- 
+    Secure Password & Passphrase Generator (Improved)
+    Updated: 2025-12-03
+    Features:
+    - Character & Passphrase modes
+    - Leet-Speak replacements
+    - Temporary Session Caching (History List)
+    - Auto-wipe on close/reload
+    - zxcvbn Password Strength Estimation
+    - Show Cached Passwords History Modal
+-->
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Secure Password & Passphrase Generator</title>
+    <!-- Load zxcvbn for realistic password strength estimation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/zxcvbn/4.4.2/zxcvbn.js"></script>
     <style>
         /* --- Compact Style (Fixed Layout) --- */
         body {
@@ -23,7 +36,7 @@
             padding: 20px;
             border-radius: 8px;
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-            max-width: 550px; /* Slightly increased max width for better spacing */
+            max-width: 600px; /* Slightly increased for checker */
             width: 100%;
             box-sizing: border-box;
         }
@@ -74,14 +87,12 @@
             background-color: #fdfdfd;
         }
 
-        /* Grid layout for form groups: 2 columns, label on the left, input on the right */
         .form-grid {
             display: grid;
-            grid-template-columns: 1fr 1fr; /* Two main columns */
+            grid-template-columns: 1fr 1fr;
             gap: 10px 20px;
         }
 
-        /* Common options: Count field spans two columns for better look */
         .common-options .form-group:first-child {
             grid-column: 1 / span 2;
         }
@@ -91,7 +102,7 @@
             align-items: center;
             justify-content: space-between;
             margin-bottom: 0;
-            width: 100%; /* Ensure group takes full cell width */
+            width: 100%;
         }
 
         .form-group label {
@@ -99,22 +110,21 @@
             color: #555;
             white-space: nowrap;
             margin-right: 10px;
-            flex-shrink: 1; /* Allow label to shrink if necessary */
-            min-width: 60px; /* Minimum width for short labels like 'Digits' */
+            flex-shrink: 1;
+            min-width: 60px;
         }
 
         .form-group input[type="number"],
         .form-group input[type="text"] {
-            width: 60px; /* Reduced fixed width for inputs */
+            width: 60px;
             padding: 6px 8px;
             border: 1px solid #ccc;
             border-radius: 4px;
             font-size: 0.9em;
             text-align: center;
-            flex-shrink: 0; /* Prevent input from shrinking */
+            flex-shrink: 0;
         }
         
-        /* The main Leet-Speak checkbox must span both columns */
         .common-options .checkbox-group {
              grid-column: 1 / span 2;
              justify-content: flex-start;
@@ -133,24 +143,21 @@
             cursor: pointer;
         }
 
-        /* Passphrase Checkbox Layout: A 3-column sub-grid inside a grid cell */
         .passphrase-checkboxes {
-             grid-column: 1 / span 2; /* Span across both columns */
+             grid-column: 1 / span 2;
              display: grid;
-             grid-template-columns: repeat(3, 1fr); /* 3 items side-by-side */
+             grid-template-columns: repeat(3, 1fr);
              gap: 10px;
         }
         
-        /* Ensure individual checkbox items inside the passphrase-checkboxes group are centered */
         .passphrase-checkboxes .form-group {
-            justify-content: flex-start; /* Align contents to the left */
+            justify-content: flex-start;
         }
         
         .passphrase-checkboxes .form-group label {
             font-weight: normal;
         }
 
-        /* Wordlist Group: Full width container for the file input */
         .wordlist-group {
             grid-column: 1 / span 2;
             display: flex;
@@ -206,16 +213,35 @@
             resize: vertical;
         }
 
-        #copyBtn {
+        /* Action Buttons Container */
+        .action-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        #copyBtn, #showCacheBtn {
             width: auto;
             padding: 6px 12px;
-            background-color: #007bff;
-            margin-top: 10px;
+            margin-top: 0;
             display: inline-block;
         }
 
+        #copyBtn {
+            background-color: #007bff;
+        }
+        
         #copyBtn:hover {
             background-color: #0056b3;
+        }
+
+        #showCacheBtn {
+            background-color: #6c757d;
+        }
+
+        #showCacheBtn:hover {
+            background-color: #5a6268;
         }
 
         .error-message {
@@ -237,6 +263,176 @@
             text-overflow: ellipsis;
             white-space: nowrap;
             max-width: 100px;
+        }
+
+        /* --- Strength Check Styles --- */
+        .strength-section {
+            margin-top: 25px;
+            border-top: 1px solid #eee;
+            padding-top: 15px;
+        }
+
+        .strength-grid {
+            display: grid;
+            grid-template-columns: 1fr 120px;
+            gap: 15px;
+            align-items: center;
+        }
+        
+        #checkInput {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            box-sizing: border-box;
+        }
+
+        .strength-meter-container {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .strength-bar-bg {
+            height: 10px;
+            background-color: #e0e0e0;
+            border-radius: 5px;
+            overflow: hidden;
+            width: 100%;
+        }
+
+        .strength-bar-fill {
+            height: 100%;
+            width: 0%;
+            transition: width 0.3s ease, background-color 0.3s ease;
+        }
+
+        .strength-text {
+            font-size: 0.8em;
+            font-weight: bold;
+            text-align: right;
+        }
+
+        .crack-time {
+            grid-column: 1 / span 2;
+            font-size: 0.85em;
+            color: #666;
+            margin-top: 5px;
+        }
+
+        .cache-notice {
+            font-size: 0.75em;
+            color: #999;
+            text-align: center;
+            margin-top: 20px;
+            font-style: italic;
+        }
+
+        /* --- Modal (Popup) Styles --- */
+        .modal {
+            display: none; 
+            position: fixed; 
+            z-index: 1000; 
+            left: 0;
+            top: 0;
+            width: 100%; 
+            height: 100%; 
+            background-color: rgba(0,0,0,0.5); 
+            overflow: auto;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background-color: #fff;
+            margin: 5% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 90%;
+            max-width: 650px;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            position: relative;
+            max-height: 80vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 10px;
+            margin-bottom: 10px;
+        }
+
+        .modal-header h2 {
+            margin: 0;
+            font-size: 1.2em;
+            color: #333;
+        }
+
+        .close-modal {
+            color: #aaa;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            line-height: 1;
+        }
+
+        .close-modal:hover, .close-modal:focus {
+            color: black;
+            text-decoration: none;
+        }
+
+        .history-list {
+            overflow-y: auto;
+            flex-grow: 1;
+        }
+
+        .history-entry {
+            border-bottom: 1px solid #eee;
+            padding: 10px 0;
+        }
+
+        .history-entry:last-child {
+            border-bottom: none;
+        }
+
+        .history-time {
+            font-size: 0.85em;
+            color: #007bff;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .history-passwords {
+            font-family: 'Courier New', monospace;
+            background: #f9f9f9;
+            padding: 8px;
+            border-radius: 4px;
+            border: 1px solid #eee;
+            white-space: pre-wrap;
+            word-break: break-all;
+            font-size: 0.9em;
+        }
+        
+        .modal-footer {
+            margin-top: 15px;
+            border-top: 1px solid #eee;
+            padding-top: 10px;
+            text-align: right;
+        }
+        
+        .btn-close {
+            background-color: #6c757d;
+            display: inline-block;
+            width: auto;
+        }
+        .btn-close:hover {
+            background-color: #5a6268;
         }
     </style>
 </head>
@@ -338,13 +534,53 @@
 
         <div class="output-section">
             <h2>Generated Output:</h2>
-            <textarea id="outputArea" readonly rows="10"></textarea>
-            <button id="copyBtn">Copy All</button>
+            <textarea id="outputArea" readonly rows="10" placeholder="Passwords will appear here..."></textarea>
+            
+            <div class="action-buttons">
+                <button id="copyBtn">Copy All</button>
+                <button id="showCacheBtn" title="Show history of generated passwords in this session">Show Cached History</button>
+            </div>
+        </div>
+
+        <!-- STRENGTH CHECKER SECTION -->
+        <div class="strength-section">
+            <h2>Strength Check (zxcvbn)</h2>
+            <div class="strength-grid">
+                <input type="text" id="checkInput" placeholder="Paste password to check strength...">
+                
+                <div class="strength-meter-container">
+                    <div class="strength-bar-bg">
+                        <div id="strengthBarFill" class="strength-bar-fill"></div>
+                    </div>
+                    <div id="strengthText" class="strength-text">Score: 0</div>
+                </div>
+
+                <div id="crackTime" class="crack-time">Crack time (offline): -</div>
+            </div>
+        </div>
+
+        <div class="cache-notice">
+            Security Notice: Passwords are temporarily cached in browser session storage and securely erased immediately upon page reload or close.
+        </div>
+    </div>
+
+    <!-- HISTORY MODAL -->
+    <div id="historyModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Generated Password History</h2>
+                <span class="close-modal">&times;</span>
+            </div>
+            <div id="historyList" class="history-list">
+                <!-- History items will be injected here -->
+            </div>
+            <div class="modal-footer">
+                <button class="btn-close" id="closeModalBtn">Close</button>
+            </div>
         </div>
     </div>
 
     <script>
-        /* --- script.js content starts here (Identical to previous, only HTML/CSS changed) --- */
         document.addEventListener('DOMContentLoaded', () => {
             // --- DOM Elements ---
             const modeCharacterRadio = document.getElementById('modeCharacter');
@@ -371,32 +607,37 @@
             const generateBtn = document.getElementById('generateBtn');
             const outputArea = document.getElementById('outputArea');
             const copyBtn = document.getElementById('copyBtn');
+            const showCacheBtn = document.getElementById('showCacheBtn');
             const errorMessageDiv = document.getElementById('errorMessage');
+
+            // Checker Elements
+            const checkInput = document.getElementById('checkInput');
+            const strengthBarFill = document.getElementById('strengthBarFill');
+            const strengthText = document.getElementById('strengthText');
+            const crackTimeText = document.getElementById('crackTime');
+
+            // Modal Elements
+            const historyModal = document.getElementById('historyModal');
+            const historyList = document.getElementById('historyList');
+            const closeModalSpan = document.querySelector('.close-modal');
+            const closeModalBtn = document.getElementById('closeModalBtn');
+
+            // --- Cache Constants ---
+            const STORAGE_KEY = 'temp_secure_pass_cache_history';
 
             // --- Constants and Data ---
             const NON_CONFUSING_DIGITS = "23456789";
             const NON_CONFUSING_CAPITAL_LETTERS = "ABCDEFGHJKLMNPQRSTUVWXZ";
             const NON_CONFUSING_LOWER_LETTERS = "abcdefghijkmnpqrstuvwxyz";
-            const NON_CONFUSING_SPECIAL_CHARS = "!@#$-+.,"; // Restricted set
-            const REPLACEMENT_PROBABILITY = 0.5; // Still 50% chance for a replacement to occur
+            const NON_CONFUSING_SPECIAL_CHARS = "!@#$-+.,"; 
+            const REPLACEMENT_PROBABILITY = 0.5;
 
-            // UPDATED REPLACEMENT_MAP: Each character can have multiple leet-speak options
             const REPLACEMENT_MAP = {
-                'a': ['4', '@'],
-                'b': ['8'],
-                'c': ['(', 'k'],
-                'e': ['3'],
-                'g': ['9', '6'],
-                'h': ['#'],
-                'i': ['1', '!'],
-                'l': ['1'], // 'l' can also be 1
-                'o': ['0'],
-                's': ['5', '$'],
-                't': ['7', '+'],
-                'z': ['2'],
+                'a': ['4', '@'], 'b': ['8'], 'c': ['(', 'k'], 'e': ['3'],
+                'g': ['9', '6'], 'h': ['#'], 'i': ['1', '!'], 'l': ['1'],
+                'o': ['0'], 's': ['5', '$'], 't': ['7', '+'], 'z': ['2'],
             };
 
-            // Embedded wordlist (same as in Go version)
             const EMBEDDED_PASSPHRASE_WORDLIST = [
                 "apple", "baker", "brave", "brick", "cabin", "candy", "chair", "clean", "climb", "cloud",
                 "coast", "cobra", "coral", "couch", "crane", "crate", "crazy", "cream", "cross", "crown",
@@ -551,20 +792,12 @@
                 "zings", "zippy", "zonal", "zones", "zooey", "zoom", "zymes",
             ];
 
-            let customWordlist = null; // Stores custom wordlist if loaded
+            let customWordlist = null; 
 
-            // --- Helper Functions ---
+            // --- Helper Functions (Secure RNG & Logic) ---
 
-            /**
-             * Generates a cryptographically secure random integer in [0, max).
-             * Uses rejection sampling to avoid modulo bias.
-             * @param {number} max - The upper bound (exclusive).
-             * @returns {number} A secure random integer.
-             */
             function secureRandomInt(max) {
-                if (max <= 0) {
-                    throw new Error("Max must be greater than 0");
-                }
+                if (max <= 0) throw new Error("Max must be greater than 0");
                 const randomBytes = new Uint32Array(1);
                 const maxUnbiased = Math.floor(0xFFFFFFFF / max) * max;
                 let randomNumber;
@@ -575,33 +808,20 @@
                 return randomNumber % max;
             }
 
-            /**
-             * Shuffles an array in place using Fisher-Yates (Knuth) algorithm with secure randomness.
-             * @param {Array} array - The array to shuffle.
-             * @returns {Array} The shuffled array.
-             */
             function shuffleArray(array) {
                 for (let i = array.length - 1; i > 0; i--) {
-                    const j = secureRandomInt(i + 1); // Get random index from 0 to i
-                    [array[i], array[j]] = [array[j], array[i]]; // Swap elements
+                    const j = secureRandomInt(i + 1);
+                    [array[i], array[j]] = [array[j], array[i]];
                 }
                 return array;
             }
 
-            /**
-             * Applies random leet-speak like replacements to the given string.
-             * Selects a random replacement if multiple options exist.
-             * @param {string} s - The input string.
-             * @returns {string} The string with replacements.
-             */
             function applyRandomReplacements(s) {
                 let chars = s.split('');
                 for (let i = 0; i < chars.length; i++) {
                     const charLower = chars[i].toLowerCase();
                     const possibleReplacements = REPLACEMENT_MAP[charLower];
-
                     if (possibleReplacements && possibleReplacements.length > 0 && Math.random() < REPLACEMENT_PROBABILITY) {
-                        // Pick a random replacement from the available options
                         const replacement = possibleReplacements[secureRandomInt(possibleReplacements.length)];
                         chars[i] = replacement;
                     }
@@ -609,20 +829,8 @@
                 return chars.join('');
             }
 
-            /**
-             * Checks if a string contains only alphabetic characters.
-             * @param {string} s - The string to check.
-             * @returns {boolean} True if all characters are alphabetic, false otherwise.
-             */
-            function isAlpha(s) {
-                return /^[a-zA-Z]+$/.test(s);
-            }
+            function isAlpha(s) { return /^[a-zA-Z]+$/.test(s); }
 
-            /**
-             * Filters a list of words to include only 5-7 letter lowercase alphabetic words.
-             * @param {string[]} lines - Array of words.
-             * @returns {string[]} Filtered array of words.
-             */
             function filterWordlist(lines) {
                 const filteredWords = [];
                 for (const line of lines) {
@@ -634,72 +842,30 @@
                 return filteredWords;
             }
 
-            /**
-             * Inserts a character into a string at a specific position.
-             * @param {string} str - The original string.
-             * @param {string} char - The character to insert.
-             * @param {number} index - The position to insert at.
-             * @returns {string} The new string with the character inserted.
-             */
             function insertChar(str, char, index) {
                 return str.slice(0, index) + char + str.slice(index);
             }
 
-            // --- Password Generation Logic (Unchanged) ---
+            // --- Password Generation Logic ---
 
-            /**
-             * Generates a character-based password.
-             * @param {number} length - Total length.
-             * @param {number} numDigits - Number of digits.
-             * @param {number} numSpecial - Number of special characters.
-             * @param {number} numCapital - Number of capital letters.
-             * @param {number} numLower - Number of lowercase letters.
-             * @param {boolean} applyReplacements - Whether to apply leet-speak replacements.
-             * @returns {string} The generated password.
-             * @throws {Error} If validation fails.
-             */
             function generateCharacterPassword(length, numDigits, numSpecial, numCapital, numLower, applyReplacements) {
-                if (length < 16) {
-                    throw new Error("Total characters must be 16 or more.");
-                }
-                if (numDigits < 0 || numSpecial < 0 || numCapital < 0 || numLower < 0) {
-                    throw new Error("Number of character types must be non-negative integers.");
-                }
+                if (length < 16) throw new Error("Total characters must be 16 or more.");
+                if (numDigits < 0 || numSpecial < 0 || numCapital < 0 || numLower < 0) throw new Error("Number of character types must be non-negative integers.");
 
-                if (numDigits > NON_CONFUSING_DIGITS.length) {
-                    throw new Error(`Cannot generate ${numDigits} digits without confusable characters (0, 1). Max non-confusing digits: ${NON_CONFUSING_DIGITS.length}`);
-                }
-                if (numCapital > NON_CONFUSING_CAPITAL_LETTERS.length) {
-                    throw new Error(`Cannot generate ${numCapital} capital letters without confusable characters (I, O). Max non-confusing capital letters: ${NON_CONFUSING_CAPITAL_LETTERS.length}`);
-                }
-                if (numLower > NON_CONFUSING_LOWER_LETTERS.length) {
-                    throw new Error(`Cannot generate ${numLower} lowercase letters without confusable characters (l, o). Max non-confusing lowercase letters: ${NON_CONFUSING_LOWER_LETTERS.length}`);
-                }
-                if (numSpecial > NON_CONFUSING_SPECIAL_CHARS.length) {
-                    throw new Error(`Cannot generate ${numSpecial} special characters from the allowed set (${NON_CONFUSING_SPECIAL_CHARS}). Max unique special characters: ${NON_CONFUSING_SPECIAL_CHARS.length}`);
-                }
+                if (numDigits > NON_CONFUSING_DIGITS.length) throw new Error(`Cannot generate ${numDigits} digits without confusable characters (0, 1). Max: ${NON_CONFUSING_DIGITS.length}`);
+                if (numCapital > NON_CONFUSING_CAPITAL_LETTERS.length) throw new Error(`Cannot generate ${numCapital} capital letters without confusable characters (I, O). Max: ${NON_CONFUSING_CAPITAL_LETTERS.length}`);
+                if (numLower > NON_CONFUSING_LOWER_LETTERS.length) throw new Error(`Cannot generate ${numLower} lowercase letters without confusable characters (l, o). Max: ${NON_CONFUSING_LOWER_LETTERS.length}`);
+                if (numSpecial > NON_CONFUSING_SPECIAL_CHARS.length) throw new Error(`Cannot generate ${numSpecial} special characters from the allowed set. Max: ${NON_CONFUSING_SPECIAL_CHARS.length}`);
 
-                if ((numDigits + numSpecial + numCapital + numLower) > length) {
-                    throw new Error("Sum of specified character types exceeds total length.");
-                }
+                if ((numDigits + numSpecial + numCapital + numLower) > length) throw new Error("Sum of specified character types exceeds total length.");
 
                 let passwordChars = [];
 
-                // Add required characters securely
-                for (let i = 0; i < numDigits; i++) {
-                    passwordChars.push(NON_CONFUSING_DIGITS[secureRandomInt(NON_CONFUSING_DIGITS.length)]);
-                }
-                for (let i = 0; i < numSpecial; i++) {
-                    passwordChars.push(NON_CONFUSING_SPECIAL_CHARS[secureRandomInt(NON_CONFUSING_SPECIAL_CHARS.length)]);
-                }
-                for (let i = 0; i < numCapital; i++) {
-                    passwordChars.push(NON_CONFUSING_CAPITAL_LETTERS[secureRandomInt(NON_CONFUSING_CAPITAL_LETTERS.length)]);
-                }
-                for (let i = 0; i < numLower; i++) {
-                    passwordChars.push(NON_CONFUSING_LOWER_LETTERS[secureRandomInt(NON_CONFUSING_LOWER_LETTERS.length)]);
-                }
+                for (let i = 0; i < numDigits; i++) passwordChars.push(NON_CONFUSING_DIGITS[secureRandomInt(NON_CONFUSING_DIGITS.length)]);
+                for (let i = 0; i < numSpecial; i++) passwordChars.push(NON_CONFUSING_SPECIAL_CHARS[secureRandomInt(NON_CONFUSING_SPECIAL_CHARS.length)]);
+                for (let i = 0; i < numCapital; i++) passwordChars.push(NON_CONFUSING_CAPITAL_LETTERS[secureRandomInt(NON_CONFUSING_CAPITAL_LETTERS.length)]);
+                for (let i = 0; i < numLower; i++) passwordChars.push(NON_CONFUSING_LOWER_LETTERS[secureRandomInt(NON_CONFUSING_LOWER_LETTERS.length)]);
 
-                // Fill the remaining length with a mix of all non-confusing allowed characters
                 const allNonConfusingChars = NON_CONFUSING_DIGITS + NON_CONFUSING_SPECIAL_CHARS + NON_CONFUSING_CAPITAL_LETTERS + NON_CONFUSING_LOWER_LETTERS;
                 const remainingLength = length - passwordChars.length;
                 if (remainingLength > 0) {
@@ -708,85 +874,127 @@
                     }
                 }
 
-                // Shuffle the password characters
                 shuffleArray(passwordChars);
-
                 let finalPassword = passwordChars.join('');
-
-                // Apply random leet-speak replacements if enabled
-                if (applyReplacements) {
-                    finalPassword = applyRandomReplacements(finalPassword);
-                }
-
+                if (applyReplacements) finalPassword = applyRandomReplacements(finalPassword);
                 return finalPassword;
             }
 
-            /**
-             * Generates a passphrase.
-             * @param {number} numWords - Number of words.
-             * @param {string} separator - Word separator.
-             * @param {boolean} capitalizeWords - Whether to capitalize words.
-             * @param {boolean} addNumber - Whether to add a number.
-             * @param {boolean} addSymbol - Whether to add a symbol.
-             * @param {string[]|null} customWordlist - Custom wordlist or null for embedded.
-             * @param {boolean} applyReplacements - Whether to apply leet-speak replacements.
-             * @returns {string} The generated passphrase.
-             * @throws {Error} If validation fails.
-             */
             async function generatePassphrase(numWords, separator, capitalizeWords, addNumber, addSymbol, customWordlist, applyReplacements) {
-                if (numWords < 3 || numWords > 6) {
-                    throw new Error("Number of words must be between 3 and 6.");
-                }
-
+                if (numWords < 3 || numWords > 6) throw new Error("Number of words must be between 3 and 6.");
                 const wordsToUse = customWordlist || EMBEDDED_PASSPHRASE_WORDLIST;
+                if (wordsToUse.length < numWords) throw new Error(`Wordlist too small.`);
 
-                if (wordsToUse.length < numWords) {
-                    throw new Error(`The selected wordlist (contains ${wordsToUse.length} words) does not have enough words (${numWords} required).`);
-                }
-
-                // Select random words without replacement
                 let selectedWords = [];
-                let tempWordlist = [...wordsToUse]; // Create a mutable copy
+                let tempWordlist = [...wordsToUse];
 
                 for (let i = 0; i < numWords; i++) {
                     const idx = secureRandomInt(tempWordlist.length);
                     selectedWords.push(tempWordlist[idx]);
-                    tempWordlist.splice(idx, 1); // Remove selected word
+                    tempWordlist.splice(idx, 1);
                 }
 
-                if (capitalizeWords) {
-                    selectedWords = selectedWords.map(word => word.charAt(0).toUpperCase() + word.slice(1));
-                }
-
+                if (capitalizeWords) selectedWords = selectedWords.map(word => word.charAt(0).toUpperCase() + word.slice(1));
                 let passphraseStr = selectedWords.join(separator);
 
                 if (addNumber) {
                     const digit = NON_CONFUSING_DIGITS[secureRandomInt(NON_CONFUSING_DIGITS.length)];
-                    const insertPos = secureRandomInt(passphraseStr.length + 1);
-                    passphraseStr = insertChar(passphraseStr, digit, insertPos);
+                    passphraseStr = insertChar(passphraseStr, digit, secureRandomInt(passphraseStr.length + 1));
                 }
-
                 if (addSymbol) {
                     const symbol = NON_CONFUSING_SPECIAL_CHARS[secureRandomInt(NON_CONFUSING_SPECIAL_CHARS.length)];
-                    const insertPos = secureRandomInt(passphraseStr.length + 1); // Recalculate length after number insertion
-                    passphraseStr = insertChar(passphraseStr, symbol, insertPos);
+                    passphraseStr = insertChar(passphraseStr, symbol, secureRandomInt(passphraseStr.length + 1));
                 }
-
-                // Apply random leet-speak replacements if enabled
-                if (applyReplacements) {
-                    passphraseStr = applyRandomReplacements(passphraseStr);
-                }
-
+                if (applyReplacements) passphraseStr = applyRandomReplacements(passphraseStr);
                 return passphraseStr;
             }
 
-            // --- UI Logic and Event Handlers (Unchanged) ---
+            // --- Storage & Security Logic (UPDATED FOR HISTORY ARRAY) ---
+
+            function secureClearStorage() {
+                // Remove history from storage
+                sessionStorage.removeItem(STORAGE_KEY);
+                console.log("Secure Cache Cleared");
+            }
+
+            // Immediately clear storage when page is closed, reloaded, or hidden
+            window.addEventListener('beforeunload', secureClearStorage);
+            window.addEventListener('pagehide', secureClearStorage); // Mobile support
+
+            function saveToCache(content) {
+                let history = [];
+                try {
+                    const existing = sessionStorage.getItem(STORAGE_KEY);
+                    if (existing) {
+                        // Attempt to parse existing history
+                        const parsed = JSON.parse(existing);
+                        // Ensure it's an array
+                        if (Array.isArray(parsed)) {
+                            history = parsed;
+                        } else {
+                            // Reset if format is invalid (e.g. old string format)
+                            history = [];
+                        }
+                    }
+                } catch(e) {
+                    history = [];
+                }
+
+                const timestamp = new Date().toLocaleTimeString();
+                // Add new entry to the top
+                history.unshift({ time: timestamp, passwords: content });
+
+                // Limit history to last 20 entries to prevent overflow
+                if (history.length > 20) history = history.slice(0, 20);
+
+                sessionStorage.setItem(STORAGE_KEY, JSON.stringify(history));
+            }
+
+            // --- Strength Checking Logic ---
+            function evaluateStrength(password) {
+                if (!window.zxcvbn) {
+                    strengthText.textContent = "Lib not loaded";
+                    return;
+                }
+                if (!password) {
+                    updateStrengthUI(0, 0, "Enter password");
+                    return;
+                }
+                
+                const result = zxcvbn(password);
+                const crackTime = result.crack_times_display.offline_slow_hashing_1e4_per_second;
+                updateStrengthUI(result.score, crackTime);
+            }
+
+            function updateStrengthUI(score, crackTimeDisplay, msg) {
+                // Score: 0-4
+                const colors = ['#dc3545', '#dc3545', '#ffc107', '#28a745', '#20c997']; // Red, Red, Yellow, Green, Teal
+                const labels = ['Very Weak', 'Weak', 'Fair', 'Strong', 'Very Strong'];
+                const width = ((score + 1) / 5) * 100;
+
+                strengthBarFill.style.width = (score === 0 && !msg) ? '10%' : `${width}%`;
+                strengthBarFill.style.backgroundColor = colors[score] || '#e0e0e0';
+                
+                if (msg) {
+                    strengthText.textContent = msg;
+                    crackTimeText.textContent = "Crack time (offline): -";
+                    strengthBarFill.style.width = '0%';
+                } else {
+                    strengthText.textContent = `${labels[score]} (${score}/4)`;
+                    crackTimeText.textContent = `Crack time (offline): ${crackTimeDisplay}`;
+                }
+            }
+
+            checkInput.addEventListener('input', (e) => {
+                evaluateStrength(e.target.value);
+            });
+
+            // --- UI Event Handlers ---
 
             function displayError(message) {
                 errorMessageDiv.textContent = message;
                 errorMessageDiv.style.display = 'block';
             }
-
             function clearError() {
                 errorMessageDiv.textContent = '';
                 errorMessageDiv.style.display = 'none';
@@ -800,11 +1008,12 @@
                     characterOptionsDiv.style.display = 'none';
                     passphraseOptionsDiv.style.display = 'block';
                 }
-                clearError(); // Clear errors when mode changes
-                outputArea.value = ''; // Clear output when mode changes
+                clearError();
+                outputArea.value = '';
+                checkInput.value = '';
+                evaluateStrength('');
             }
 
-            // Handles custom wordlist file selection
             passWordlistInput.addEventListener('change', async (event) => {
                 const file = event.target.files[0];
                 if (file) {
@@ -814,19 +1023,11 @@
                         const lines = text.split('\n');
                         customWordlist = filterWordlist(lines);
                         clearError();
-                        if (customWordlist.length === 0) {
-                            displayError("Custom wordlist processed, but no valid (5-7 letter, alphabetic) words found.");
-                        } else {
-                            console.log(`Loaded custom wordlist with ${customWordlist.length} words.`);
-                        }
+                        if (customWordlist.length === 0) displayError("No valid words found.");
                     } catch (err) {
-                        customWordlist = null; // Clear if error
-                        displayError(`Failed to read wordlist file: ${err.message}`);
-                        wordlistFileNameSpan.textContent = '';
+                        customWordlist = null;
+                        displayError(`Failed to read file: ${err.message}`);
                     }
-                } else {
-                    customWordlist = null;
-                    wordlistFileNameSpan.textContent = '';
                 }
             });
 
@@ -834,7 +1035,7 @@
                 clearError();
                 outputArea.value = '';
                 const numToGenerate = parseInt(countInput.value, 10);
-                const applyReplacements = enableReplacementsCheckbox.checked; // Get replacement option
+                const applyReplacements = enableReplacementsCheckbox.checked;
 
                 let generatedOutputs = [];
 
@@ -847,44 +1048,105 @@
                             const special = parseInt(charSpecialInput.value, 10);
                             const capital = parseInt(charCapitalInput.value, 10);
                             const lower = parseInt(charLowerInput.value, 10);
-                            // Pass applyReplacements to the generation function
                             result = generateCharacterPassword(length, digits, special, capital, lower, applyReplacements);
-                        } else { // Passphrase mode
+                        } else { 
                             const words = parseInt(passWordsInput.value, 10);
                             const separator = passSeparatorInput.value;
                             const capitalize = passCapitalizeCheckbox.checked;
                             const addNum = passAddNumberCheckbox.checked;
                             const addSym = passAddSymbolCheckbox.checked;
-                            // Pass applyReplacements to the generation function
                             result = await generatePassphrase(words, separator, capitalize, addNum, addSym, customWordlist, applyReplacements);
                         }
                         generatedOutputs.push(result);
                     } catch (err) {
                         displayError(err.message);
-                        // Stop generating if an error occurs for one password
                         generatedOutputs = [];
                         break;
                     }
                 }
 
                 if (generatedOutputs.length > 0) {
-                    outputArea.value = generatedOutputs.join('\n');
+                    const finalOutput = generatedOutputs.join('\n');
+                    outputArea.value = finalOutput;
+                    saveToCache(finalOutput); // SAVE TO CACHE (History)
+                    
+                    // Automatically check the first generated password
+                    checkInput.value = generatedOutputs[0];
+                    evaluateStrength(generatedOutputs[0]);
                 }
             });
 
             copyBtn.addEventListener('click', () => {
                 outputArea.select();
-                outputArea.setSelectionRange(0, 99999); // For mobile devices
+                outputArea.setSelectionRange(0, 99999);
                 document.execCommand('copy');
                 alert('Copied to clipboard!');
             });
+            
+            // --- Modal Logic ---
+            function openHistoryModal() {
+                const cached = sessionStorage.getItem(STORAGE_KEY);
+                historyList.innerHTML = ''; // Clear previous content
 
-            // Initial setup
+                if (cached) {
+                    let history = [];
+                    try {
+                        history = JSON.parse(cached);
+                        // Handle potential legacy plain string cache gracefully
+                        if (!Array.isArray(history)) {
+                             history = [{ time: 'Previous Session', passwords: cached }];
+                        }
+                    } catch (e) {
+                         // Fallback for corrupt JSON
+                         history = [];
+                    }
+
+                    if (history.length === 0) {
+                        historyList.innerHTML = '<p style="text-align:center; color:#666;">No history found.</p>';
+                    } else {
+                        history.forEach(entry => {
+                            const div = document.createElement('div');
+                            div.className = 'history-entry';
+                            // Safe injection using textContent for passwords to avoid XSS if malicious input somehow gets there
+                            // However, innerHTML is used for structure.
+                            const timeDiv = document.createElement('div');
+                            timeDiv.className = 'history-time';
+                            timeDiv.textContent = `Generated at ${entry.time}`;
+                            
+                            const passDiv = document.createElement('div');
+                            passDiv.className = 'history-passwords';
+                            passDiv.textContent = entry.passwords;
+                            
+                            div.appendChild(timeDiv);
+                            div.appendChild(passDiv);
+                            historyList.appendChild(div);
+                        });
+                    }
+                } else {
+                    historyList.innerHTML = '<p style="text-align:center; color:#666;">No temporary passwords found in session cache.</p>';
+                }
+                historyModal.style.display = 'flex'; // Use flex to center
+            }
+
+            function closeHistoryModal() {
+                historyModal.style.display = 'none';
+            }
+
+            showCacheBtn.addEventListener('click', openHistoryModal);
+            closeModalSpan.addEventListener('click', closeHistoryModal);
+            closeModalBtn.addEventListener('click', closeHistoryModal);
+
+            // Close modal when clicking outside of the modal-content
+            window.addEventListener('click', (event) => {
+                if (event.target === historyModal) {
+                    closeHistoryModal();
+                }
+            });
+
             modeCharacterRadio.addEventListener('change', updateModeDisplay);
             modePassphraseRadio.addEventListener('change', updateModeDisplay);
-            updateModeDisplay(); // Call initially to set correct view
+            updateModeDisplay();
         });
-        /* --- script.js content ends here --- */
     </script>
 </body>
 </html>
