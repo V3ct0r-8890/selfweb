@@ -1,0 +1,1239 @@
+<!DOCTYPE html>
+<!-- 
+    Application: Timekeeper Suite (Single File Version)
+    Generated: 2025-12-16 14:00 PM +07
+    Author: Gemini AI
+    Description: Offline-capable Stopwatch, Timer, and Alarm with Persistent Storage.
+    Updates: 
+    - Added "Note" field for Alarms (displayed when alarm triggers).
+    - Added "Export Alarms" button (Download JSON).
+    - Preserved previous features (Edit, LCD Mode, Storage).
+-->
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Timekeeper Suite</title>
+    
+    <style>
+        :root {
+            /* Light Theme Variables */
+            --bg-body: #f1f5f9;
+            --bg-card: #ffffff;
+            --text-main: #1e293b;
+            --text-muted: #94a3b8;
+            --border-color: #e2e8f0;
+            --input-bg: #ffffff;
+            --tab-hover: #f8fafc;
+            
+            --primary: #2563eb;
+            --primary-hover: #1d4ed8;
+            --danger: #ef4444;
+            --danger-hover: #dc2626;
+            --success: #22c55e;
+            --success-hover: #16a34a;
+            --warning: #f59e0b;
+            --warning-hover: #d97706;
+            --secondary: #64748b;
+            --secondary-hover: #475569;
+            
+            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            --font-mono: "Courier New", Courier, monospace;
+        }
+
+        :root.dark {
+            /* Dark Theme Variables */
+            --bg-body: #0f172a;
+            --bg-card: #1e293b;
+            --text-main: #f1f5f9;
+            --text-muted: #94a3b8;
+            --border-color: #334155;
+            --input-bg: #334155;
+            --tab-hover: #334155;
+            
+            --primary: #3b82f6;
+            --primary-hover: #60a5fa;
+        }
+
+        /* --- LCD / DIGITAL FONT SETUP --- */
+        @font-face {
+            font-family: 'DigitalLCD';
+            src: url('digital.ttf') format('truetype');
+            font-weight: normal;
+            font-style: normal;
+        }
+
+        :root.lcd-mode {
+            --lcd-color: #334155; /* Slate-700 */
+            --lcd-glow: rgba(51, 65, 85, 0.15);
+        }
+        :root.lcd-mode.dark {
+            --lcd-color: #cbd5e1; /* Slate-300 */
+            --lcd-glow: rgba(203, 213, 225, 0.4);
+        }
+        
+        .lcd-mode .header-clock,
+        .lcd-mode .big-display,
+        .lcd-mode .timer-input,
+        .lcd-mode .progress-text,
+        .lcd-mode .alarm-time-display {
+            font-family: 'DigitalLCD', 'Consolas', 'Monaco', 'Lucida Console', monospace !important;
+            font-weight: 900 !important;
+            letter-spacing: 0.05em !important;
+            color: var(--lcd-color) !important; 
+            background-image: 
+                linear-gradient(transparent 50%, rgba(255,255,255,0.05) 50%),
+                linear-gradient(90deg, var(--lcd-color), var(--lcd-color));
+            -webkit-mask-image: linear-gradient(to bottom, black 40%, transparent 40%, transparent 45%, black 45%);
+            mask-image: linear-gradient(to bottom, black 40%, transparent 40%, transparent 45%, black 45%);
+            background-clip: text;
+            -webkit-background-clip: text;
+            filter: drop-shadow(0 0 3px var(--lcd-glow));
+        }
+
+        .lcd-mode .timer-input {
+            border-color: var(--lcd-color) !important;
+            font-weight: bold;
+        }
+        .lcd-mode.dark .timer-input {
+            background-color: #0f172a !important;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-body);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding-top: 2rem;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        /* --- UTILITIES --- */
+        .hidden { display: none !important; }
+        .flex { display: flex; }
+        .flex-col { flex-direction: column; }
+        .items-center { align-items: center; }
+        .justify-center { justify-content: center; }
+        .justify-between { justify-content: space-between; }
+        .gap-2 { gap: 0.5rem; }
+        .gap-4 { gap: 1rem; }
+        .w-full { width: 100%; }
+        .text-center { text-align: center; }
+        .font-bold { font-weight: bold; }
+        .font-mono { font-family: var(--font-mono); }
+        .uppercase { text-transform: uppercase; }
+        .text-sm { font-size: 0.875rem; }
+        .text-xs { font-size: 0.75rem; }
+        .mb-2 { margin-bottom: 0.5rem; }
+        .mb-3 { margin-bottom: 0.75rem; }
+        
+        /* --- COMPONENTS --- */
+        .card {
+            background-color: var(--bg-card);
+            width: 95%;
+            max-width: 50rem; /* Increased width for side-by-side layout */
+            border-radius: 0.75rem;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border-color);
+            overflow: hidden;
+            margin-top: 2rem;
+            transition: background-color 0.3s, border-color 0.3s;
+        }
+
+        .header {
+            background-color: #0f172a;
+            color: white;
+            padding: 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .header-title { font-size: 1.5rem; letter-spacing: 0.05em; }
+        .header-clock { font-family: var(--font-mono); font-size: 0.875rem; color: #94a3b8; margin-top: 0.25rem; transition: all 0.3s; }
+
+        .icon-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: #94a3b8;
+            padding: 0.25rem;
+            transition: color 0.2s;
+        }
+        .icon-btn:hover { color: white; }
+        .icon-btn.active-sound { color: #4ade80; }
+        .icon-btn.active-lcd { color: #cbd5e1; }
+
+        /* Tabs */
+        .tabs {
+            display: flex;
+            border-bottom: 1px solid var(--border-color);
+            background-color: var(--bg-card);
+        }
+        .tab-btn {
+            flex: 1;
+            padding: 1rem;
+            background: none;
+            border: none;
+            border-bottom: 2px solid transparent;
+            color: var(--text-muted);
+            font-weight: 500;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            transition: all 0.2s;
+        }
+        .tab-btn:hover { background-color: var(--tab-hover); color: var(--text-main); }
+        .tab-btn.active {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+        }
+
+        /* Content Area */
+        .content { padding: 1.5rem; min-height: 450px; }
+
+        /* Centered View Container (Stopwatch/Timer) */
+        .centered-view {
+            max-width: 28rem;
+            margin: 0 auto;
+        }
+
+        /* Displays */
+        .big-display {
+            font-size: 3.5rem;
+            font-family: var(--font-mono);
+            font-weight: bold;
+            color: var(--text-main);
+            margin-bottom: 0.5rem;
+            letter-spacing: 0.05em;
+            transition: all 0.3s;
+        }
+        .big-display small { font-size: 1.5rem; color: var(--text-muted); }
+
+        /* Buttons */
+        .btn-circle {
+            width: 6rem;
+            height: 6rem;
+            border-radius: 50%;
+            border: none;
+            color: white;
+            font-weight: bold;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: var(--shadow);
+            transition: transform 0.1s, background-color 0.2s;
+        }
+        .btn-circle:active { transform: scale(0.95); }
+        .btn-circle svg { width: 1.5rem; height: 1.5rem; margin-bottom: 0.25rem; }
+
+        .btn-start { background-color: var(--success); }
+        .btn-start:hover { background-color: var(--success-hover); }
+        .btn-stop { background-color: var(--danger); }
+        .btn-stop:hover { background-color: var(--danger-hover); }
+        .btn-lap { background-color: var(--secondary); color: white; }
+        .btn-lap:hover { background-color: var(--secondary-hover); }
+        .btn-pause { background-color: var(--warning); }
+        .btn-pause:hover { background-color: var(--warning-hover); }
+        
+        .btn-block {
+            width: 100%;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            border: none;
+            font-weight: bold;
+            font-size: 1.125rem;
+            color: white;
+            cursor: pointer;
+            box-shadow: var(--shadow);
+            transition: background-color 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+        .btn-primary { background-color: var(--primary); }
+        .btn-primary:hover { background-color: var(--primary-hover); }
+        .btn-secondary { background-color: var(--secondary); }
+        .btn-secondary:hover { background-color: var(--secondary-hover); }
+
+        /* Inputs */
+        .timer-input-group { display: flex; align-items: center; justify-content: center; gap: 0.5rem; margin-bottom: 2rem; }
+        .timer-unit { display: flex; flex-direction: column; align-items: center; }
+        .timer-input {
+            width: 5rem;
+            height: 5rem;
+            text-align: center;
+            font-size: 2.25rem;
+            font-family: var(--font-mono);
+            border: 2px solid var(--border-color);
+            background-color: var(--input-bg);
+            color: var(--text-main);
+            border-radius: 0.5rem;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        .timer-input:focus { border-color: var(--primary); }
+        .timer-sep { font-size: 2.25rem; color: var(--text-muted); padding-bottom: 1.5rem; }
+        .timer-label { font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem; }
+
+        /* Timer Progress */
+        .progress-ring { position: relative; width: 16rem; height: 16rem; margin: 0 auto 1.5rem auto; display: flex; align-items: center; justify-content: center; }
+        .progress-ring svg { transform: rotate(-90deg); width: 100%; height: 100%; }
+        .progress-ring circle { transition: stroke-dashoffset 0.1s linear; }
+        .progress-text { position: absolute; font-size: 3rem; font-family: var(--font-mono); font-weight: bold; color: var(--text-main); transition: all 0.3s; }
+
+        /* --- ALARM LAYOUT --- */
+        .alarm-layout {
+            display: flex;
+            gap: 1.5rem;
+            height: 100%;
+        }
+        .alarm-setup-pane {
+            flex: 1;
+            min-width: 250px;
+        }
+        .alarm-list-pane {
+            flex: 1;
+            border-left: 1px solid var(--border-color);
+            padding-left: 1.5rem;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        /* Mobile Stack */
+        @media (max-width: 640px) {
+            .alarm-layout { flex-direction: column; }
+            .alarm-list-pane { border-left: none; padding-left: 0; border-top: 1px solid var(--border-color); padding-top: 1.5rem; }
+        }
+
+        .alarm-add-box {
+            background-color: var(--bg-body);
+            padding: 1rem;
+            border-radius: 0.5rem;
+            border: 1px solid var(--border-color);
+            margin-bottom: 1.5rem;
+        }
+        .alarm-input {
+            padding: 0.75rem;
+            border: 1px solid var(--border-color);
+            border-radius: 0.25rem;
+            background-color: var(--input-bg);
+            color: var(--text-main);
+            font-size: 1.125rem;
+            outline: none;
+            color-scheme: light dark;
+            width: 100%;
+        }
+        
+        /* Smaller font for text input note */
+        input[type="text"].alarm-input {
+            font-size: 1rem;
+        }
+
+        .alarm-type-selector {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 0.75rem;
+        }
+        .type-btn {
+            flex: 1;
+            padding: 0.5rem;
+            font-size: 0.75rem;
+            border: 1px solid var(--border-color);
+            background: var(--bg-card);
+            color: var(--text-muted);
+            cursor: pointer;
+            border-radius: 0.25rem;
+            transition: all 0.2s;
+        }
+        .type-btn.active {
+            background-color: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+        
+        /* Weekday Selector */
+        .weekday-selector { display: flex; gap: 4px; justify-content: space-between; margin-bottom: 0.75rem; }
+        .day-btn {
+            width: 32px; height: 32px;
+            border-radius: 50%;
+            border: 1px solid var(--border-color);
+            background: var(--bg-card);
+            color: var(--text-muted);
+            font-size: 0.75rem;
+            cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .day-btn.selected {
+            background-color: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        /* Compact Alarm List */
+        .alarm-list { 
+            overflow-y: auto; 
+            flex: 1;
+            display: flex; 
+            flex-direction: column; 
+            gap: 0.5rem; 
+            max-height: 400px;
+        }
+        .alarm-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.5rem; /* Smaller padding */
+            border-radius: 0.5rem;
+            border: 1px solid var(--border-color);
+            background-color: var(--bg-card);
+            transition: background-color 0.2s;
+        }
+        .alarm-item.inactive { opacity: 0.6; }
+        .alarm-item.editing { border-color: var(--primary); background-color: var(--bg-body); }
+        .alarm-time-display { font-size: 1rem !important; } /* Smaller font */
+        .alarm-meta { font-size: 0.65rem; color: var(--text-muted); margin-top: 1px; }
+        .alarm-note-display { font-size: 0.75rem; color: var(--primary); font-weight: bold; margin-top: 2px; }
+        
+        .icon-action { background: none; border: none; cursor: pointer; color: var(--text-muted); font-size: 1rem; padding: 0.25rem; }
+        .icon-action:hover { color: var(--text-main); }
+        .icon-action.delete:hover { color: var(--danger); }
+        .icon-action.edit:hover { color: var(--primary); }
+        
+        .icon-toggle { background: none; border: none; cursor: pointer; color: var(--text-muted); margin-right: 0.5rem; display: flex; align-items: center; }
+        .icon-toggle.on { color: var(--primary); }
+        .icon-toggle svg { width: 20px; height: 20px; }
+
+        /* Scrollbar */
+        .custom-scroll::-webkit-scrollbar { width: 6px; }
+        .custom-scroll::-webkit-scrollbar-track { background: transparent; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 3px; }
+        .custom-scroll::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+        /* Alert Bar */
+        @keyframes flashBar {
+            0%, 100% { background-color: #ef4444; } /* Red */
+            50% { background-color: #f59e0b; } /* Amber */
+        }
+        .alert-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4rem;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 1.5rem;
+            color: white;
+            font-weight: bold;
+            font-size: 1.25rem;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            animation: flashBar 1s infinite;
+        }
+        .alert-bar button {
+            background-color: white;
+            color: #ef4444;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 0.25rem;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        /* Alert Modal */
+        .alert-modal {
+            position: fixed; inset: 0; z-index: 200;
+            background-color: rgba(0,0,0,0.8);
+            backdrop-filter: blur(4px);
+            display: none; align-items: center; justify-content: center;
+        }
+        .alert-modal.visible { display: flex; }
+        .alert-content {
+            background-color: var(--bg-card);
+            padding: 2rem; border-radius: 1rem; text-align: center;
+            border: 2px solid var(--danger);
+            box-shadow: 0 0 30px rgba(239, 68, 68, 0.4);
+            width: 90%; max-width: 320px;
+            animation: pulseModal 1s infinite;
+        }
+        @keyframes pulseModal {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.02); }
+            100% { transform: scale(1); }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- VISUAL ALERT BAR -->
+    <div id="alert-bar" class="alert-bar hidden">
+        <div class="flex items-center gap-2">
+            <!-- Bell Icon -->
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+            <span id="alert-message">TIME UP!</span>
+        </div>
+        <button onclick="dismissAlert()">DISMISS</button>
+    </div>
+
+    <!-- ALERT POPUP MODAL -->
+    <div id="alert-modal" class="alert-modal">
+        <div class="alert-content">
+            <div style="color: var(--danger); margin-bottom: 1rem;">
+                <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+            </div>
+            <h2 id="modal-message" style="font-size: 1.5rem; font-weight: bold; margin-bottom: 1.5rem; color: var(--text-main);">TIME UP!</h2>
+            <button onclick="dismissAlert()" class="btn-block btn-stop" style="margin: 0 auto;">DISMISS</button>
+        </div>
+    </div>
+
+    <!-- MAIN APP CONTAINER -->
+    <div class="card">
+        
+        <!-- Header -->
+        <div class="header">
+            <!-- Install Button (Hidden by default, shown via JS) -->
+            <button id="btn-install" class="icon-btn hidden" title="Install App">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+            </button>
+            <div style="width: 20px;" class="hidden" id="spacer-install"></div>
+            
+            <div class="text-center" style="flex: 1;">
+                <div class="header-title">CHRONOS</div>
+                <div id="current-clock" class="header-clock">00:00:00</div>
+            </div>
+
+            <!-- Right Controls -->
+            <div class="flex gap-2" style="width: 80px; justify-content: flex-end;">
+                <!-- LCD Font Toggle -->
+                <button onclick="toggleLCD()" id="btn-lcd" class="icon-btn" title="Toggle Digital Font">
+                    <!-- Square 88 icon -->
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect><path d="M8 8h8v8H8z"></path><path d="M12 8v8"></path><path d="M8 12h8"></path></svg>
+                </button>
+                
+                <!-- Sound Toggle -->
+                <button onclick="toggleSound()" id="btn-sound" class="icon-btn" title="Toggle Sound">
+                    <svg id="icon-sound-svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><line x1="23" y1="9" x2="17" y2="15"></line><line x1="17" y1="9" x2="23" y2="15"></line></svg>
+                </button>
+                
+                <!-- Theme Toggle -->
+                <button onclick="toggleTheme()" class="icon-btn theme-toggle" title="Toggle Theme">
+                    <svg id="icon-theme-svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- Tabs -->
+        <div class="tabs">
+            <button onclick="switchTab('stopwatch')" id="tab-stopwatch" class="tab-btn active">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                Stopwatch
+            </button>
+            <button onclick="switchTab('timer')" id="tab-timer" class="tab-btn">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 17l6-6V2a2 2 0 0 1 2 2v9l6 6a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"></path><path d="M4 17h16"></path></svg>
+                Timer
+            </button>
+            <button onclick="switchTab('alarm')" id="tab-alarm" class="tab-btn">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+                Alarm
+            </button>
+        </div>
+
+        <!-- CONTENT AREA -->
+        <div class="content">
+
+            <!-- STOPWATCH SECTION -->
+            <div id="view-stopwatch">
+                <div class="flex flex-col items-center justify-center centered-view" style="height: 100%;">
+                    <div id="sw-display" class="big-display">
+                        00:00:00<small>.00</small>
+                    </div>
+                    
+                    <div class="flex gap-4" style="margin-top: 2rem;">
+                        <button onclick="toggleStopwatch()" id="sw-btn-start" class="btn-circle btn-start">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                            START
+                        </button>
+                        <button onclick="recordLap()" class="btn-circle btn-lap">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path><line x1="4" y1="22" x2="4" y2="15"></line></svg>
+                            LAP
+                        </button>
+                        <button onclick="resetStopwatch()" class="btn-circle btn-stop">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 12"></path><path d="M3 3v9h9"></path></svg>
+                            RESET
+                        </button>
+                    </div>
+
+                    <!-- Laps List -->
+                    <div style="margin-top: 2rem; width: 100%; border-top: 1px solid var(--border-color); padding-top: 1rem;">
+                        <h3 class="uppercase font-bold" style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.5rem;">Laps</h3>
+                        <div id="sw-laps" class="custom-scroll" style="height: 120px; overflow-y: auto; font-family: var(--font-mono); font-size: 0.875rem;">
+                            <div class="text-center" style="color: var(--text-muted); margin-top: 1rem; font-style: italic;">No laps recorded</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TIMER SECTION -->
+            <div id="view-timer" class="hidden">
+                <div class="flex flex-col items-center centered-view">
+                    
+                    <div id="timer-input-mode" class="w-full">
+                        <div class="timer-input-group">
+                            <div class="timer-unit">
+                                <input type="number" id="tm-h" min="0" max="99" value="00" class="timer-input" oninput="formatInput(this)">
+                                <span class="timer-label">HRS</span>
+                            </div>
+                            <span class="timer-sep">:</span>
+                            <div class="timer-unit">
+                                <input type="number" id="tm-m" min="0" max="59" value="05" class="timer-input" oninput="formatInput(this)">
+                                <span class="timer-label">MIN</span>
+                            </div>
+                            <span class="timer-sep">:</span>
+                            <div class="timer-unit">
+                                <input type="number" id="tm-s" min="0" max="59" value="00" class="timer-input" oninput="formatInput(this)">
+                                <span class="timer-label">SEC</span>
+                            </div>
+                        </div>
+                        <button onclick="startTimer()" class="btn-block btn-primary">
+                            START TIMER
+                        </button>
+                    </div>
+
+                    <div id="timer-running-mode" class="hidden flex flex-col items-center w-full">
+                        <div class="progress-ring">
+                            <svg>
+                                <circle cx="128" cy="128" r="120" stroke="var(--border-color)" stroke-width="8" fill="transparent" />
+                                <circle id="tm-progress" cx="128" cy="128" r="120" stroke="var(--primary)" stroke-width="8" fill="transparent" stroke-dasharray="753.98" stroke-dashoffset="0" />
+                            </svg>
+                            <div id="tm-display" class="progress-text">00:00:00</div>
+                        </div>
+
+                        <div class="flex gap-4 w-full">
+                            <button onclick="toggleTimer()" id="tm-btn-pause" class="btn-block btn-pause">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>
+                                PAUSE
+                            </button>
+                            <button onclick="resetTimer()" class="btn-block" style="background-color: var(--secondary);">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect></svg>
+                                STOP
+                            </button>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- ALARM SECTION -->
+            <div id="view-alarm" class="hidden">
+                <div class="alarm-layout">
+                    
+                    <!-- Left Pane: Setup -->
+                    <div class="alarm-setup-pane">
+                        <div class="alarm-add-box">
+                            <div class="flex justify-between items-center mb-2">
+                                <label class="uppercase font-bold text-xs" style="color: var(--text-muted);" id="alarm-form-title">Add New Alarm</label>
+                            </div>
+                            
+                            <!-- Time Input -->
+                            <input type="time" id="alarm-input" class="alarm-input mb-3" style="font-size: 1.5rem; height: 3.5rem;">
+                            
+                            <!-- Note Input (New) -->
+                            <input type="text" id="alarm-note" class="alarm-input mb-3" placeholder="Label / Note">
+
+                            <!-- Type Selector -->
+                            <div class="alarm-type-selector">
+                                <button class="type-btn active" onclick="setAlarmType('daily', this)">Daily</button>
+                                <button class="type-btn" onclick="setAlarmType('onetime', this)">Date</button>
+                                <button class="type-btn" onclick="setAlarmType('weekday', this)">Weekdays</button>
+                            </div>
+
+                            <!-- Dynamic Inputs -->
+                            <div id="input-onetime" class="hidden mb-3">
+                                <input type="date" id="alarm-date" class="alarm-input">
+                            </div>
+
+                            <div id="input-weekday" class="hidden mb-3">
+                                <div class="weekday-selector">
+                                    <div class="day-btn" onclick="toggleDayBtn(this)">S</div>
+                                    <div class="day-btn" onclick="toggleDayBtn(this)">M</div>
+                                    <div class="day-btn" onclick="toggleDayBtn(this)">T</div>
+                                    <div class="day-btn" onclick="toggleDayBtn(this)">W</div>
+                                    <div class="day-btn" onclick="toggleDayBtn(this)">T</div>
+                                    <div class="day-btn" onclick="toggleDayBtn(this)">F</div>
+                                    <div class="day-btn" onclick="toggleDayBtn(this)">S</div>
+                                </div>
+                            </div>
+
+                            <div class="flex gap-2">
+                                <button onclick="addAlarm()" id="btn-add-alarm" class="btn-block btn-primary" style="height: 3rem;">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                                    ADD
+                                </button>
+                                <button onclick="cancelEdit()" id="btn-cancel-edit" class="btn-block btn-secondary hidden" style="height: 3rem; width: 30%;">
+                                    CANCEL
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right Pane: List -->
+                    <div class="alarm-list-pane">
+                        <div class="flex justify-between items-center mb-2">
+                            <h3 class="uppercase font-bold text-xs" style="color: var(--text-muted);">Active Alarms</h3>
+                            <button onclick="exportAlarms()" class="icon-action" title="Export Alarms (JSON)">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                            </button>
+                        </div>
+                        <div id="alarm-list" class="alarm-list custom-scroll">
+                            <!-- Alarms injected here -->
+                            <div id="no-alarms-msg" class="text-center" style="padding: 2rem 0; color: var(--text-muted); font-style: italic;">
+                                No active alarms set
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Javascript Logic -->
+    <script>
+        // --- ICONS (SVG Strings) ---
+        const SVG = {
+            play: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>',
+            pause: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>',
+            pauseSm: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>',
+            playSm: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>',
+            toggleOn: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="5" width="22" height="14" rx="7" ry="7"></rect><circle cx="16" cy="12" r="3"></circle></svg>',
+            toggleOff: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="5" width="22" height="14" rx="7" ry="7"></rect><circle cx="8" cy="12" r="3"></circle></svg>',
+            trash: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>',
+            edit: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>',
+            sun: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>',
+            moon: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>',
+            volMute: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><line x1="23" y1="9" x2="17" y2="15"></line><line x1="17" y1="9" x2="23" y2="15"></line></svg>',
+            volUp: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>'
+        };
+
+        // --- THEME LOGIC ---
+        let isDarkMode = localStorage.getItem('theme') === 'dark';
+        if(isDarkMode) document.documentElement.classList.add('dark');
+        
+        function toggleTheme() {
+            isDarkMode = !isDarkMode;
+            const html = document.documentElement;
+            const iconContainer = document.querySelector('.theme-toggle');
+            
+            if (isDarkMode) {
+                html.classList.add('dark');
+                localStorage.setItem('theme', 'dark');
+                iconContainer.innerHTML = SVG.sun;
+            } else {
+                html.classList.remove('dark');
+                localStorage.setItem('theme', 'light');
+                iconContainer.innerHTML = SVG.moon;
+            }
+        }
+        document.querySelector('.theme-toggle').innerHTML = isDarkMode ? SVG.sun : SVG.moon;
+
+        // --- LCD FONT LOGIC ---
+        let isLCDMode = localStorage.getItem('lcdMode') === 'true';
+        if(isLCDMode) document.documentElement.classList.add('lcd-mode');
+
+        function toggleLCD() {
+            isLCDMode = !isLCDMode;
+            const btn = document.getElementById('btn-lcd');
+            
+            if (isLCDMode) {
+                document.documentElement.classList.add('lcd-mode');
+                btn.classList.add('active-lcd');
+                localStorage.setItem('lcdMode', 'true');
+            } else {
+                document.documentElement.classList.remove('lcd-mode');
+                btn.classList.remove('active-lcd');
+                localStorage.setItem('lcdMode', 'false');
+            }
+        }
+        if(isLCDMode) document.getElementById('btn-lcd').classList.add('active-lcd');
+
+        // --- SOUND LOGIC ---
+        let isSoundEnabled = false; 
+        let audioCtx = null;
+        let soundInterval = null;
+
+        function toggleSound() {
+            isSoundEnabled = !isSoundEnabled;
+            const btn = document.getElementById('btn-sound');
+
+            if (isSoundEnabled) {
+                if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+                btn.classList.add('active-sound');
+                btn.innerHTML = SVG.volUp;
+            } else {
+                btn.classList.remove('active-sound');
+                btn.innerHTML = SVG.volMute;
+                stopAlarmSound();
+            }
+        }
+
+        function playBeep() {
+            if (!audioCtx || !isSoundEnabled) return;
+            const oscillator = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+            oscillator.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            oscillator.type = 'square';
+            oscillator.frequency.setValueAtTime(800, audioCtx.currentTime);
+            oscillator.frequency.exponentialRampToValueAtTime(400, audioCtx.currentTime + 0.1);
+            gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+            oscillator.start();
+            oscillator.stop(audioCtx.currentTime + 0.15);
+        }
+
+        function startAlarmSound() {
+            if (isSoundEnabled && !soundInterval) {
+                playBeep();
+                soundInterval = setInterval(playBeep, 500);
+            }
+        }
+
+        function stopAlarmSound() {
+            if (soundInterval) {
+                clearInterval(soundInterval);
+                soundInterval = null;
+            }
+        }
+
+        // --- UTILS ---
+        function pad(num, size=2) {
+            let s = num + "";
+            while (s.length < size) s = "0" + s;
+            return s;
+        }
+
+        function formatTimeDisplay(ms) {
+            const date = new Date(ms);
+            return {
+                formatted: `${pad(date.getUTCHours())}:${pad(date.getUTCMinutes())}:${pad(date.getUTCSeconds())}`,
+                centi: pad(Math.floor(date.getUTCMilliseconds() / 10))
+            };
+        }
+
+        // --- GLOBAL CLOCK ---
+        setInterval(() => {
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString('en-US', { hour12: false });
+            document.getElementById('current-clock').innerText = timeStr;
+            checkAlarms(now);
+        }, 1000);
+
+        // --- TABS ---
+        function switchTab(tabName) {
+            ['stopwatch', 'timer', 'alarm'].forEach(t => {
+                document.getElementById(`view-${t}`).classList.add('hidden');
+                document.getElementById(`tab-${t}`).classList.remove('active');
+            });
+            document.getElementById(`view-${tabName}`).classList.remove('hidden');
+            document.getElementById(`tab-${tabName}`).classList.add('active');
+        }
+
+        // --- STOPWATCH ---
+        let swInterval, swStartTime, swElapsedTime = 0, swRunning = false;
+
+        function toggleStopwatch() {
+            const btn = document.getElementById('sw-btn-start');
+            if (swRunning) {
+                clearInterval(swInterval);
+                swRunning = false;
+                btn.innerHTML = `${SVG.play} RESUME`;
+                btn.className = "btn-circle btn-start";
+            } else {
+                swStartTime = Date.now() - swElapsedTime;
+                swInterval = setInterval(() => {
+                    swElapsedTime = Date.now() - swStartTime;
+                    const t = formatTimeDisplay(swElapsedTime);
+                    document.getElementById('sw-display').innerHTML = `${t.formatted}<small>.${t.centi}</small>`;
+                }, 10);
+                swRunning = true;
+                btn.innerHTML = `${SVG.pause} PAUSE`;
+                btn.className = "btn-circle btn-pause";
+            }
+        }
+
+        function resetStopwatch() {
+            clearInterval(swInterval);
+            swRunning = false;
+            swElapsedTime = 0;
+            document.getElementById('sw-display').innerHTML = `00:00:00<small>.00</small>`;
+            document.getElementById('sw-laps').innerHTML = '<div class="text-center" style="color: var(--text-muted); margin-top: 1rem; font-style: italic;">No laps recorded</div>';
+            document.getElementById('sw-btn-start').innerHTML = `${SVG.play} START`;
+            document.getElementById('sw-btn-start').className = "btn-circle btn-start";
+        }
+
+        function recordLap() {
+            if (!swRunning && swElapsedTime === 0) return;
+            const container = document.getElementById('sw-laps');
+            if (container.children.length === 1 && container.children[0].textContent.includes('No laps')) container.innerHTML = '';
+            const t = formatTimeDisplay(swElapsedTime);
+            const count = container.children.length + 1;
+            const div = document.createElement('div');
+            div.style.cssText = "display: flex; justify-content: space-between; border-bottom: 1px solid var(--border-color); padding: 0.25rem 0;";
+            div.innerHTML = `<span>Lap ${pad(count)}</span> <span class="font-bold">${t.formatted}.${t.centi}</span>`;
+            container.prepend(div);
+        }
+
+        // --- TIMER ---
+        let tmInterval, tmTotalSeconds = 0, tmRemainingSeconds = 0, tmRunning = false;
+
+        function formatInput(el) {
+            if(el.value.length === 1) el.value = "0" + el.value;
+            if(parseInt(el.value) > parseInt(el.max)) el.value = el.max;
+            if(parseInt(el.value) < 0) el.value = "00";
+        }
+
+        function startTimer() {
+            const h = parseInt(document.getElementById('tm-h').value) || 0;
+            const m = parseInt(document.getElementById('tm-m').value) || 0;
+            const s = parseInt(document.getElementById('tm-s').value) || 0;
+            tmTotalSeconds = (h * 3600) + (m * 60) + s;
+            if (tmTotalSeconds <= 0) return;
+            tmRemainingSeconds = tmTotalSeconds;
+            document.getElementById('timer-input-mode').classList.add('hidden');
+            document.getElementById('timer-running-mode').classList.remove('hidden');
+            document.getElementById('timer-running-mode').classList.add('flex');
+            runTimerLogic();
+            toggleTimer();
+        }
+
+        function toggleTimer() {
+            const btn = document.getElementById('tm-btn-pause');
+            if (tmRunning) {
+                clearInterval(tmInterval);
+                tmRunning = false;
+                btn.innerHTML = `${SVG.playSm} RESUME`;
+                btn.className = "btn-block btn-start";
+            } else {
+                tmInterval = setInterval(runTimerLogic, 1000);
+                tmRunning = true;
+                btn.innerHTML = `${SVG.pauseSm} PAUSE`;
+                btn.className = "btn-block btn-pause";
+            }
+        }
+
+        function runTimerLogic() {
+            if (tmRemainingSeconds <= 0) {
+                timerComplete();
+                return;
+            }
+            const h = Math.floor(tmRemainingSeconds / 3600);
+            const m = Math.floor((tmRemainingSeconds % 3600) / 60);
+            const s = tmRemainingSeconds % 60;
+            document.getElementById('tm-display').innerText = `${pad(h)}:${pad(m)}:${pad(s)}`;
+            const offset = (2 * Math.PI * 120) - (tmRemainingSeconds / tmTotalSeconds) * (2 * Math.PI * 120);
+            document.getElementById('tm-progress').style.strokeDashoffset = offset;
+            tmRemainingSeconds--;
+        }
+
+        function timerComplete() {
+            clearInterval(tmInterval);
+            tmRemainingSeconds = 0;
+            document.getElementById('tm-display').innerText = "00:00:00";
+            document.getElementById('tm-progress').style.strokeDashoffset = 2 * Math.PI * 120;
+            triggerAlert("TIMER FINISHED!");
+            tmRunning = false;
+        }
+
+        function resetTimer() {
+            clearInterval(tmInterval);
+            tmRunning = false;
+            document.getElementById('timer-input-mode').classList.remove('hidden');
+            document.getElementById('timer-running-mode').classList.add('hidden');
+            document.getElementById('timer-running-mode').classList.remove('flex');
+            document.getElementById('tm-progress').style.strokeDashoffset = 0;
+        }
+
+        // --- ALARM LOGIC ---
+        let currentAlarmType = 'daily';
+        let alarms = JSON.parse(localStorage.getItem('timekeeper_alarms')) || [];
+        let editingAlarmId = null;
+        
+        // Initial Render
+        renderAlarms();
+
+        function setAlarmType(type, btn) {
+            currentAlarmType = type;
+            document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
+            if(btn) btn.classList.add('active');
+            else {
+                const buttons = document.querySelectorAll('.type-btn');
+                if(type === 'daily') buttons[0].classList.add('active');
+                if(type === 'onetime') buttons[1].classList.add('active');
+                if(type === 'weekday') buttons[2].classList.add('active');
+            }
+            
+            document.getElementById('input-onetime').classList.add('hidden');
+            document.getElementById('input-weekday').classList.add('hidden');
+            
+            if (type === 'onetime') document.getElementById('input-onetime').classList.remove('hidden');
+            if (type === 'weekday') document.getElementById('input-weekday').classList.remove('hidden');
+        }
+
+        function toggleDayBtn(btn) {
+            btn.classList.toggle('selected');
+        }
+
+        function addAlarm() {
+            const timeInput = document.getElementById('alarm-input');
+            const noteInput = document.getElementById('alarm-note');
+            if (!timeInput.value) return;
+
+            let alarm = {
+                id: editingAlarmId || Date.now(),
+                time: timeInput.value + ":00", // HH:MM:00
+                displayTime: timeInput.value,
+                type: currentAlarmType,
+                active: true,
+                note: noteInput.value || "",
+                meta: ""
+            };
+
+            if (currentAlarmType === 'onetime') {
+                const dateInput = document.getElementById('alarm-date');
+                if (!dateInput.value) { alert("Please select a date"); return; }
+                alarm.date = dateInput.value;
+                alarm.meta = `Date: ${alarm.date}`;
+            } else if (currentAlarmType === 'weekday') {
+                const selectedDays = [];
+                const dayLabels = ['S','M','T','W','T','F','S'];
+                document.querySelectorAll('.day-btn').forEach((btn, idx) => {
+                    if (btn.classList.contains('selected')) selectedDays.push(idx);
+                });
+                if (selectedDays.length === 0) { alert("Select at least one day"); return; }
+                alarm.weekdays = selectedDays;
+                alarm.meta = "Days: " + selectedDays.map(d => dayLabels[d]).join(' ');
+            } else {
+                alarm.meta = "Daily";
+            }
+
+            if (editingAlarmId) {
+                const index = alarms.findIndex(a => a.id === editingAlarmId);
+                if (index !== -1) alarms[index] = alarm;
+                cancelEdit();
+            } else {
+                alarms.push(alarm);
+                resetForm();
+            }
+
+            saveAlarms();
+            renderAlarms();
+        }
+
+        function editAlarm(id) {
+            const alarm = alarms.find(a => a.id === id);
+            if (!alarm) return;
+
+            editingAlarmId = id;
+            document.getElementById('alarm-input').value = alarm.displayTime;
+            document.getElementById('alarm-note').value = alarm.note || "";
+            setAlarmType(alarm.type);
+            
+            if (alarm.type === 'onetime') {
+                document.getElementById('alarm-date').value = alarm.date;
+            } else if (alarm.type === 'weekday') {
+                document.querySelectorAll('.day-btn').forEach((btn, idx) => {
+                    if (alarm.weekdays.includes(idx)) btn.classList.add('selected');
+                    else btn.classList.remove('selected');
+                });
+            }
+
+            document.getElementById('alarm-form-title').innerText = "Edit Alarm";
+            document.getElementById('btn-add-alarm').innerHTML = `UPDATE`;
+            document.getElementById('btn-cancel-edit').classList.remove('hidden');
+            
+            renderAlarms();
+        }
+
+        function cancelEdit() {
+            editingAlarmId = null;
+            resetForm();
+            document.getElementById('alarm-form-title').innerText = "Add New Alarm";
+            document.getElementById('btn-add-alarm').innerHTML = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg> ADD`;
+            document.getElementById('btn-cancel-edit').classList.add('hidden');
+            renderAlarms();
+        }
+
+        function resetForm() {
+            document.getElementById('alarm-input').value = "";
+            document.getElementById('alarm-note').value = "";
+            document.getElementById('alarm-date').value = "";
+            document.querySelectorAll('.day-btn').forEach(b => b.classList.remove('selected'));
+            setAlarmType('daily');
+        }
+
+        function removeAlarm(id) {
+            if (editingAlarmId === id) cancelEdit();
+            alarms = alarms.filter(a => a.id !== id);
+            saveAlarms();
+            renderAlarms();
+        }
+
+        function toggleAlarm(id) {
+            const a = alarms.find(a => a.id === id);
+            if(a) a.active = !a.active;
+            saveAlarms();
+            renderAlarms();
+        }
+
+        function saveAlarms() {
+            localStorage.setItem('timekeeper_alarms', JSON.stringify(alarms));
+        }
+        
+        function exportAlarms() {
+            if(alarms.length === 0) { alert("No alarms to export."); return; }
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(alarms, null, 2));
+            const downloadAnchorNode = document.createElement('a');
+            downloadAnchorNode.setAttribute("href", dataStr);
+            downloadAnchorNode.setAttribute("download", "timekeeper_alarms.json");
+            document.body.appendChild(downloadAnchorNode);
+            downloadAnchorNode.click();
+            downloadAnchorNode.remove();
+        }
+
+        function renderAlarms() {
+            const container = document.getElementById('alarm-list');
+            container.innerHTML = '';
+
+            if (alarms.length === 0) {
+                container.innerHTML = '<div id="no-alarms-msg" class="text-center" style="padding: 2rem 0; color: var(--text-muted); font-style: italic;">No active alarms set</div>';
+                return;
+            }
+
+            alarms.sort((a, b) => a.time.localeCompare(b.time)).forEach(alarm => {
+                const isEditing = alarm.id === editingAlarmId;
+                const div = document.createElement('div');
+                div.className = `alarm-item ${alarm.active ? '' : 'inactive'} ${isEditing ? 'editing' : ''}`;
+                
+                div.innerHTML = `
+                    <div style="display: flex; align-items: center; gap: 0.5rem; flex: 1;">
+                        <button onclick="toggleAlarm(${alarm.id})" class="icon-toggle ${alarm.active ? 'on' : ''}">
+                            ${alarm.active ? SVG.toggleOn : SVG.toggleOff}
+                        </button>
+                        <div style="flex: 1;">
+                            <span class="font-mono font-bold alarm-time-display">${alarm.displayTime}</span>
+                            <div class="alarm-meta">${alarm.meta}</div>
+                            ${alarm.note ? `<div class="alarm-note-display">${alarm.note}</div>` : ''}
+                        </div>
+                    </div>
+                    <div style="display: flex;">
+                        <button onclick="editAlarm(${alarm.id})" class="icon-action edit" title="Edit">
+                            ${SVG.edit}
+                        </button>
+                        <button onclick="removeAlarm(${alarm.id})" class="icon-action delete" title="Delete">
+                            ${SVG.trash}
+                        </button>
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function checkAlarms(now) {
+            const timeStr = now.toLocaleTimeString('en-US', { hour12: false }); // HH:MM:SS
+            const dateStr = now.toISOString().split('T')[0]; // YYYY-MM-DD
+            const dayOfWeek = now.getDay(); // 0-6
+
+            alarms.forEach(alarm => {
+                if (!alarm.active) return;
+
+                if (alarm.time === timeStr) {
+                    let trigger = false;
+                    if (alarm.type === 'daily') trigger = true;
+                    else if (alarm.type === 'onetime' && alarm.date === dateStr) trigger = true;
+                    else if (alarm.type === 'weekday' && alarm.weekdays.includes(dayOfWeek)) trigger = true;
+
+                    if (trigger) {
+                        const msg = alarm.note ? alarm.note : `ALARM: ${alarm.displayTime}`;
+                        triggerAlert(msg);
+                        if (alarm.type === 'onetime') toggleAlarm(alarm.id);
+                    }
+                }
+            });
+        }
+
+        // --- ALERT SYSTEM ---
+        function triggerAlert(msg) {
+            const bar = document.getElementById('alert-bar');
+            document.getElementById('alert-message').innerText = msg;
+            bar.classList.remove('hidden');
+            bar.classList.add('flex');
+            
+            const modal = document.getElementById('alert-modal');
+            document.getElementById('modal-message').innerText = msg;
+            modal.classList.add('visible');
+            
+            startAlarmSound();
+        }
+
+        function dismissAlert() {
+            const bar = document.getElementById('alert-bar');
+            bar.classList.add('hidden');
+            bar.classList.remove('flex');
+            
+            const modal = document.getElementById('alert-modal');
+            modal.classList.remove('visible');
+            
+            stopAlarmSound();
+        }
+
+        // --- PWA INSTALL LOGIC ---
+        let deferredPrompt;
+        const installBtn = document.getElementById('btn-install');
+        const spacerInstall = document.getElementById('spacer-install');
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            installBtn.classList.remove('hidden');
+            spacerInstall.classList.remove('hidden');
+        });
+
+        installBtn.addEventListener('click', (e) => {
+            installBtn.classList.add('hidden');
+            spacerInstall.classList.add('hidden');
+            deferredPrompt.prompt();
+            deferredPrompt.userChoice.then((choiceResult) => {
+                deferredPrompt = null;
+            });
+        });
+
+        // --- SERVICE WORKER REGISTRATION ---
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./service-worker.js')
+                    .then(reg => console.log('SW registered!', reg))
+                    .catch(err => console.log('SW failed', err));
+            });
+        }
+    </script>
+</body>
+</html>
