@@ -12,6 +12,7 @@
 * [Password Validator](https://V3ct0r-8890.github.io/selfweb/PassCheck.html) <BR>
 * [Simple Subnet and Bandwidth Calculator](https://V3ct0r-8890.github.io/selfweb/subnetcal.html) <BR>
 * [Interest Calculator](https://v3ct0r-8890.github.io/selfweb/InterestCalculator.html) <BR>
+* [Timer Tool](https://v3ct0r-8890.github.io/selfweb/TimerTool.html) <BR>
 <BR>
 
 --- 
