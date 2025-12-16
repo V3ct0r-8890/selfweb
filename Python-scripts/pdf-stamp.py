@@ -1,14 +1,14 @@
 # --------------------------------------------------------------------------------
-# Script Name: pdf_watermark_gui_v15.py
-# Description: v15 - Aesthetic Balance (16% offset for Side Stamps).
-#              - Clean UI Labels (removed % text).
-#              - Unicode Font Support, Balanced Layout.
+# Script Name: pdf_watermark_gui_v16.py
+# Description: v16 - FIXED BUILD ERROR (FileNotFoundError).
+#              - Uses 'python -m PyInstaller' instead of relying on PATH.
+#              - Retains v15 features (16% balance, Unicode fonts, clean UI).
 # Author:      Gemini (Assistant)
 # Created:     2025-12-17
 #
 # USAGE:
-#   1. To Run GUI:    python pdf_watermark_gui_v15.py
-#   2. To Build EXE:  python pdf_watermark_gui_v15.py --build
+#   1. To Run GUI:    python pdf_watermark_gui_v16.py
+#   2. To Build EXE:  python pdf_watermark_gui_v16.py --build
 # --------------------------------------------------------------------------------
 
 import sys
@@ -27,6 +27,7 @@ def install_and_import(package_name, import_name=None):
     except ImportError:
         print(f"[INFO] Module '{import_name}' not found. Installing '{package_name}'...")
         try:
+            # Use sys.executable to ensure we install to the running python environment
             subprocess.check_call([sys.executable, "-m", "pip", "install", package_name])
             print(f"[SUCCESS] Installed {package_name}")
         except subprocess.CalledProcessError as e:
@@ -90,13 +91,20 @@ def build_executable():
     print("--------------------------------------------------")
     print("[BUILD] Starting PyInstaller Build Process...")
     print("--------------------------------------------------")
-    install_and_import("pyinstaller")
+    
+    # Ensure pyinstaller is installed
+    install_and_import("pyinstaller", "PyInstaller")
     
     script_name = os.path.basename(__file__)
-    exe_name = "PDF_Watermark_Tool_v15"
+    exe_name = "PDF_Watermark_Tool_v16"
     
+    # FIX: Use sys.executable to call PyInstaller as a module
+    # This avoids 'FileNotFoundError' if pyinstaller.exe is not in PATH
     cmd = [
-        "pyinstaller", "--noconfirm", "--onedir", "--windowed",
+        sys.executable, "-m", "PyInstaller",
+        "--noconfirm", 
+        "--onedir", 
+        "--windowed",
         "--name", exe_name,
         "--hidden-import", "pypdf",
         "--hidden-import", "reportlab",
@@ -106,18 +114,24 @@ def build_executable():
         script_name
     ]
     
-    print(f"[EXEC] Running: {' '.join(cmd)}")
+    print(f"[EXEC] Running command: {' '.join(cmd)}")
+    
     try:
         subprocess.check_call(cmd)
-        print(f"[SUCCESS] Build Complete! Check 'dist/{exe_name}' folder.")
+        print("--------------------------------------------------")
+        print(f"[SUCCESS] Build Complete!")
+        print(f"[INFO] Executable is located in: {os.path.join(os.getcwd(), 'dist', exe_name)}")
+        print("--------------------------------------------------")
     except subprocess.CalledProcessError as e:
-        print(f"[ERROR] Build failed: {e}")
+        print(f"[ERROR] Build failed with error code {e.returncode}")
+    except OSError as e:
+        print(f"[FATAL] OS Error during build: {e}")
 
 # --- 6. Main GUI Application Class ---
 class PDFWatermarkApp:
     def __init__(self, root):
         self.root = root
-        self.root.title("PDF Stamp & Watermark Tool v15")
+        self.root.title("PDF Stamp & Watermark Tool v16")
         self.root.geometry("1350x950")
 
         # Variables
@@ -142,7 +156,7 @@ class PDFWatermarkApp:
         self.wm_b = tk.IntVar(value=0)
 
         # Position Definitions
-        # Clean Labels, Logic uses 16% for side vertical offset
+        # LT/RT at 16% down, LB/RB at 16% up
         self.position_defs = [
             # Left Column
             ("TL", "Top-Left", "0", 0),
