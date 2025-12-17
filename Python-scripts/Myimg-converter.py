@@ -1,10 +1,10 @@
 # --------------------------------------------------------------------------------
-# Script Name: heic_converter_v38.py
+# Script Name: heic_converter_v39.py
 # Description: Advanced Image Viewer & Batch Converter (Explorer Style).
 #              Features: Drive Selector, Zoom, Batch Queue, Favorites, Clipboard.
-#              Update: FIXED 64-bit Clipboard Error (Defined ctypes argtypes).
+#              Update: Added --proxy support for auto-installing missing modules.
 # Author:      Gemini (Assistant)
-# Created:     2025-12-17 23:00:00 (+07)
+# Created:     2025-12-17 23:30:00 (+07)
 # --------------------------------------------------------------------------------
 # APPLICATION SPECIFICATIONS:
 # 1.  CORE FUNCTIONALITY:
@@ -13,28 +13,29 @@
 #     - Clipboard: Copy current image to system clipboard (Windows DIB support).
 #
 # 2.  INTERFACE (GUI):
-#     - Title: "FETL Image browser and converter (by SE)".
+#     - Title: "Image browser and Converter".
 #     - Layout: 3-Pane (Folder Tree | File/Folder List | Preview & Controls).
 #     - Navigation Bar: Favorites (⭐), History (< >), Drive, Filter, Address Bar.
 #     - File List: Robust Mouse Scrolling, Search Bar, Folders & Files.
 #     - Preview Pane: Zoom Slider/Buttons, Fast Draft Render, Info Bar, Context Menu.
 #
 # 3.  LOGIC & STATE:
+#     - Installation: Auto-installs dependencies with PROXY support.
 #     - Favorites: Store up to 10 paths + Home location.
 #     - Startup: Startup Sequence to ensure UI readiness.
 #     - Auto-Save: Remembers last path and window geometry in INI file.
 #
 # --------------------------------------------------------------------------------
 # CHANGE LOG:
-# - v38: Fixed "GlobalLock Failed" by defining 64-bit ctypes return types.
+# - v39: Added --proxy parameter and environment var check for pip installation.
+# - v38: Fixed "GlobalLock Failed" (64-bit Clipboard).
 # - v37: Changed Clipboard check to be OS-name agnostic.
-# - v36: Added TITLEBAR variable.
 # --------------------------------------------------------------------------------
 # PIP INSTALL COMMAND:
 # pip install Pillow pillow-heif svglib reportlab --proxy http://user:pass@proxy:port
 #
 # PYINSTALLER BUILD COMMAND:
-# pyinstaller --noconfirm --onedir --windowed --name "FETL_Image_Tool" --hidden-import pillow_heif --hidden-import PIL.JpegImagePlugin --hidden-import PIL.PngImagePlugin --hidden-import PIL.GifImagePlugin --hidden-import PIL.BmpImagePlugin --hidden-import PIL.TiffImagePlugin --hidden-import svglib --hidden-import reportlab.graphics --hidden-import reportlab.pdfgen heic_converter_v38.py
+# pyinstaller --noconfirm --onedir --windowed --name "FETL_Image_Tool" --hidden-import pillow_heif --hidden-import PIL.JpegImagePlugin --hidden-import PIL.PngImagePlugin --hidden-import PIL.GifImagePlugin --hidden-import PIL.BmpImagePlugin --hidden-import PIL.TiffImagePlugin --hidden-import svglib --hidden-import reportlab.graphics --hidden-import reportlab.pdfgen heic_converter_v39.py
 # --------------------------------------------------------------------------------
 
 import sys
@@ -57,14 +58,49 @@ from tkinter import filedialog, messagebox, ttk
 # --- CONFIGURATION ---
 TITLEBAR = "Image browser and Converter"
 
+# --- HELPER: Proxy Detection ---
+def get_install_proxy():
+    """
+    Determines the proxy to use for pip installation.
+    Priority:
+    1. Command line argument --proxy
+    2. Environment variable http_proxy
+    3. Environment variable https_proxy
+    4. None
+    """
+    # 1. Check sys.argv for --proxy manually (before argparse)
+    if "--proxy" in sys.argv:
+        try:
+            idx = sys.argv.index("--proxy")
+            if idx + 1 < len(sys.argv):
+                return sys.argv[idx + 1]
+        except ValueError:
+            pass
+    
+    # 2. Check Environment Variables
+    env_proxy = os.environ.get("http_proxy") or os.environ.get("https_proxy")
+    if env_proxy:
+        return env_proxy
+        
+    return None
+
 # --- HELPER: Auto-Install Packages ---
 def install_package(package_name):
     print(f"[*] Installing missing package: {package_name}...")
+    proxy = get_install_proxy()
+    
+    cmd = [sys.executable, "-m", "pip", "install", package_name]
+    
+    if proxy:
+        print(f"    Using proxy: {proxy}")
+        cmd.extend(["--proxy", proxy])
+        
     try:
-        subprocess.check_call([sys.executable, "-m", "pip", "install", package_name])
+        subprocess.check_call(cmd)
         print(f"[+] Installed {package_name}.")
     except Exception as e:
         print(f"[-] Failed to install {package_name}: {e}")
+        print("    Try running script with: --proxy http://user:pass@host:port")
 
 # --- BUILDER LOGIC ---
 def run_build(build_type):
@@ -116,7 +152,18 @@ try:
     from reportlab.graphics import renderPM
     SVG_SUPPORT = True
 except ImportError:
-    SVG_SUPPORT = False
+    if "--build" not in sys.argv:
+        # Optional SVG support, try to install but don't restart if fail (to avoid loops)
+        install_package("svglib")
+        install_package("reportlab")
+        try:
+            from svglib.svglib import svg2rlg
+            from reportlab.graphics import renderPM
+            SVG_SUPPORT = True
+        except ImportError:
+            SVG_SUPPORT = False
+    else:
+        SVG_SUPPORT = False
 
 if 'pillow_heif' in sys.modules:
     pillow_heif.register_heif_opener()
@@ -1004,6 +1051,7 @@ class ExplorerApp:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Image Explorer")
     parser.add_argument('--build', choices=['win-gui', 'win-cli', 'linux-gui', 'linux-cli'], help="Build")
+    parser.add_argument('--proxy', help="Proxy for installing modules (http://user:pass@host:port)")
     args = parser.parse_args()
 
     if args.build:
