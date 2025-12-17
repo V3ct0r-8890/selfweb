@@ -35,7 +35,7 @@
 # pip install Pillow pillow-heif svglib reportlab --proxy http://user:pass@proxy:port
 #
 # PYINSTALLER BUILD COMMAND:
-# pyinstaller --noconfirm --onedir --windowed --name "FETL_Image_Tool" --hidden-import pillow_heif --hidden-import PIL.JpegImagePlugin --hidden-import PIL.PngImagePlugin --hidden-import PIL.GifImagePlugin --hidden-import PIL.BmpImagePlugin --hidden-import PIL.TiffImagePlugin --hidden-import svglib --hidden-import reportlab.graphics --hidden-import reportlab.pdfgen heic_converter_v39.py
+# pyinstaller --noconfirm --onedir --windowed --name "My-imagetool" --hidden-import pillow_heif --hidden-import PIL.JpegImagePlugin --hidden-import PIL.PngImagePlugin --hidden-import PIL.GifImagePlugin --hidden-import PIL.BmpImagePlugin --hidden-import PIL.TiffImagePlugin --hidden-import svglib --hidden-import reportlab.graphics --hidden-import reportlab.pdfgen heic_converter_v39.py
 # --------------------------------------------------------------------------------
 
 import sys
@@ -128,7 +128,7 @@ def run_build(build_type):
         "--hidden-import", "reportlab.pdfgen",
     ]
 
-    name = "FETL_Image_Tool"
+    name = "My_Image_Tool"
     if "gui" in build_type: cmd = base_cmd + ["--windowed", "--name", name]
     else: cmd = base_cmd + ["--console", "--name", name + "_CLI"]
     
