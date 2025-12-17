@@ -134,14 +134,14 @@ register_fonts()
 def build_executable():
     install_and_import("pyinstaller", "PyInstaller", PROXY_URL)
     script_name = os.path.basename(__file__)
-    exe_name = "FETL_PDF_Stamp_Tools"
+    exe_name = "PDF_Stamp_Tools"
     cmd = [sys.executable, "-m", "PyInstaller", "--noconfirm", "--onedir", "--windowed", "--name", exe_name, "--hidden-import", "pypdf", "--hidden-import", "reportlab", "--hidden-import", "fitz", "--hidden-import", "PIL", "--hidden-import", "tkinter", script_name]
     try: subprocess.check_call(cmd); print(f"[SUCCESS] Built {exe_name}")
     except: print("[ERROR] Build failed")
 
 # --- 6. Stamp Tab Class ---
 class StampTab(ttk.Frame):
-    def __init__(self, parent, update_callback, text_l1="FETL", text_l2="Confidential", default_enabled=False):
+    def __init__(self, parent, update_callback, text_l1="", text_l2="Confidential", default_enabled=False):
         super().__init__(parent)
         self.update_callback = update_callback
         
