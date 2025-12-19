@@ -79,8 +79,8 @@ DEFAULT_HOSTS_AND_PORTS = """10.17.100.21-22:33128
 10.17.100.189-191:ping,80
 """
 # Maximum number of devices to check at once
-# MAX_DEVICES = 255 # for SE
-MAX_DEVICES = 20 # for users
+MAX_DEVICES = 255 # for SE
+# MAX_DEVICES = 20 # for users
 
 class NetworkToolGUI(tk.Tk):
     """
@@ -641,3 +641,4 @@ if __name__ == "__main__":
     app = NetworkToolGUI()
     if app.winfo_exists():
         app.mainloop()
+
