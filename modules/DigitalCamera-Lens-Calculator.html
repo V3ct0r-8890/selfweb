@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="en">
+<!--
+================================================================================
+NAME: Camera & Megapixel Equivalence Master Calculator (Theme-Aware)
+VERSION: 3.5.0
+TIMESTAMP: 2025-12-27 21:28:00
+AUTHOR: Gemini (Thought Partner)
+SPECIFICATIONS:
+    - Dual-column comparison engine (System A vs System B).
+    - AUTOMATED SYNC: System B inherits lens parameters from System A.
+    - AUTO THEME: Light (7AM-6PM), Dark (6PM-7AM).
+    - INVERT CALCULATION: Determine real focal length needed for a target equivalent across ANY format.
+    - Synchronized Equivalence calculations (35mm standard).
+    - Resolution loss/gain analysis relative to sensor crop.
+    - Reference table for multi-format megapixel density.
+    - Built-in documentation accessible via UI or ?help parameter.
+================================================================================
+-->
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Camera Equivalence Comparison</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+        }
+    </script>
+    <style>
+        :root {
+            --bg-main: #0f172a;
+            --bg-card: #1e293b;
+            --border: #334155;
+            --input-bg: #0f172a;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+        }
+
+        .light {
+            --bg-main: #f1f5f9;
+            --bg-card: #ffffff;
+            --border: #e2e8f0;
+            --input-bg: #f8fafc;
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+        }
+
+        body { background-color: var(--bg-main); color: var(--text-main); transition: background-color 0.3s ease, color 0.3s ease; }
+        .card { background-color: var(--bg-card); border: 1px solid var(--border); transition: all 0.2s ease; }
+        .input-field { background-color: var(--input-bg); border: 1px solid var(--border); color: var(--text-main); }
+        .text-slate-400 { color: var(--text-muted); }
+        
+        .accent-blue { color: #60a5fa; }
+        .accent-emerald { color: #10b981; }
+        .accent-amber { color: #f59e0b; }
+        .accent-rose { color: #f43f5e; }
+        
+        .comparison-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+        }
+        
+        @media (max-width: 1024px) {
+            .comparison-container {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Custom toggle switch style */
+        .theme-dot { transition: all 0.3s ease; }
+        .light .theme-dot { transform: translateX(100%); }
+    </style>
+</head>
+<body class="p-4 md:p-8 font-sans dark">
+
+    <div class="max-w-7xl mx-auto">
+        <header class="mb-8 flex flex-col md:flex-row justify-between items-start md:items-center border-b border-slate-700 dark:border-slate-700 pb-6 gap-4">
+            <div>
+                <h1 class="text-3xl font-bold accent-blue">Optics & Sensor Comparison</h1>
+                <p class="text-slate-400 text-sm italic">Analyze focal length, depth of field, and resolution across any two systems.</p>
+            </div>
+            <div class="flex items-center gap-4">
+                <!-- Theme Switcher -->
+                <div class="flex items-center gap-2 bg-slate-800/50 dark:bg-slate-800 p-1 rounded-full border border-slate-700 cursor-pointer" id="themeToggle">
+                    <div class="w-12 h-6 rounded-full bg-slate-700 relative flex items-center px-1">
+                        <div class="theme-dot w-4 h-4 bg-blue-400 rounded-full shadow-md"></div>
+                    </div>
+                    <span class="text-[10px] font-bold uppercase pr-3 select-none text-slate-400" id="themeLabel">Dark Mode</span>
+                </div>
+                
+                <button id="helpBtn" class="bg-blue-600 hover:bg-blue-500 px-4 py-2 rounded text-sm transition-colors font-semibold shadow-lg text-white">
+                    Show --help
+                </button>
+            </div>
+        </header>
+
+        <!-- Help Documentation -->
+        <div id="helpSection" class="hidden card p-6 rounded-lg mb-8 border-l-4 border-blue-500">
+            <h2 class="text-xl font-semibold mb-3">Understanding the Comparison</h2>
+            <div class="grid md:grid-cols-3 gap-6 text-sm">
+                <div>
+                    <h3 class="font-bold text-blue-400 mb-1">Optics</h3>
+                    <p class="text-slate-400 leading-relaxed">Focal length and Aperture are multiplied by the crop factor to find the 35mm equivalent field-of-view and background blur (DoF).</p>
+                </div>
+                <div>
+                    <h3 class="font-bold text-emerald-500 mb-1">Resolution</h3>
+                    <p class="text-slate-400 leading-relaxed">When using a crop-sensor lens on a larger sensor, resolution is reduced by the square of the crop factor (e.g., 1.5x crop = 2.25x pixel loss).</p>
+                </div>
+                <div>
+                    <h3 class="font-bold text-amber-500 mb-1">Equivalence</h3>
+                    <p class="text-slate-400 leading-relaxed">Exposure (light per area) stays the same. Total light gathered (Noise performance) scales with sensor size.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- REVISED: Universal Invert Calculation Tool -->
+        <div class="card p-6 rounded-2xl mb-8 border-t-4 border-emerald-500">
+            <div class="flex flex-col md:flex-row justify-between items-center gap-4">
+                <div class="flex-1">
+                    <h3 class="text-sm font-black text-emerald-500 uppercase tracking-widest mb-1">Universal Reverse Equivalence</h3>
+                    <p class="text-slate-400 text-xs italic">"Find the physical lens needed for a specific field of view."</p>
+                </div>
+                <div class="flex flex-wrap items-center gap-4 flex-2">
+                    <div class="flex flex-col">
+                        <label class="text-[10px] uppercase font-bold text-slate-500 mb-1">Target Look (mm)</label>
+                        <input type="number" id="targetEq" value="35" class="p-2 w-24 rounded-lg input-field text-sm">
+                    </div>
+                    <div class="flex flex-col">
+                        <label class="text-[10px] uppercase font-bold text-slate-500 mb-1">Target System</label>
+                        <select id="targetFormat" class="p-2 rounded-lg input-field text-sm">
+                            <option value="1.0" selected>35mm Full Frame</option>
+                            <option value="0.79">Medium Format (0.79x)</option>
+                            <option value="0.5">6x7 Film (0.5x)</option>
+                        </select>
+                    </div>
+                    <div class="flex flex-col">
+                        <label class="text-[10px] uppercase font-bold text-slate-500 mb-1">My Sensor</label>
+                        <select id="targetSensor" class="p-2 rounded-lg input-field text-sm">
+                            <option value="1.5">APS-C (1.5x)</option>
+                            <option value="1.6">APS-C (1.6x)</option>
+                            <option value="2.0">MFT (2.0x)</option>
+                            <option value="0.79">Medium Format (0.79x)</option>
+                        </select>
+                    </div>
+                    <div class="bg-emerald-500/10 p-3 rounded-xl border border-emerald-500/30">
+                        <div class="text-[10px] uppercase font-bold text-emerald-500">Physical Lens:</div>
+                        <div class="text-2xl font-mono font-bold"><span id="invertResult">23.3</span>mm</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="comparison-container">
+            
+            <!-- SYSTEM A COLUMN -->
+            <div class="space-y-6">
+                <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center font-bold text-white">A</div>
+                    <h2 class="text-xl font-bold">System A (Reference)</h2>
+                </div>
+
+                <!-- Input Card A -->
+                <section class="card p-6 rounded-2xl shadow-xl space-y-5">
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-bold uppercase text-slate-500 mb-2">Sensor Format</label>
+                            <select id="sensorA" class="w-full p-3 rounded-lg input-field focus:ring-2 focus:ring-blue-500 outline-none">
+                                <option value="0.79">Medium Format (GFX/X1D) [0.79x]</option>
+                                <option value="1.0" selected>35mm Full Frame [1.0x]</option>
+                                <option value="1.5">APS-C (Nikon/Sony/Fuji) [1.5x]</option>
+                                <option value="1.6">APS-C (Canon) [1.6x]</option>
+                                <option value="2.0">Micro Four Thirds [2.0x]</option>
+                                <option value="2.72">1-inch Sensor [2.72x]</option>
+                            </select>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-bold uppercase text-slate-500 mb-2">Lens FL (mm)</label>
+                                <input type="number" id="focalA" value="50" class="w-full p-3 rounded-lg input-field">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold uppercase text-slate-500 mb-2">Aperture (f/)</label>
+                                <input type="number" id="apertureA" value="1.8" step="0.1" class="w-full p-3 rounded-lg input-field">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold uppercase text-slate-500 mb-2">Sensor Resolution (MP)</label>
+                            <input type="number" id="mpA" value="45" class="w-full p-3 rounded-lg input-field">
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Output Card A -->
+                <section class="card p-6 rounded-2xl border-b-4 border-blue-500 shadow-inner overflow-hidden relative">
+                    <div class="absolute inset-0 bg-blue-500/5 pointer-events-none"></div>
+                    <h3 class="text-xs font-black text-blue-500 uppercase tracking-widest mb-4 relative z-10">35mm Equivalence</h3>
+                    <div class="space-y-6 relative z-10">
+                        <div class="flex justify-between items-center">
+                            <span class="text-slate-400">Focal Length</span>
+                            <div class="text-right">
+                                <div class="text-3xl font-mono font-bold"><span id="outFocalA">50.0</span>mm</div>
+                                <div class="text-[10px] text-slate-500">Equivalent Angle of View</div>
+                            </div>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-slate-400">Depth of Field</span>
+                            <div class="text-right">
+                                <div class="text-3xl font-mono font-bold accent-emerald">f/<span id="outApA">1.8</span></div>
+                                <div class="text-[10px] text-slate-500">Background Blur Look</div>
+                            </div>
+                        </div>
+                        <div class="flex justify-between items-center pt-4 border-t border-slate-200 dark:border-slate-700">
+                            <span class="text-slate-400">Total Resolution</span>
+                            <div class="text-right">
+                                <div class="text-3xl font-mono font-bold accent-amber"><span id="outMpA">45.0</span>MP</div>
+                                <div class="text-[10px] text-slate-500">Effective Pixels</div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <!-- SYSTEM B COLUMN -->
+            <div class="space-y-6">
+                <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-full bg-rose-500 flex items-center justify-center font-bold text-white">B</div>
+                    <h2 class="text-xl font-bold">System B (Comparison)</h2>
+                </div>
+
+                <!-- Input Card B -->
+                <section class="card p-6 rounded-2xl shadow-xl space-y-5">
+                    <div class="space-y-4">
+                        <div class="flex justify-between items-end">
+                            <div class="flex-grow">
+                                <label class="block text-xs font-bold uppercase text-slate-500 mb-2">Sensor Format</label>
+                                <select id="sensorB" class="w-full p-3 rounded-lg input-field focus:ring-2 focus:ring-rose-500 outline-none">
+                                    <option value="0.79">Medium Format (GFX/X1D) [0.79x]</option>
+                                    <option value="1.0">35mm Full Frame [1.0x]</option>
+                                    <option value="1.5" selected>APS-C (Nikon/Sony/Fuji) [1.5x]</option>
+                                    <option value="1.6">APS-C (Canon) [1.6x]</option>
+                                    <option value="2.0">Micro Four Thirds [2.0x]</option>
+                                    <option value="2.72">1-inch Sensor [2.72x]</option>
+                                </select>
+                            </div>
+                            <div class="ml-4 mb-2 flex items-center gap-2">
+                                <input type="checkbox" id="syncLens" checked class="w-4 h-4 accent-rose-500">
+                                <label for="syncLens" class="text-[10px] font-bold text-slate-500 uppercase tracking-tighter">Use Same Lens</label>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-bold uppercase text-slate-500 mb-2">Lens FL (mm)</label>
+                                <input type="number" id="focalB" value="50" class="w-full p-3 rounded-lg input-field">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold uppercase text-slate-500 mb-2">Aperture (f/)</label>
+                                <input type="number" id="apertureB" value="1.8" step="0.1" class="w-full p-3 rounded-lg input-field">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold uppercase text-slate-500 mb-2">Sensor Resolution (MP)</label>
+                            <input type="number" id="mpB" value="26" class="w-full p-3 rounded-lg input-field">
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Output Card B -->
+                <section class="card p-6 rounded-2xl border-b-4 border-rose-500 shadow-inner overflow-hidden relative">
+                    <div class="absolute inset-0 bg-rose-500/5 pointer-events-none"></div>
+                    <div class="flex justify-between items-center mb-4 relative z-10">
+                        <h3 class="text-xs font-black text-rose-500 uppercase tracking-widest">35mm Equivalence</h3>
+                        <div id="resDelta" class="text-[10px] text-slate-500 font-mono"></div>
+                    </div>
+                    <div class="space-y-6 relative z-10">
+                        <div class="flex justify-between items-center">
+                            <span class="text-slate-400">Focal Length</span>
+                            <div class="text-right">
+                                <div class="text-3xl font-mono font-bold"><span id="outFocalB">75.0</span>mm</div>
+                                <div id="focalDelta" class="text-[10px]"></div>
+                            </div>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-slate-400">Depth of Field</span>
+                            <div class="text-right">
+                                <div class="text-3xl font-mono font-bold accent-emerald">f/<span id="outApB">2.7</span></div>
+                                <div id="apDelta" class="text-[10px]"></div>
+                            </div>
+                        </div>
+                        <div class="flex justify-between items-center pt-4 border-t border-slate-200 dark:border-slate-700">
+                            <span class="text-slate-400">Total Resolution</span>
+                            <div class="text-right">
+                                <div class="text-3xl font-mono font-bold accent-amber"><span id="outMpB">26.0</span>MP</div>
+                                <div id="mpDelta" class="text-[10px]"></div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </div>
+
+        <!-- Comprehensive Multiplier Table -->
+        <div class="mt-12 overflow-hidden card rounded-2xl">
+             <div class="bg-slate-200 dark:bg-slate-900/80 p-4 border-b border-slate-300 dark:border-slate-700 flex justify-between items-center">
+                <h3 class="text-sm font-bold uppercase tracking-widest text-slate-500">Multiplier & Crop Resolution Guide</h3>
+                <span class="text-[10px] text-slate-500">Calculated from System A Resolution</span>
+             </div>
+             <div class="overflow-x-auto">
+                 <table class="w-full text-left text-xs">
+                    <thead>
+                        <tr class="text-slate-500 border-b border-slate-200 dark:border-slate-800">
+                            <th class="p-4">Format Name</th>
+                            <th class="p-4 text-center">Multiplier</th>
+                            <th class="p-4 text-center">Area Relative to FF</th>
+                            <th class="p-4 text-right">Effective MP (from System A)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="refTable"></tbody>
+                 </table>
+             </div>
+        </div>
+
+        <footer class="mt-12 text-center text-slate-400 text-[10px] uppercase tracking-widest pb-12">
+            Sensor physics notes: Equivalence defines framing and blur look. ISO 100 on System A and System B results in the same exposure brightness for the same lens aperture settings.
+        </footer>
+    </div>
+
+    <script>
+        const sensorData = [
+            { name: "6x7 Medium Format", factor: 0.5 },
+            { name: "645 Medium Format", factor: 0.62 },
+            { name: "GFX / X1D Crop MF", factor: 0.79 },
+            { name: "35mm Full Frame", factor: 1.0 },
+            { name: "APS-C (Nikon/Sony/Fuji)", factor: 1.5 },
+            { name: "APS-C (Canon)", factor: 1.6 },
+            { name: "Micro Four Thirds", factor: 2.0 },
+            { name: "1-inch Sensor", factor: 2.72 },
+            { name: "1/2.3-inch Small Sensor", factor: 5.6 }
+        ];
+
+        const el = {
+            sA: document.getElementById('sensorA'), fA: document.getElementById('focalA'), apA: document.getElementById('apertureA'), mpA: document.getElementById('mpA'),
+            sB: document.getElementById('sensorB'), fB: document.getElementById('focalB'), apB: document.getElementById('apertureB'), mpB: document.getElementById('mpB'),
+            sync: document.getElementById('syncLens'),
+            outFa: document.getElementById('outFocalA'), outAa: document.getElementById('outApA'), outMa: document.getElementById('outMpA'),
+            outFb: document.getElementById('outFocalB'), outAb: document.getElementById('outApB'), outMb: document.getElementById('outMpB'),
+            fDelta: document.getElementById('focalDelta'), aDelta: document.getElementById('apDelta'), mDelta: document.getElementById('mpDelta'),
+            help: document.getElementById('helpSection'), btnHelp: document.getElementById('helpBtn'),
+            table: document.getElementById('refTable'),
+            body: document.body, themeBtn: document.getElementById('themeToggle'), themeLabel: document.getElementById('themeLabel'),
+            // Invert tools
+            invTarget: document.getElementById('targetEq'), 
+            invTargetFormat: document.getElementById('targetFormat'),
+            invSensor: document.getElementById('targetSensor'), 
+            invResult: document.getElementById('invertResult')
+        };
+
+        // Theme Switch Logic
+        function setTheme(mode) {
+            if (mode === 'light') {
+                el.body.classList.remove('dark');
+                el.body.classList.add('light');
+                el.themeLabel.textContent = "Light Mode";
+            } else {
+                el.body.classList.remove('light');
+                el.body.classList.add('dark');
+                el.themeLabel.textContent = "Dark Mode";
+            }
+        }
+
+        function toggleTheme() {
+            const isDark = el.body.classList.contains('dark');
+            setTheme(isDark ? 'light' : 'dark');
+        }
+
+        function applyTimeBasedTheme() {
+            const hour = new Date().getHours();
+            // Dark: 6PM (18) to 7AM (7)
+            if (hour >= 18 || hour < 7) {
+                setTheme('dark');
+            } else {
+                setTheme('light');
+            }
+        }
+
+        function updateInvert() {
+            const targetVal = parseFloat(el.invTarget.value) || 0;
+            const targetFormatFactor = parseFloat(el.invTargetFormat.value) || 1.0;
+            const mySensorFactor = parseFloat(el.invSensor.value) || 1.0;
+            
+            if (mySensorFactor === 0) return;
+            
+            // Logic: Target mm * (Target Format Crop / My Sensor Crop)
+            // Example: I want the look of 50mm on Full Frame (1.0) for my APS-C (1.5)
+            // 50 * (1.0 / 1.5) = 33.3mm
+            const actual = targetVal * (targetFormatFactor / mySensorFactor);
+            el.invResult.textContent = actual.toFixed(1);
+        }
+
+        function updateAll(triggerId) {
+            // Handle Syncing
+            if (el.sync.checked) {
+                if (triggerId === 'focalA' || triggerId === 'apertureA' || triggerId === 'sensorA' || triggerId === 'mpA') {
+                    el.fB.value = el.fA.value;
+                    el.apB.value = el.apA.value;
+                }
+            }
+
+            // Get values
+            const valA = {
+                factor: parseFloat(el.sA.value),
+                f: parseFloat(el.fA.value) || 0,
+                a: parseFloat(el.apA.value) || 0,
+                m: parseFloat(el.mpA.value) || 0
+            };
+            const valB = {
+                factor: parseFloat(el.sB.value),
+                f: parseFloat(el.fB.value) || 0,
+                a: parseFloat(el.apB.value) || 0,
+                m: parseFloat(el.mpB.value) || 0
+            };
+
+            // Basic Equivalence
+            const eqFa = valA.f * valA.factor;
+            const eqAa = valA.a * valA.factor;
+            const eqFb = valB.f * valB.factor;
+            const eqAb = valB.a * valB.factor;
+
+            // Update UI A
+            el.outFa.textContent = eqFa.toFixed(1);
+            el.outAa.textContent = eqAa.toFixed(1);
+            el.outMa.textContent = valA.m.toFixed(1);
+
+            // Update UI B
+            el.outFb.textContent = eqFb.toFixed(1);
+            el.outAb.textContent = eqAb.toFixed(1);
+            el.outMb.textContent = valB.m.toFixed(1);
+
+            // Calculate Deltas (B vs A)
+            const diffF = eqFb - eqFa;
+            const diffA = eqAb - eqAa;
+            const diffM = valB.m - valA.m;
+
+            const getFormat = (val, suffix) => {
+                const color = val > 0 ? 'text-rose-500' : (val < 0 ? 'text-emerald-500' : 'text-slate-400');
+                const sign = val > 0 ? '+' : '';
+                return `<span class="${color}">${sign}${val.toFixed(1)}${suffix} vs A</span>`;
+            };
+
+            el.fDelta.innerHTML = getFormat(diffF, 'mm');
+            el.aDelta.innerHTML = getFormat(diffA, ' stops');
+            el.mDelta.innerHTML = getFormat(diffM, ' MP');
+
+            updateTable(valA.m);
+            updateInvert();
+        }
+
+        function updateTable(referenceMP) {
+            el.table.innerHTML = sensorData.map(s => {
+                const areaFactor = (s.factor * s.factor);
+                const mpInCrop = (referenceMP / areaFactor).toFixed(1);
+                const areaPct = (100 / areaFactor).toFixed(1);
+                
+                return `
+                    <tr class="border-b border-slate-200 dark:border-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800/20">
+                        <td class="p-4 font-medium text-slate-700 dark:text-slate-300">${s.name}</td>
+                        <td class="p-4 text-center font-mono text-blue-500">${s.factor}x</td>
+                        <td class="p-4 text-center font-mono text-slate-400">${areaPct}% Area</td>
+                        <td class="p-4 text-right font-mono text-amber-500">${mpInCrop} MP</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        el.btnHelp.addEventListener('click', () => {
+            el.help.classList.toggle('hidden');
+            el.btnHelp.textContent = el.help.classList.contains('hidden') ? 'Show --help' : 'Hide --help';
+        });
+
+        el.themeBtn.addEventListener('click', toggleTheme);
+        el.invTarget.addEventListener('input', updateInvert);
+        el.invTargetFormat.addEventListener('input', updateInvert);
+        el.invSensor.addEventListener('input', updateInvert);
+
+        // Event binding
+        const inputElements = [el.sA, el.fA, el.apA, el.mpA, el.sB, el.fB, el.apB, el.mpB, el.sync];
+        inputElements.forEach(i => {
+            i.addEventListener('input', (e) => updateAll(e.target.id));
+        });
+
+        window.onload = () => {
+            applyTimeBasedTheme();
+            if (window.location.search.includes('help')) el.btnHelp.click();
+            updateAll();
+        };
+    </script>
+</body>
+</html>
