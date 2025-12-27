@@ -3,27 +3,27 @@
 <!--
 ================================================================================
 NAME: Camera & Megapixel Equivalence Master Calculator (Theme-Aware)
-VERSION: 3.8.0
-TIMESTAMP: 2025-12-27 22:04:00
+VERSION: 3.9.0
+TIMESTAMP: 2025-12-27 22:25:00
 AUTHOR: Gemini (Thought Partner)
 SPECIFICATIONS:
     - Dual-column comparison engine (System A vs System B).
-    - ZOOM SUPPORT: Added 'Start' and 'End' focal length fields.
-    - PRIME LOGIC: If 'End' is empty or equal to 'Start', treated as Prime.
-    - LENS PRESETS: Selection for popular Primes and Zooms (updates ranges).
+    - VARIABLE ZOOM & APERTURE: Added 'Start' and 'End' for both Focal Length and Aperture.
+    - PRIME/CONSTANT LOGIC: If 'End' fields are empty, treated as Prime/Constant.
+    - ESTIMATED DoF: Calculates equivalent f-stop for both start and end of range.
+    - LENS PRESETS: Updated to support variable aperture zooms (e.g., f/3.5-5.6).
     - FULLY CUSTOMIZABLE: All dropdown values can be overridden by manual input.
     - AUTOMATED SYNC: System B can inherit lens parameters from System A.
     - AUTO THEME: Light (7AM-6PM), Dark (6PM-7AM).
     - INVERT CALCULATION: Determine real focal length needed for a target equivalent.
     - Expanded Sensor Database: 4x5, 6x7, 6x4.5, GFX, FF, APS-C, MFT, 1".
     - Multiplier & Crop Resolution Reference Table.
-    - Default resolution: 24MP for both systems.
 ================================================================================
 -->
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Camera Equivalence Comparison</title>
+    <title>Camera Equivalence Comparison v3.9</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -81,7 +81,7 @@ SPECIFICATIONS:
         <header class="mb-8 flex flex-col md:flex-row justify-between items-start md:items-center border-b border-slate-700 dark:border-slate-700 pb-6 gap-4">
             <div>
                 <h1 class="text-3xl font-bold accent-blue">Optics & Sensor Comparison</h1>
-                <p class="text-slate-400 text-sm italic">Analyze focal length ranges, depth of field, and resolution across any two systems.</p>
+                <p class="text-slate-400 text-sm italic">Analyze variable focal ranges, varying aperture depth-of-field, and sensor resolution.</p>
             </div>
             <div class="flex items-center gap-4">
                 <div class="flex items-center gap-2 bg-slate-800/50 dark:bg-slate-800 p-1 rounded-full border border-slate-700 cursor-pointer" id="themeToggle">
@@ -102,26 +102,26 @@ SPECIFICATIONS:
             <h2 class="text-xl font-semibold mb-3">Understanding the Comparison</h2>
             <div class="grid md:grid-cols-3 gap-6 text-sm">
                 <div>
-                    <h3 class="font-bold text-blue-400 mb-1">Optics & Zoom</h3>
-                    <p class="text-slate-400 leading-relaxed">Focal length ranges and Aperture are multiplied by the crop factor. If 'Focal End' is empty, the lens is treated as a Prime.</p>
+                    <h3 class="font-bold text-blue-400 mb-1">Variable Optics</h3>
+                    <p class="text-slate-400 leading-relaxed">Focal length and Aperture (f-stop) ranges are multiplied by the crop factor. If 'End' values are empty, the lens is treated as a Prime or Constant Aperture lens.</p>
                 </div>
                 <div>
-                    <h3 class="font-bold text-emerald-500 mb-1">Resolution</h3>
-                    <p class="text-slate-400 leading-relaxed">When comparing different sensors, the 'Effective MP' shows the detail level relative to System A's sensor density.</p>
+                    <h3 class="font-bold text-emerald-500 mb-1">DoF Equivalence</h3>
+                    <p class="text-slate-400 leading-relaxed">The 'Equivalent Aperture' indicates the background blur potential. For example, f/2.8 on APS-C looks like f/4.2 on Full Frame in terms of depth of field.</p>
                 </div>
                 <div>
-                    <h3 class="font-bold text-amber-500 mb-1">Equivalence</h3>
-                    <p class="text-slate-400 leading-relaxed">Total light gathered (Noise performance) scales with sensor size, while exposure brightness remains constant at the same f-stop.</p>
+                    <h3 class="font-bold text-amber-500 mb-1">Resolution Loss</h3>
+                    <p class="text-slate-400 leading-relaxed">Using a smaller sensor's effective area on a larger sensor significantly reduces resolution (scales by crop factor squared).</p>
                 </div>
             </div>
         </div>
 
-        <!-- Universal Invert Calculation Tool -->
+        <!-- Invert Calculation Tool -->
         <div class="card p-6 rounded-2xl mb-8 border-t-4 border-emerald-500">
             <div class="flex flex-col md:flex-row justify-between items-center gap-4">
                 <div class="flex-1">
                     <h3 class="text-sm font-black text-emerald-500 uppercase tracking-widest mb-1">Universal Reverse Equivalence</h3>
-                    <p class="text-slate-400 text-xs italic">"Find the physical lens needed for a specific field of view."</p>
+                    <p class="text-slate-400 text-xs italic">"Determine the physical hardware needed to match a specific look."</p>
                 </div>
                 <div class="flex flex-wrap items-center gap-4 flex-2">
                     <div class="flex flex-col">
@@ -146,7 +146,7 @@ SPECIFICATIONS:
 
         <div class="comparison-container">
             
-            <!-- SYSTEM A COLUMN -->
+            <!-- SYSTEM A -->
             <div class="space-y-6">
                 <div class="flex items-center gap-3">
                     <div class="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center font-bold text-white">A</div>
@@ -165,73 +165,85 @@ SPECIFICATIONS:
                             <select id="presetA" onchange="applyPreset('A')" class="w-full p-3 rounded-lg input-field focus:ring-2 focus:ring-blue-500 outline-none">
                                 <option value="custom">Custom Values</option>
                                 <optgroup label="Primes">
-                                    <option value="24,24,1.4">24mm f/1.4</option>
-                                    <option value="35,35,1.4">35mm f/1.4</option>
-                                    <option value="50,50,1.2">50mm f/1.2</option>
-                                    <option value="85,85,1.4">85mm f/1.4</option>
+                                    <option value="35,35,1.4,1.4">35mm f/1.4</option>
+                                    <option value="50,50,1.2,1.2">50mm f/1.2</option>
+                                    <option value="85,85,1.4,1.4">85mm f/1.4</option>
                                 </optgroup>
-                                <optgroup label="Zooms">
-                                    <option value="16,35,2.8">16-35mm f/2.8</option>
-                                    <option value="24,70,2.8">24-70mm f/2.8</option>
-                                    <option value="24,105,4.0">24-105mm f/4.0</option>
-                                    <option value="70,200,2.8">70-200mm f/2.8</option>
-                                    <option value="100,400,5.6">100-400mm f/5.6</option>
+                                <optgroup label="Constant Zooms">
+                                    <option value="16,35,2.8,2.8">16-35mm f/2.8</option>
+                                    <option value="24,70,2.8,2.8">24-70mm f/2.8</option>
+                                    <option value="70,200,2.8,2.8">70-200mm f/2.8</option>
+                                </optgroup>
+                                <optgroup label="Variable Zooms">
+                                    <option value="18,55,3.5,5.6">18-55mm f/3.5-5.6</option>
+                                    <option value="24,240,3.5,6.3">24-240mm f/3.5-6.3</option>
+                                    <option value="100,400,4.5,5.6">100-400mm f/4.5-5.6</option>
                                 </optgroup>
                             </select>
                         </div>
 
-                        <div class="grid grid-cols-3 gap-3">
-                            <div>
-                                <label class="block text-[10px] font-bold uppercase text-slate-500 mb-2">Start (mm)</label>
-                                <input type="number" id="focalA_Start" value="24" class="w-full p-2 rounded-lg input-field text-sm">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div class="space-y-4">
+                                <div class="grid grid-cols-2 gap-2">
+                                    <div>
+                                        <label class="block text-[10px] font-bold uppercase text-slate-500 mb-1">FL Start</label>
+                                        <input type="number" id="fA_S" value="24" class="w-full p-2 rounded-lg input-field text-sm">
+                                    </div>
+                                    <div>
+                                        <label class="block text-[10px] font-bold uppercase text-slate-500 mb-1">FL End</label>
+                                        <input type="number" id="fA_E" value="70" placeholder="Prime" class="w-full p-2 rounded-lg input-field text-sm">
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold uppercase text-slate-500 mb-2">Sensor Res (MP)</label>
+                                    <input type="number" id="mpA" value="24" class="w-full p-3 rounded-lg input-field">
+                                </div>
                             </div>
-                            <div>
-                                <label class="block text-[10px] font-bold uppercase text-slate-500 mb-2">End (mm)</label>
-                                <input type="number" id="focalA_End" value="70" placeholder="Prime" class="w-full p-2 rounded-lg input-field text-sm">
+                            <div class="space-y-4">
+                                <div class="grid grid-cols-2 gap-2">
+                                    <div>
+                                        <label class="block text-[10px] font-bold uppercase text-slate-500 mb-1">Ap Start</label>
+                                        <input type="number" id="apA_S" value="2.8" step="0.1" class="w-full p-2 rounded-lg input-field text-sm">
+                                    </div>
+                                    <div>
+                                        <label class="block text-[10px] font-bold uppercase text-slate-500 mb-1">Ap End</label>
+                                        <input type="number" id="apA_E" value="" placeholder="Const" step="0.1" class="w-full p-2 rounded-lg input-field text-sm">
+                                    </div>
+                                </div>
                             </div>
-                            <div>
-                                <label class="block text-[10px] font-bold uppercase text-slate-500 mb-2">Aperture (f/)</label>
-                                <input type="number" id="apertureA" value="2.8" step="0.1" class="w-full p-2 rounded-lg input-field text-sm">
-                            </div>
-                        </div>
-                        <div>
-                            <label class="block text-xs font-bold uppercase text-slate-500 mb-2">Sensor Resolution (MP)</label>
-                            <input type="number" id="mpA" value="24" class="w-full p-3 rounded-lg input-field">
                         </div>
                     </div>
                 </section>
 
-                <!-- Output Card A -->
-                <section class="card p-6 rounded-2xl border-b-4 border-blue-500 shadow-inner overflow-hidden relative">
+                <section class="card p-6 rounded-2xl border-b-4 border-blue-500 shadow-inner relative overflow-hidden">
                     <div class="absolute inset-0 bg-blue-500/5 pointer-events-none"></div>
                     <h3 class="text-xs font-black text-blue-500 uppercase tracking-widest mb-4 relative z-10">35mm Equivalence</h3>
                     <div class="space-y-6 relative z-10">
                         <div class="flex justify-between items-center">
                             <span class="text-slate-400">Focal Length</span>
                             <div class="text-right">
-                                <div class="text-2xl font-mono font-bold"><span id="outFocalA">24.0-70.0</span>mm</div>
-                                <div class="text-[10px] text-slate-500">Equivalent Angle of View</div>
+                                <div class="text-2xl font-mono font-bold"><span id="outFocalA">...</span>mm</div>
+                                <div class="text-[10px] text-slate-500 uppercase tracking-tighter">Effective Reach</div>
                             </div>
                         </div>
                         <div class="flex justify-between items-center">
-                            <span class="text-slate-400">Depth of Field</span>
+                            <span class="text-slate-400">Estimated DoF</span>
                             <div class="text-right">
-                                <div class="text-3xl font-mono font-bold accent-emerald">f/<span id="outApA">2.8</span></div>
-                                <div class="text-[10px] text-slate-500">Background Blur Look</div>
+                                <div class="text-2xl font-mono font-bold accent-emerald">f/<span id="outApA">...</span></div>
+                                <div class="text-[10px] text-slate-500 uppercase tracking-tighter">Equivalent Blur</div>
                             </div>
                         </div>
                         <div class="flex justify-between items-center pt-4 border-t border-slate-200 dark:border-slate-700">
-                            <span class="text-slate-400">Total Resolution</span>
+                            <span class="text-slate-400">Effective Pixels</span>
                             <div class="text-right">
                                 <div class="text-3xl font-mono font-bold accent-amber"><span id="outMpA">24.0</span>MP</div>
-                                <div class="text-[10px] text-slate-500">Effective Pixels</div>
                             </div>
                         </div>
                     </div>
                 </section>
             </div>
 
-            <!-- SYSTEM B COLUMN -->
+            <!-- SYSTEM B -->
             <div class="space-y-6">
                 <div class="flex items-center gap-3">
                     <div class="w-8 h-8 rounded-full bg-rose-500 flex items-center justify-center font-bold text-white">B</div>
@@ -247,78 +259,88 @@ SPECIFICATIONS:
                             </div>
                             <div class="ml-4 mb-2 flex items-center gap-2">
                                 <input type="checkbox" id="syncLens" checked class="w-4 h-4 accent-rose-500">
-                                <label for="syncLens" class="text-[10px] font-bold text-slate-500 uppercase tracking-tighter">Use Same Lens</label>
+                                <label for="syncLens" class="text-[10px] font-bold text-slate-500 uppercase tracking-tighter">Sync Lens</label>
                             </div>
                         </div>
 
-                        <div id="presetBContainer">
+                        <div id="pBContainer">
                             <label class="block text-xs font-bold uppercase text-slate-500 mb-2">Lens Preset</label>
                             <select id="presetB" onchange="applyPreset('B')" class="w-full p-3 rounded-lg input-field focus:ring-2 focus:ring-rose-500 outline-none">
                                 <option value="custom">Custom Values</option>
                                 <optgroup label="Primes">
-                                    <option value="24,24,1.4">24mm f/1.4</option>
-                                    <option value="35,35,1.4">35mm f/1.4</option>
-                                    <option value="50,50,1.2">50mm f/1.2</option>
-                                    <option value="85,85,1.4">85mm f/1.4</option>
+                                    <option value="35,35,1.4,1.4">35mm f/1.4</option>
+                                    <option value="50,50,1.2,1.2">50mm f/1.2</option>
+                                    <option value="85,85,1.4,1.4">85mm f/1.4</option>
                                 </optgroup>
-                                <optgroup label="Zooms">
-                                    <option value="16,35,2.8">16-35mm f/2.8</option>
-                                    <option value="24,70,2.8">24-70mm f/2.8</option>
-                                    <option value="24,105,4.0">24-105mm f/4.0</option>
-                                    <option value="70,200,2.8">70-200mm f/2.8</option>
-                                    <option value="100,400,5.6">100-400mm f/5.6</option>
+                                <optgroup label="Constant Zooms">
+                                    <option value="16,35,2.8,2.8">16-35mm f/2.8</option>
+                                    <option value="24,70,2.8,2.8">24-70mm f/2.8</option>
+                                    <option value="70,200,2.8,2.8">70-200mm f/2.8</option>
+                                </optgroup>
+                                <optgroup label="Variable Zooms">
+                                    <option value="18,55,3.5,5.6">18-55mm f/3.5-5.6</option>
+                                    <option value="24,240,3.5,6.3">24-240mm f/3.5-6.3</option>
+                                    <option value="100,400,4.5,5.6">100-400mm f/4.5-5.6</option>
                                 </optgroup>
                             </select>
                         </div>
 
-                        <div class="grid grid-cols-3 gap-3">
-                            <div>
-                                <label class="block text-[10px] font-bold uppercase text-slate-500 mb-2">Start (mm)</label>
-                                <input type="number" id="focalB_Start" value="24" class="w-full p-2 rounded-lg input-field text-sm">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div class="space-y-4">
+                                <div class="grid grid-cols-2 gap-2">
+                                    <div>
+                                        <label class="block text-[10px] font-bold uppercase text-slate-500 mb-1">FL Start</label>
+                                        <input type="number" id="fB_S" value="24" class="w-full p-2 rounded-lg input-field text-sm">
+                                    </div>
+                                    <div>
+                                        <label class="block text-[10px] font-bold uppercase text-slate-500 mb-1">FL End</label>
+                                        <input type="number" id="fB_E" value="70" placeholder="Prime" class="w-full p-2 rounded-lg input-field text-sm">
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold uppercase text-slate-500 mb-2">Sensor Res (MP)</label>
+                                    <input type="number" id="mpB" value="24" class="w-full p-3 rounded-lg input-field">
+                                </div>
                             </div>
-                            <div>
-                                <label class="block text-[10px] font-bold uppercase text-slate-500 mb-2">End (mm)</label>
-                                <input type="number" id="focalB_End" value="70" placeholder="Prime" class="w-full p-2 rounded-lg input-field text-sm">
+                            <div class="space-y-4">
+                                <div class="grid grid-cols-2 gap-2">
+                                    <div>
+                                        <label class="block text-[10px] font-bold uppercase text-slate-500 mb-1">Ap Start</label>
+                                        <input type="number" id="apB_S" value="2.8" step="0.1" class="w-full p-2 rounded-lg input-field text-sm">
+                                    </div>
+                                    <div>
+                                        <label class="block text-[10px] font-bold uppercase text-slate-500 mb-1">Ap End</label>
+                                        <input type="number" id="apB_E" value="" placeholder="Const" step="0.1" class="w-full p-2 rounded-lg input-field text-sm">
+                                    </div>
+                                </div>
                             </div>
-                            <div>
-                                <label class="block text-[10px] font-bold uppercase text-slate-500 mb-2">Aperture (f/)</label>
-                                <input type="number" id="apertureB" value="2.8" step="0.1" class="w-full p-2 rounded-lg input-field text-sm">
-                            </div>
-                        </div>
-                        <div>
-                            <label class="block text-xs font-bold uppercase text-slate-500 mb-2">Sensor Resolution (MP)</label>
-                            <input type="number" id="mpB" value="24" class="w-full p-3 rounded-lg input-field">
                         </div>
                     </div>
                 </section>
 
-                <!-- Output Card B -->
-                <section class="card p-6 rounded-2xl border-b-4 border-rose-500 shadow-inner overflow-hidden relative">
+                <section class="card p-6 rounded-2xl border-b-4 border-rose-500 shadow-inner relative overflow-hidden">
                     <div class="absolute inset-0 bg-rose-500/5 pointer-events-none"></div>
-                    <div class="flex justify-between items-center mb-4 relative z-10">
-                        <h3 class="text-xs font-black text-rose-500 uppercase tracking-widest">35mm Equivalence</h3>
-                        <div id="resDelta" class="text-[10px] text-slate-500 font-mono"></div>
-                    </div>
+                    <h3 class="text-xs font-black text-rose-500 uppercase tracking-widest mb-4 relative z-10">35mm Equivalence</h3>
                     <div class="space-y-6 relative z-10">
                         <div class="flex justify-between items-center">
                             <span class="text-slate-400">Focal Length</span>
                             <div class="text-right">
-                                <div class="text-2xl font-mono font-bold"><span id="outFocalB">36.0-105.0</span>mm</div>
-                                <div id="focalDelta" class="text-[10px]"></div>
+                                <div class="text-2xl font-mono font-bold"><span id="outFocalB">...</span>mm</div>
+                                <div id="fDelta" class="text-[10px] uppercase tracking-tighter"></div>
                             </div>
                         </div>
                         <div class="flex justify-between items-center">
-                            <span class="text-slate-400">Depth of Field</span>
+                            <span class="text-slate-400">Estimated DoF</span>
                             <div class="text-right">
-                                <div class="text-3xl font-mono font-bold accent-emerald">f/<span id="outApB">4.2</span></div>
-                                <div id="apDelta" class="text-[10px]"></div>
+                                <div class="text-2xl font-mono font-bold accent-emerald">f/<span id="outApB">...</span></div>
+                                <div id="aDelta" class="text-[10px] uppercase tracking-tighter"></div>
                             </div>
                         </div>
                         <div class="flex justify-between items-center pt-4 border-t border-slate-200 dark:border-slate-700">
-                            <span class="text-slate-400">Total Resolution</span>
+                            <span class="text-slate-400">Effective Pixels</span>
                             <div class="text-right">
                                 <div class="text-3xl font-mono font-bold accent-amber"><span id="outMpB">24.0</span>MP</div>
-                                <div id="mpDelta" class="text-[10px]"></div>
+                                <div id="mDelta" class="text-[10px] uppercase tracking-tighter"></div>
                             </div>
                         </div>
                     </div>
@@ -326,10 +348,11 @@ SPECIFICATIONS:
             </div>
         </div>
 
+        <!-- Reference Table -->
         <div class="mt-12 overflow-hidden card rounded-2xl">
              <div class="bg-slate-200 dark:bg-slate-900/80 p-4 border-b border-slate-300 dark:border-slate-700 flex justify-between items-center">
-                <h3 class="text-sm font-bold uppercase tracking-widest text-slate-500">Multiplier & Crop Resolution Guide</h3>
-                <span class="text-[10px] text-slate-500">Calculated from System A Resolution</span>
+                <h3 class="text-sm font-bold uppercase tracking-widest text-slate-500">Sensor Density & Area Reference</h3>
+                <span class="text-[10px] text-slate-500">Calculated relative to System A</span>
              </div>
              <div class="overflow-x-auto">
                  <table class="w-full text-left text-xs">
@@ -337,8 +360,8 @@ SPECIFICATIONS:
                         <tr class="text-slate-500 border-b border-slate-200 dark:border-slate-800">
                             <th class="p-4">Format Name</th>
                             <th class="p-4 text-center">Multiplier</th>
-                            <th class="p-4 text-center">Area Relative to FF</th>
-                            <th class="p-4 text-right">Effective MP (from System A)</th>
+                            <th class="p-4 text-center">Area %</th>
+                            <th class="p-4 text-right">Equivalent MP (Crop Detail)</th>
                         </tr>
                     </thead>
                     <tbody id="refTable"></tbody>
@@ -347,7 +370,7 @@ SPECIFICATIONS:
         </div>
 
         <footer class="mt-12 text-center text-slate-400 text-[10px] uppercase tracking-widest pb-12">
-            Sensor physics notes: Equivalence defines framing and blur look. ISO 100 on System A and System B results in the same exposure brightness for the same lens aperture settings.
+            Sensor Equivalence Engine v3.9.0 &bull; Focus on Optics Logic &bull; Senior Developer Tool
         </footer>
     </div>
 
@@ -356,36 +379,34 @@ SPECIFICATIONS:
             { name: "4x5 Large Format", factor: 0.26 },
             { name: "6x7 Film Format", factor: 0.5 },
             { name: "6x4.5 Film Format", factor: 0.62 },
-            { name: "Medium Format (GFX/X1D)", factor: 0.79 },
+            { name: "Medium Format (GFX)", factor: 0.79 },
             { name: "35mm Full Frame", factor: 1.0 },
             { name: "APS-H (Canon 1D)", factor: 1.3 },
-            { name: "APS-C (Nikon/Sony/Fuji)", factor: 1.5 },
+            { name: "APS-C (Standard)", factor: 1.5 },
             { name: "APS-C (Canon)", factor: 1.6 },
             { name: "Micro Four Thirds", factor: 2.0 },
             { name: "1-inch Sensor", factor: 2.72 },
-            { name: "2/3-inch Sensor", factor: 3.9 },
-            { name: "1/2.3-inch Small Sensor", factor: 5.6 }
+            { name: "2/3-inch Sensor", factor: 3.9 }
         ];
 
         const el = {
-            sA: document.getElementById('sensorA'), fA_S: document.getElementById('focalA_Start'), fA_E: document.getElementById('focalA_End'), apA: document.getElementById('apertureA'), mpA: document.getElementById('mpA'), pA: document.getElementById('presetA'),
-            sB: document.getElementById('sensorB'), fB_S: document.getElementById('focalB_Start'), fB_E: document.getElementById('focalB_End'), apB: document.getElementById('apertureB'), mpB: document.getElementById('mpB'), pB: document.getElementById('presetB'),
+            sA: document.getElementById('sensorA'), fA_S: document.getElementById('fA_S'), fA_E: document.getElementById('fA_E'), apA_S: document.getElementById('apA_S'), apA_E: document.getElementById('apA_E'), mpA: document.getElementById('mpA'), pA: document.getElementById('presetA'),
+            sB: document.getElementById('sensorB'), fB_S: document.getElementById('fB_S'), fB_E: document.getElementById('fB_E'), apB_S: document.getElementById('apB_S'), apB_E: document.getElementById('apB_E'), mpB: document.getElementById('mpB'), pB: document.getElementById('presetB'),
             sync: document.getElementById('syncLens'),
             outFa: document.getElementById('outFocalA'), outAa: document.getElementById('outApA'), outMa: document.getElementById('outMpA'),
             outFb: document.getElementById('outFocalB'), outAb: document.getElementById('outApB'), outMb: document.getElementById('outMpB'),
-            fDelta: document.getElementById('focalDelta'), aDelta: document.getElementById('apDelta'), mDelta: document.getElementById('mpDelta'),
+            fDelta: document.getElementById('fDelta'), aDelta: document.getElementById('aDelta'), mDelta: document.getElementById('mDelta'),
             help: document.getElementById('helpSection'), btnHelp: document.getElementById('helpBtn'),
             table: document.getElementById('refTable'),
             body: document.body, themeBtn: document.getElementById('themeToggle'), themeLabel: document.getElementById('themeLabel'),
             invTarget: document.getElementById('targetEq'), invTargetFormat: document.getElementById('targetFormat'),
             invSensor: document.getElementById('targetSensor'), invResult: document.getElementById('invertResult'),
-            pBCont: document.getElementById('presetBContainer')
+            pBCont: document.getElementById('pBContainer')
         };
 
         function populateSelects() {
             const selects = [el.sA, el.sB, el.invTargetFormat, el.invSensor];
             selects.forEach((select) => {
-                select.innerHTML = '';
                 sensorData.forEach(s => {
                     const opt = document.createElement('option');
                     opt.value = s.factor;
@@ -403,145 +424,116 @@ SPECIFICATIONS:
             const presetSelect = el['p' + side];
             if (presetSelect.value === 'custom') return;
             
-            const [start, end, ap] = presetSelect.value.split(',').map(Number);
-            el['f' + side + '_S'].value = start;
-            el['f' + side + '_E'].value = start === end ? "" : end;
-            el['ap' + side].value = ap;
+            const [fs, fe, as, ae] = presetSelect.value.split(',').map(v => v ? parseFloat(v) : "");
+            el['f' + side + '_S'].value = fs;
+            el['f' + side + '_E'].value = (fs === fe) ? "" : fe;
+            el['ap' + side + '_S'].value = as;
+            el['ap' + side + '_E'].value = (as === ae) ? "" : ae;
+            
             updateAll('preset' + side);
         }
 
-        function setTheme(mode) {
-            if (mode === 'light') {
-                el.body.classList.remove('dark');
-                el.body.classList.add('light');
-                el.themeLabel.textContent = "Light Mode";
-            } else {
-                el.body.classList.remove('light');
-                el.body.classList.add('dark');
-                el.themeLabel.textContent = "Dark Mode";
-            }
-        }
-
-        function toggleTheme() {
-            setTheme(el.body.classList.contains('dark') ? 'light' : 'dark');
-        }
-
-        function updateInvert() {
-            const targetVal = parseFloat(el.invTarget.value) || 0;
-            const targetFormatFactor = parseFloat(el.invTargetFormat.value) || 1.0;
-            const mySensorFactor = parseFloat(el.invSensor.value) || 1.0;
-            if (mySensorFactor === 0) return;
-            const actual = (targetVal / targetFormatFactor) * mySensorFactor;
-            el.invResult.textContent = actual.toFixed(1);
-        }
-
-        function getFocalString(start, end, factor) {
+        function getRangeString(start, end, factor) {
             const s = start * factor;
             const e = end ? (end * factor) : null;
-            
-            if (!e || Math.abs(s - e) < 0.1) {
-                return s.toFixed(1);
-            }
+            if (!e || Math.abs(s - e) < 0.05) return s.toFixed(1);
             return `${s.toFixed(1)}-${e.toFixed(1)}`;
         }
 
         function updateAll(triggerId) {
-            // Handle Lens Sync Logic
+            // Lens Syncing
             if (el.sync.checked) {
                 el.pBCont.classList.add('opacity-50', 'pointer-events-none');
-                if (['focalA_Start', 'focalA_End', 'apertureA', 'sensorA', 'mpA', 'presetA'].includes(triggerId)) {
+                if (triggerId.includes('A')) {
                     el.fB_S.value = el.fA_S.value;
                     el.fB_E.value = el.fA_E.value;
-                    el.apB.value = el.apA.value;
+                    el.apB_S.value = el.apA_S.value;
+                    el.apB_E.value = el.apA_E.value;
                     el.pB.value = el.pA.value;
                 }
             } else {
                 el.pBCont.classList.remove('opacity-50', 'pointer-events-none');
             }
 
-            // Reset preset dropdowns to 'custom' if user manually tweaks values
-            if (triggerId.includes('focalA') || triggerId === 'apertureA') el.pA.value = 'custom';
-            if (triggerId.includes('focalB') || triggerId === 'apertureB') el.pB.value = 'custom';
+            // Custom detection
+            if (triggerId.includes('_S') || triggerId.includes('_E')) {
+                const side = triggerId.includes('A') ? 'A' : 'B';
+                el['p' + side].value = 'custom';
+            }
 
-            const valA = {
-                factor: parseFloat(el.sA.value),
-                fs: parseFloat(el.fA_S.value) || 0,
-                fe: parseFloat(el.fA_E.value) || 0,
-                a: parseFloat(el.apA.value) || 0,
-                m: parseFloat(el.mpA.value) || 0
-            };
-            const valB = {
-                factor: parseFloat(el.sB.value),
-                fs: parseFloat(el.fB_S.value) || 0,
-                fe: parseFloat(el.fB_E.value) || 0,
-                a: parseFloat(el.apB.value) || 0,
-                m: parseFloat(el.mpB.value) || 0
-            };
+            const getValues = (side) => ({
+                factor: parseFloat(el['s' + side].value),
+                fs: parseFloat(el['f' + side + '_S'].value) || 0,
+                fe: parseFloat(el['f' + side + '_E'].value) || 0,
+                as: parseFloat(el['ap' + side + '_S'].value) || 0,
+                ae: parseFloat(el['ap' + side + '_E'].value) || 0,
+                m: parseFloat(el['mp' + side].value) || 0
+            });
 
-            const eqAa = valA.a * valA.factor;
-            const eqAb = valB.a * valB.factor;
+            const valA = getValues('A');
+            const valB = getValues('B');
 
-            // Output Strings
-            el.outFa.textContent = getFocalString(valA.fs, valA.fe, valA.factor);
-            el.outAa.textContent = eqAa.toFixed(1);
+            // Outputs
+            el.outFa.textContent = getRangeString(valA.fs, valA.fe, valA.factor);
+            el.outAa.textContent = getRangeString(valA.as, valA.ae, valA.factor);
             el.outMa.textContent = valA.m.toFixed(1);
 
-            el.outFb.textContent = getFocalString(valB.fs, valB.fe, valB.factor);
-            el.outAb.textContent = eqAb.toFixed(1);
+            el.outFb.textContent = getRangeString(valB.fs, valB.fe, valB.factor);
+            el.outAb.textContent = getRangeString(valB.as, valB.ae, valB.factor);
             el.outMb.textContent = valB.m.toFixed(1);
 
-            // Deltas
-            const diffA = eqAb - eqAa;
+            // Delta Visualization
             const diffM = valB.m - valA.m;
-
-            const getFormat = (val, suffix) => {
-                const color = val > 0 ? 'text-rose-500' : (val < 0 ? 'text-emerald-500' : 'text-slate-400');
-                const sign = val > 0 ? '+' : '';
-                return `<span class="${color}">${sign}${val.toFixed(1)}${suffix} vs A</span>`;
-            };
-
-            el.fDelta.innerHTML = `<span class="text-slate-400">Relative to A</span>`;
-            el.aDelta.innerHTML = getFormat(diffA, ' stops');
-            el.mDelta.innerHTML = getFormat(diffM, ' MP');
+            const mpColor = diffM > 0 ? 'text-rose-500' : (diffM < 0 ? 'text-emerald-500' : 'text-slate-400');
+            el.mDelta.innerHTML = `<span class="${mpColor}">${diffM > 0 ? '+' : ''}${diffM.toFixed(1)} MP vs A</span>`;
+            el.fDelta.textContent = "Field of View Range";
+            el.aDelta.textContent = "Relative Background Blur";
 
             updateTable(valA.m);
             updateInvert();
         }
 
-        function updateTable(referenceMP) {
+        function updateTable(refMP) {
             el.table.innerHTML = sensorData.map(s => {
-                const areaFactor = (s.factor * s.factor);
-                const mpInCrop = (referenceMP / areaFactor).toFixed(1);
-                const areaPct = (100 / areaFactor).toFixed(1);
+                const cropMP = (refMP / (s.factor * s.factor)).toFixed(1);
+                const area = (100 / (s.factor * s.factor)).toFixed(1);
                 return `
                     <tr class="border-b border-slate-200 dark:border-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800/20">
                         <td class="p-4 font-medium text-slate-700 dark:text-slate-300">${s.name}</td>
                         <td class="p-4 text-center font-mono text-blue-500">${s.factor}x</td>
-                        <td class="p-4 text-center font-mono text-slate-400">${areaPct}% Area</td>
-                        <td class="p-4 text-right font-mono text-amber-500">${mpInCrop} MP</td>
+                        <td class="p-4 text-center font-mono text-slate-400">${area}%</td>
+                        <td class="p-4 text-right font-mono text-amber-500">${cropMP} MP</td>
                     </tr>
                 `;
             }).join('');
         }
+
+        function updateInvert() {
+            const target = parseFloat(el.invTarget.value) || 0;
+            const tFactor = parseFloat(el.invTargetFormat.value) || 1;
+            const mFactor = parseFloat(el.invSensor.value) || 1;
+            el.invResult.textContent = ((target / tFactor) * mFactor).toFixed(1);
+        }
+
+        el.themeBtn.addEventListener('click', () => {
+            const isDark = el.body.classList.contains('dark');
+            el.body.classList.toggle('dark', !isDark);
+            el.body.classList.toggle('light', isDark);
+            el.themeLabel.textContent = isDark ? "Light Mode" : "Dark Mode";
+        });
 
         el.btnHelp.addEventListener('click', () => {
             el.help.classList.toggle('hidden');
             el.btnHelp.textContent = el.help.classList.contains('hidden') ? 'Show --help' : 'Hide --help';
         });
 
-        el.themeBtn.addEventListener('click', toggleTheme);
-        el.invTarget.addEventListener('input', updateInvert);
-        el.invTargetFormat.addEventListener('input', updateInvert);
-        el.invSensor.addEventListener('input', updateInvert);
-
-        const inputElements = [el.sA, el.fA_S, el.fA_E, el.apA, el.mpA, el.sB, el.fB_S, el.fB_E, el.apB, el.mpB, el.sync];
-        inputElements.forEach(i => i.addEventListener('input', (e) => updateAll(e.target.id)));
+        const inputs = [el.sA, el.fA_S, el.fA_E, el.apA_S, el.apA_E, el.mpA, el.sB, el.fB_S, el.fB_E, el.apB_S, el.apB_E, el.mpB, el.sync, el.invTarget, el.invTargetFormat, el.invSensor];
+        inputs.forEach(i => i.addEventListener('input', (e) => updateAll(e.target.id)));
 
         window.onload = () => {
             populateSelects();
-            const hour = new Date().getHours();
-            setTheme(hour >= 18 || hour < 7 ? 'dark' : 'light');
-            if (window.location.search.includes('help')) el.btnHelp.click();
+            const h = new Date().getHours();
+            if (h < 18 && h >= 7) el.themeBtn.click();
             updateAll('init');
         };
     </script>
