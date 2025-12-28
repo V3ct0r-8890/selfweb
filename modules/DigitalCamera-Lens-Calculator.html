@@ -3,24 +3,21 @@
 <!--
 ================================================================================
 NAME: Camera & Megapixel Equivalence Master Calculator (Compact Pro)
-VERSION: 4.4.0
-TIMESTAMP: 2025-12-28 21:12:00
+VERSION: 4.8.0
+TIMESTAMP: 2025-12-28 21:24:00
 AUTHOR: Gemini (Thought Partner)
 SPECIFICATIONS:
-    - MOBILE OPTIMIZED: Side-by-side 2-column layout on all screens.
-    - SENSOR DATA: Includes IMAX, 6x7, 4x5, GFX, FF, APS-C (Std), APS-C (Canon), MFT, 1-inch.
-    - SORTING: All lists and tables sorted by sensor area (descending).
-    - DYNAMIC MULTIPLIERS: All sensor tables compare relative to System A.
-    - MULTIPLICATION CHART: Cross-reference matrix for all sensor crop factors.
-    - VARIABLE OPTICS: Start/End ranges for Focal Length and Aperture.
-    - REVERSE CALCULATOR: Find hardware for target "looks".
-    - THEME AWARE: Auto-switches based on time (Dark: 6PM-7AM).
+    - DARK THEME FIX: Forces solid background colors on all select/option elements.
+    - ALIGNMENT: Result boxes for System A and B are now horizontally aligned.
+    - DUAL LIBRARIES: Added Lens Library to System B (active when Sync is off).
+    - COMPACT RESULTS: Focal Length and Aperture on the same line.
+    - MOBILE OPTIMIZED: Responsive 2-column grid.
 ================================================================================
 -->
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Camera Equivalence Compact v4.4</title>
+    <title>Camera Equivalence Compact v4.8</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = { darkMode: 'class' }
@@ -29,16 +26,37 @@ SPECIFICATIONS:
         :root {
             --bg-main: #0f172a; --bg-card: #1e293b; --border: #334155;
             --input-bg: #0f172a; --text-main: #f8fafc; --text-muted: #94a3b8;
+            --option-bg: #1e293b;
         }
         .light {
             --bg-main: #f1f5f9; --bg-card: #ffffff; --border: #cbd5e1;
             --input-bg: #f8fafc; --text-main: #0f172a; --text-muted: #64748b;
+            --option-bg: #ffffff;
         }
         body { background-color: var(--bg-main); color: var(--text-main); transition: background-color 0.3s ease; font-size: 13px; }
         .card { background-color: var(--bg-card); border: 1px solid var(--border); }
-        .input-field { background-color: var(--input-bg); border: 1px solid var(--border); color: var(--text-main); font-size: 12px; padding: 4px 8px; border-radius: 6px; width: 100%; }
         
-        .mobile-side-by-side { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        /* Dropdown Visibility Fix for Dark Mode */
+        .input-field { 
+            background-color: var(--input-bg); 
+            border: 1px solid var(--border); 
+            color: var(--text-main); 
+            font-size: 12px; 
+            padding: 4px 8px; 
+            border-radius: 6px; 
+            width: 100%;
+            outline: none;
+        }
+        select.input-field option, select.input-field optgroup {
+            background-color: #1e293b !important; /* Force dark bg for options */
+            color: #f8fafc !important;
+        }
+        .light select.input-field option, .light select.input-field optgroup {
+            background-color: #ffffff !important;
+            color: #0f172a !important;
+        }
+        
+        .mobile-side-by-side { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; align-items: stretch; }
         .label-tiny { font-size: 9px; font-weight: 800; text-transform: uppercase; color: var(--text-muted); display: block; margin-bottom: 2px; }
         .result-val { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-weight: 700; line-height: 1; }
         
@@ -47,6 +65,16 @@ SPECIFICATIONS:
 
         .chart-cell { padding: 4px; border: 1px solid var(--border); text-align: center; font-family: monospace; font-size: 10px; }
         .chart-header { background-color: rgba(51, 65, 85, 0.5); font-weight: bold; }
+        
+        .preset-btn { font-size: 10px; padding: 2px 6px; border-radius: 4px; background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.3); cursor: pointer; transition: all 0.2s; }
+        .preset-btn:hover { background: rgba(59, 130, 246, 0.3); }
+        
+        .lens-dropdown { border-color: #3b82f6; background-color: rgba(59, 130, 246, 0.05); }
+        .lens-dropdown-b { border-color: #f43f5e; background-color: rgba(244, 63, 94, 0.05); }
+
+        /* Ensuring the Result Boxes stay at the bottom of the grid row */
+        .system-col { display: flex; flex-direction: column; height: 100%; }
+        .inputs-area { flex-grow: 1; }
     </style>
 </head>
 <body class="p-2 md:p-6 dark">
@@ -54,7 +82,7 @@ SPECIFICATIONS:
     <div class="max-w-5xl mx-auto">
         <header class="mb-4 flex justify-between items-center border-b border-slate-700 pb-3">
             <div>
-                <h1 class="text-lg font-bold text-blue-400">Optics Comparison <span class="text-xs font-normal text-slate-500 ml-2">v4.4</span></h1>
+                <h1 class="text-lg font-bold text-blue-400">Optics Comparison <span class="text-xs font-normal text-slate-500 ml-2">v4.8</span></h1>
             </div>
             <div class="flex gap-2">
                 <button id="themeToggle" class="p-1 rounded bg-slate-800 border border-slate-700 text-[10px] px-2">🌓 Theme</button>
@@ -62,11 +90,141 @@ SPECIFICATIONS:
             </div>
         </header>
 
-        <div id="helpSection" class="hidden card p-4 rounded-lg mb-4 text-xs leading-tight text-slate-400">
-            <p><strong class="text-white">Equivalence Logic:</strong> All data is sorted by sensor area. Focal lengths and F-stops are multiplied by the crop factor to show visual parity. The <strong class="text-blue-400">Multiplication Chart</strong> shows the conversion factor from Row format to Column format.</p>
+        <!-- Lens Presets Bar -->
+        <div class="mb-4 flex flex-wrap items-center gap-2">
+            <span class="label-tiny mr-2 text-slate-500">Quick Prime Presets:</span>
+            <button class="preset-btn" onclick="applyPreset(14, 1.8)">14mm</button>
+            <button class="preset-btn" onclick="applyPreset(24, 1.4)">24mm</button>
+            <button class="preset-btn" onclick="applyPreset(35, 1.4)">35mm</button>
+            <button class="preset-btn" onclick="applyPreset(50, 1.2)">50mm</button>
+            <button class="preset-btn" onclick="applyPreset(85, 1.4)">85mm</button>
+            <button class="preset-btn" onclick="applyPreset(135, 1.8)">135mm</button>
         </div>
 
-        <!-- Invert Tool -->
+        <!-- Main Comparison -->
+        <div class="mobile-side-by-side mb-4">
+            <!-- SYSTEM A COLUMN -->
+            <div class="system-col space-y-2">
+                <div class="flex items-center gap-2">
+                    <span class="w-4 h-4 bg-blue-500 rounded-full text-[10px] flex items-center justify-center text-white font-bold">A</span>
+                    <span class="font-bold text-xs uppercase tracking-tight">System A</span>
+                </div>
+                
+                <div class="card p-2 rounded-xl space-y-2 inputs-area">
+                    <div>
+                        <span class="label-tiny">Sensor</span>
+                        <select id="sensorA" class="input-field mb-2"></select>
+                    </div>
+                    <div class="border-t border-slate-700/50 pt-2 pb-1">
+                        <span class="label-tiny text-blue-400">Lens Library</span>
+                        <select id="lensLibraryA" class="input-field lens-dropdown" onchange="applyLensSelection('A', this.value)">
+                            <option value="">-- Manual --</option>
+                            <optgroup label="Ultra Wide Zooms">
+                                <option value="12,24,2.8">12-24mm f/2.8</option>
+                                <option value="14,24,2.8">14-24mm f/2.8</option>
+                                <option value="16,35,2.8">16-35mm f/2.8</option>
+                            </optgroup>
+                            <optgroup label="Standard Zooms">
+                                <option value="24,70,2.8" selected>24-70mm f/2.8</option>
+                                <option value="24,105,4.0">24-105mm f/4.0</option>
+                                <option value="28,70,2.0">28-70mm f/2.0</option>
+                            </optgroup>
+                            <optgroup label="Telephoto Zooms">
+                                <option value="70,200,2.8">70-200mm f/2.8</option>
+                                <option value="100,400,4.5">100-400mm f/4.5-5.6</option>
+                            </optgroup>
+                        </select>
+                    </div>
+                    <div class="grid grid-cols-2 gap-1">
+                        <div><span class="label-tiny">FL Start</span><input type="number" id="fA_S" value="24" class="input-field"></div>
+                        <div><span class="label-tiny">FL End</span><input type="number" id="fA_E" value="70" class="input-field"></div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-1">
+                        <div><span class="label-tiny">Ap Start</span><input type="number" id="apA_S" value="2.8" step="0.1" class="input-field"></div>
+                        <div><span class="label-tiny">Ap End</span><input type="number" id="apA_E" value="" class="input-field"></div>
+                    </div>
+                    <div><span class="label-tiny">Res (MP)</span><input type="number" id="mpA" value="24" class="input-field"></div>
+                </div>
+
+                <!-- Aligned Result Box A -->
+                <div class="card p-3 rounded-xl border-b-2 border-blue-500 bg-blue-500/5">
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="label-tiny text-blue-500">Equivalent Look</span>
+                        <div class="result-val text-amber-500 text-[10px]"><span id="outMpA">...</span> MP</div>
+                    </div>
+                    <div class="flex items-baseline justify-between gap-1">
+                        <div class="result-val text-lg"><span id="outFocalA">...</span>mm</div>
+                        <div class="result-val text-lg text-emerald-500">f/<span id="outApA">...</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SYSTEM B COLUMN -->
+            <div class="system-col space-y-2">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <span class="w-4 h-4 bg-rose-500 rounded-full text-[10px] flex items-center justify-center text-white font-bold">B</span>
+                        <span class="font-bold text-xs uppercase tracking-tight">System B</span>
+                    </div>
+                    <div class="flex items-center gap-1">
+                        <input type="checkbox" id="syncLens" checked class="w-3 h-3 accent-rose-500">
+                        <span class="text-[9px] font-bold text-slate-500 uppercase">Sync</span>
+                    </div>
+                </div>
+
+                <div class="card p-2 rounded-xl space-y-2 inputs-area">
+                    <div>
+                        <span class="label-tiny">Sensor</span>
+                        <select id="sensorB" class="input-field mb-2"></select>
+                    </div>
+                    <div id="libBContainer" class="border-t border-slate-700/50 pt-2 pb-1 opacity-50 pointer-events-none">
+                        <span class="label-tiny text-rose-400">Lens Library</span>
+                        <select id="lensLibraryB" class="input-field lens-dropdown-b" onchange="applyLensSelection('B', this.value)">
+                            <option value="">-- Manual --</option>
+                            <optgroup label="Ultra Wide Zooms">
+                                <option value="12,24,2.8">12-24mm f/2.8</option>
+                                <option value="14,24,2.8">14-24mm f/2.8</option>
+                                <option value="16,35,2.8">16-35mm f/2.8</option>
+                            </optgroup>
+                            <optgroup label="Standard Zooms">
+                                <option value="24,70,2.8">24-70mm f/2.8</option>
+                                <option value="24,105,4.0">24-105mm f/4.0</option>
+                                <option value="28,70,2.0">28-70mm f/2.0</option>
+                            </optgroup>
+                            <optgroup label="Telephoto Zooms">
+                                <option value="70,200,2.8">70-200mm f/2.8</option>
+                                <option value="100,400,4.5">100-400mm f/4.5-5.6</option>
+                            </optgroup>
+                        </select>
+                    </div>
+                    <div id="pBInputs" class="space-y-2 opacity-50 pointer-events-none">
+                        <div class="grid grid-cols-2 gap-1">
+                            <div><span class="label-tiny">FL Start</span><input type="number" id="fB_S" value="24" class="input-field"></div>
+                            <div><span class="label-tiny">FL End</span><input type="number" id="fB_E" value="70" class="input-field"></div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-1">
+                            <div><span class="label-tiny">Ap Start</span><input type="number" id="apB_S" value="2.8" step="0.1" class="input-field"></div>
+                            <div><span class="label-tiny">Ap End</span><input type="number" id="apB_E" value="" class="input-field"></div>
+                        </div>
+                    </div>
+                    <div><span class="label-tiny">Res (MP)</span><input type="number" id="mpB" value="24" class="input-field"></div>
+                </div>
+
+                <!-- Aligned Result Box B -->
+                <div class="card p-3 rounded-xl border-b-2 border-rose-500 bg-rose-500/5">
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="label-tiny text-rose-500">Equivalent Look</span>
+                        <div class="result-val text-amber-500 text-[10px]"><span id="outMpB">...</span> MP</div>
+                    </div>
+                    <div class="flex items-baseline justify-between gap-1">
+                        <div class="result-val text-lg"><span id="outFocalB">...</span>mm</div>
+                        <div class="result-val text-lg text-emerald-500">f/<span id="outApB">...</span></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Invert Tool (Moved below main comparison for better flow) -->
         <div class="card p-3 rounded-xl mb-4 border-l-4 border-emerald-500">
             <div class="flex flex-wrap items-end gap-2">
                 <div class="flex-1 min-w-[100px]">
@@ -88,75 +246,8 @@ SPECIFICATIONS:
             </div>
         </div>
 
-        <!-- Main Comparison -->
-        <div class="mobile-side-by-side items-start">
-            <!-- SYSTEM A -->
-            <div class="space-y-2">
-                <div class="flex items-center gap-2">
-                    <span class="w-4 h-4 bg-blue-500 rounded-full text-[10px] flex items-center justify-center text-white font-bold">A</span>
-                    <span class="font-bold text-xs uppercase tracking-tight">System A</span>
-                </div>
-                <div class="card p-2 rounded-xl space-y-2">
-                    <div><span class="label-tiny">Sensor</span><select id="sensorA" class="input-field"></select></div>
-                    <div class="grid grid-cols-2 gap-1">
-                        <div><span class="label-tiny">FL Start</span><input type="number" id="fA_S" value="24" class="input-field"></div>
-                        <div><span class="label-tiny">FL End</span><input type="number" id="fA_E" value="70" class="input-field"></div>
-                    </div>
-                    <div class="grid grid-cols-2 gap-1">
-                        <div><span class="label-tiny">Ap Start</span><input type="number" id="apA_S" value="2.8" step="0.1" class="input-field"></div>
-                        <div><span class="label-tiny">Ap End</span><input type="number" id="apA_E" value="" class="input-field"></div>
-                    </div>
-                    <div><span class="label-tiny">Res (MP)</span><input type="number" id="mpA" value="24" class="input-field"></div>
-                </div>
-                <div class="card p-3 rounded-xl border-b-2 border-blue-500 bg-blue-500/5">
-                    <span class="label-tiny text-blue-500">Equivalent Look</span>
-                    <div class="mt-2 space-y-3">
-                        <div><div class="label-tiny">FOV</div><div class="result-val text-lg"><span id="outFocalA">...</span>mm</div></div>
-                        <div><div class="label-tiny">DOF</div><div class="result-val text-lg text-emerald-500">f/<span id="outApA">...</span></div></div>
-                        <div><div class="label-tiny">PIXELS</div><div class="result-val text-xl text-amber-500"><span id="outMpA">...</span>MP</div></div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- SYSTEM B -->
-            <div class="space-y-2">
-                <div class="flex items-center justify-between">
-                    <div class="flex items-center gap-2">
-                        <span class="w-4 h-4 bg-rose-500 rounded-full text-[10px] flex items-center justify-center text-white font-bold">B</span>
-                        <span class="font-bold text-xs uppercase tracking-tight">System B</span>
-                    </div>
-                    <div class="flex items-center gap-1">
-                        <input type="checkbox" id="syncLens" checked class="w-3 h-3 accent-rose-500">
-                        <span class="text-[9px] font-bold text-slate-500 uppercase">Sync</span>
-                    </div>
-                </div>
-                <div class="card p-2 rounded-xl space-y-2">
-                    <div><span class="label-tiny">Sensor</span><select id="sensorB" class="input-field"></select></div>
-                    <div id="pBInputs" class="space-y-2">
-                        <div class="grid grid-cols-2 gap-1">
-                            <div><span class="label-tiny">FL Start</span><input type="number" id="fB_S" value="24" class="input-field"></div>
-                            <div><span class="label-tiny">FL End</span><input type="number" id="fB_E" value="70" class="input-field"></div>
-                        </div>
-                        <div class="grid grid-cols-2 gap-1">
-                            <div><span class="label-tiny">Ap Start</span><input type="number" id="apB_S" value="2.8" step="0.1" class="input-field"></div>
-                            <div><span class="label-tiny">Ap End</span><input type="number" id="apB_E" value="" class="input-field"></div>
-                        </div>
-                    </div>
-                    <div><span class="label-tiny">Res (MP)</span><input type="number" id="mpB" value="24" class="input-field"></div>
-                </div>
-                <div class="card p-3 rounded-xl border-b-2 border-rose-500 bg-rose-500/5">
-                    <span class="label-tiny text-rose-500">Equivalent Look</span>
-                    <div class="mt-2 space-y-3">
-                        <div><div class="label-tiny">FOV</div><div class="result-val text-lg"><span id="outFocalB">...</span>mm</div></div>
-                        <div><div class="label-tiny">DOF</div><div class="result-val text-lg text-emerald-500">f/<span id="outApB">...</span></div></div>
-                        <div><div class="label-tiny">PIXELS</div><div class="result-val text-xl text-amber-500"><span id="outMpB">...</span>MP</div></div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Multipliers Table Section -->
-        <div class="mt-6 card rounded-xl overflow-hidden">
+        <!-- Table Section -->
+        <div class="card rounded-xl overflow-hidden">
             <div class="bg-slate-800/50 flex text-[10px] font-bold border-b border-slate-700">
                 <button id="tabRes" class="tab-btn active">RES & CROP</button>
                 <button id="tabDim" class="tab-btn">DIMENSIONS</button>
@@ -198,8 +289,7 @@ SPECIFICATIONS:
     </div>
 
     <script>
-        // Sensor database with area calculation for sorting
-        let sensorData = [
+        const sensorData = [
             { id: "imax", name: "IMAX (15/70)", w: 70.4, h: 48.5, factor: 0.51 },
             { id: "6x7", name: "6x7 Film", w: 70.0, h: 56.0, factor: 0.5 },
             { id: "4x5", name: "4x5 Large", w: 127.0, h: 101.6, factor: 0.26 },
@@ -209,20 +299,18 @@ SPECIFICATIONS:
             { id: "canon_apsc", name: "APS-C (Canon)", w: 22.2, h: 14.8, factor: 1.61 },
             { id: "mft", name: "MFT", w: 17.3, h: 13.0, factor: 2.0 },
             { id: "1in", name: "1-inch", w: 13.2, h: 8.8, factor: 2.72 }
-        ];
-
-        // Ensure all lists are sorted by physical area (W * H) descending
-        sensorData.sort((a, b) => (b.w * b.h) - (a.w * a.h));
+        ].sort((a, b) => (b.w * b.h) - (a.w * a.h));
 
         const els = {
             sA: document.getElementById('sensorA'), fAs: document.getElementById('fA_S'), fAe: document.getElementById('fA_E'), apAs: document.getElementById('apA_S'), apAe: document.getElementById('apA_E'), mpA: document.getElementById('mpA'),
             sB: document.getElementById('sensorB'), fBs: document.getElementById('fB_S'), fBe: document.getElementById('fB_E'), apBs: document.getElementById('apB_S'), apBe: document.getElementById('apB_E'), mpB: document.getElementById('mpB'),
-            sync: document.getElementById('syncLens'), pB: document.getElementById('pBInputs'),
+            sync: document.getElementById('syncLens'), pB: document.getElementById('pBInputs'), libBCont: document.getElementById('libBContainer'),
             oFa: document.getElementById('outFocalA'), oAa: document.getElementById('outApA'), oMa: document.getElementById('outMpA'),
             oFb: document.getElementById('outFocalB'), oAb: document.getElementById('outApB'), oMb: document.getElementById('outMpB'),
             invT: document.getElementById('targetEq'), invTF: document.getElementById('targetFormat'), invS: document.getElementById('targetSensor'), invR: document.getElementById('invertResult'),
             tRes: document.getElementById('tableRes'), tDim: document.getElementById('tableDim'),
-            cHead: document.getElementById('chartHead'), cBody: document.getElementById('chartBody')
+            cHead: document.getElementById('chartHead'), cBody: document.getElementById('chartBody'),
+            libA: document.getElementById('lensLibraryA'), libB: document.getElementById('lensLibraryB')
         };
 
         function init() {
@@ -231,14 +319,8 @@ SPECIFICATIONS:
                     const o = document.createElement('option');
                     o.value = s.factor; 
                     o.textContent = `${s.name} (${s.factor}x)`;
-                    
-                    // Defaults: A = Full Frame, B = APS-C Standard
-                    if (sel === els.sA || sel === els.invTF) {
-                        if (s.id === "ff") o.selected = true;
-                    }
-                    if (sel === els.sB || sel === els.invS) {
-                        if (s.id === "apsc") o.selected = true;
-                    }
+                    if (sel === els.sA || sel === els.invTF) { if (s.id === "ff") o.selected = true; }
+                    if (sel === els.sB || sel === els.invS) { if (s.id === "apsc") o.selected = true; }
                     sel.appendChild(o);
                 });
             });
@@ -246,9 +328,35 @@ SPECIFICATIONS:
             update();
         }
 
+        function applyLensSelection(system, val) {
+            if (!val) return;
+            const [s, e, ap] = val.split(',');
+            if (system === 'A') {
+                els.fAs.value = s;
+                els.fAe.value = (s === e) ? "" : e;
+                els.apAs.value = ap;
+                els.apAe.value = "";
+            } else {
+                els.fBs.value = s;
+                els.fBe.value = (s === e) ? "" : e;
+                els.apBs.value = ap;
+                els.apBe.value = "";
+            }
+            update();
+        }
+
+        function applyPreset(start, ap, end = "") {
+            els.libA.value = "";
+            els.fAs.value = start;
+            els.fAe.value = end;
+            els.apAs.value = ap;
+            els.apAe.value = "";
+            update();
+        }
+
         function getRange(s, e, f) {
             const start = s * f;
-            const end = (e && e !== s) ? (e * f) : null;
+            const end = (e && e != s && e != 0) ? (e * f) : null;
             if (!end || Math.abs(start - end) < 0.1) return start.toFixed(1);
             return `${start.toFixed(1)}-${end.toFixed(1)}`;
         }
@@ -264,8 +372,7 @@ SPECIFICATIONS:
                 body += `<tr><td class="chart-cell chart-header text-left pl-2">${row.name}</td>`;
                 sensorData.forEach(col => {
                     const factor = (col.factor / row.factor).toFixed(2);
-                    const isIdentity = row.id === col.id;
-                    body += `<td class="chart-cell ${isIdentity ? 'opacity-25' : ''}">${factor}x</td>`;
+                    body += `<td class="chart-cell ${row.id === col.id ? 'opacity-25' : ''}">${factor}x</td>`;
                 });
                 body += `</tr>`;
             });
@@ -274,11 +381,14 @@ SPECIFICATIONS:
 
         function update() {
             if (els.sync.checked) {
-                els.pB.style.opacity = '0.5'; els.pB.style.pointerEvents = 'none';
+                els.pB.classList.add('opacity-50', 'pointer-events-none');
+                els.libBCont.classList.add('opacity-50', 'pointer-events-none');
                 els.fBs.value = els.fAs.value; els.fBe.value = els.fAe.value;
                 els.apBs.value = els.apAs.value; els.apBe.value = els.apAe.value;
+                els.libB.value = els.libA.value;
             } else {
-                els.pB.style.opacity = '1'; els.pB.style.pointerEvents = 'auto';
+                els.pB.classList.remove('opacity-50', 'pointer-events-none');
+                els.libBCont.classList.remove('opacity-50', 'pointer-events-none');
             }
 
             const fa = parseFloat(els.sA.value);
@@ -295,7 +405,6 @@ SPECIFICATIONS:
             els.invR.textContent = ((els.invT.value / els.invTF.value) * els.invS.value).toFixed(1);
 
             const refMP = parseFloat(els.mpA.value);
-
             els.tRes.innerHTML = sensorData.map(s => {
                 const mult = (s.factor / fa).toFixed(2);
                 const mp = (refMP / (mult * mult)).toFixed(1);
@@ -308,7 +417,6 @@ SPECIFICATIONS:
             }).join('');
         }
 
-        // Events
         document.querySelectorAll('input, select').forEach(i => i.addEventListener('input', update));
         document.getElementById('themeToggle').onclick = () => {
             document.body.classList.toggle('dark'); document.body.classList.toggle('light');
@@ -317,7 +425,6 @@ SPECIFICATIONS:
         
         const tabs = ['tabRes', 'tabDim', 'tabChart'];
         const views = ['viewRes', 'viewDim', 'viewChart'];
-        
         tabs.forEach((id, idx) => {
             document.getElementById(id).onclick = (e) => {
                 tabs.forEach(t => document.getElementById(t).classList.remove('active'));
