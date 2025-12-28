@@ -3,27 +3,24 @@
 <!--
 ================================================================================
 NAME: Camera & Megapixel Equivalence Master Calculator (Theme-Aware)
-VERSION: 3.9.0
-TIMESTAMP: 2025-12-27 22:25:00
+VERSION: 4.1.0
+TIMESTAMP: 2025-12-28 20:54:00
 AUTHOR: Gemini (Thought Partner)
 SPECIFICATIONS:
     - Dual-column comparison engine (System A vs System B).
-    - VARIABLE ZOOM & APERTURE: Added 'Start' and 'End' for both Focal Length and Aperture.
-    - PRIME/CONSTANT LOGIC: If 'End' fields are empty, treated as Prime/Constant.
-    - ESTIMATED DoF: Calculates equivalent f-stop for both start and end of range.
-    - LENS PRESETS: Updated to support variable aperture zooms (e.g., f/3.5-5.6).
-    - FULLY CUSTOMIZABLE: All dropdown values can be overridden by manual input.
-    - AUTOMATED SYNC: System B can inherit lens parameters from System A.
+    - VARIABLE OPTICS: Supports Start/End for Focal Length and Aperture.
+    - SENSOR SIZE TAB: Physical dimensions (mm) and Area (mm²).
+    - IMAX SUPPORT: Added 15/70mm IMAX sensor (approx 70mm x 48.5mm).
+    - DYNAMIC TABLE MULTIPLIERS: All tables now show crop factor relative to System A.
     - AUTO THEME: Light (7AM-6PM), Dark (6PM-7AM).
-    - INVERT CALCULATION: Determine real focal length needed for a target equivalent.
-    - Expanded Sensor Database: 4x5, 6x7, 6x4.5, GFX, FF, APS-C, MFT, 1".
-    - Multiplier & Crop Resolution Reference Table.
+    - INVERT CALCULATION: Determine real focal length needed for target equivalent.
+    - Expanded Sensor Database: IMAX, 4x5, 6x7, 6x4.5, GFX, FF, APS-C, MFT, 1", 2/3".
 ================================================================================
 -->
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Camera Equivalence Comparison v3.9</title>
+    <title>Camera Equivalence Comparison v4.1</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -73,6 +70,10 @@ SPECIFICATIONS:
 
         .theme-dot { transition: all 0.3s ease; }
         .light .theme-dot { transform: translateX(100%); }
+
+        /* Tabs Styling */
+        .tab-btn { transition: all 0.2s; border-bottom: 2px solid transparent; opacity: 0.6; }
+        .tab-btn.active { border-color: #3b82f6; color: #3b82f6; opacity: 1; }
     </style>
 </head>
 <body class="p-4 md:p-8 font-sans dark">
@@ -348,45 +349,71 @@ SPECIFICATIONS:
             </div>
         </div>
 
-        <!-- Reference Table -->
+        <!-- Reference Tables with Tabs -->
         <div class="mt-12 overflow-hidden card rounded-2xl">
-             <div class="bg-slate-200 dark:bg-slate-900/80 p-4 border-b border-slate-300 dark:border-slate-700 flex justify-between items-center">
-                <h3 class="text-sm font-bold uppercase tracking-widest text-slate-500">Sensor Density & Area Reference</h3>
-                <span class="text-[10px] text-slate-500">Calculated relative to System A</span>
+             <div class="bg-slate-200 dark:bg-slate-900/80 p-2 border-b border-slate-300 dark:border-slate-700 flex flex-col md:flex-row justify-between items-center px-4">
+                <div class="flex gap-6">
+                    <button id="tabDensity" class="tab-btn py-3 px-1 text-xs font-bold uppercase tracking-widest active">Resolution & Multipliers</button>
+                    <button id="tabDimensions" class="tab-btn py-3 px-1 text-xs font-bold uppercase tracking-widest">Sensor Dimensions (mm)</button>
+                </div>
+                <span class="text-[10px] text-slate-500 italic mt-2 md:mt-0">Calculated relative to System A Selection</span>
              </div>
-             <div class="overflow-x-auto">
+             
+             <!-- Tab: Resolution -->
+             <div id="viewDensity" class="overflow-x-auto">
                  <table class="w-full text-left text-xs">
                     <thead>
                         <tr class="text-slate-500 border-b border-slate-200 dark:border-slate-800">
                             <th class="p-4">Format Name</th>
-                            <th class="p-4 text-center">Multiplier</th>
-                            <th class="p-4 text-center">Area %</th>
-                            <th class="p-4 text-right">Equivalent MP (Crop Detail)</th>
+                            <th class="p-4 text-center">Multiplier (Rel to A)</th>
+                            <th class="p-4 text-center">Area % (Rel to A)</th>
+                            <th class="p-4 text-right">Equiv MP (Crop Detail)</th>
                         </tr>
                     </thead>
-                    <tbody id="refTable"></tbody>
+                    <tbody id="refTableDensity"></tbody>
                  </table>
              </div>
+
+             <!-- Tab: Dimensions -->
+             <div id="viewDimensions" class="hidden overflow-x-auto">
+                <table class="w-full text-left text-xs">
+                   <thead>
+                       <tr class="text-slate-500 border-b border-slate-200 dark:border-slate-800">
+                           <th class="p-4">Format Name</th>
+                           <th class="p-4 text-center">Width (mm)</th>
+                           <th class="p-4 text-center">Height (mm)</th>
+                           <th class="p-4 text-center">Area (mm²)</th>
+                           <th class="p-4 text-center">Diagonal (mm)</th>
+                           <th class="p-4 text-right">Multiplier (vs A)</th>
+                       </tr>
+                   </thead>
+                   <tbody id="refTableDimensions"></tbody>
+                </table>
+            </div>
         </div>
 
         <footer class="mt-12 text-center text-slate-400 text-[10px] uppercase tracking-widest pb-12">
-            Sensor Equivalence Engine v3.9.0 &bull; Focus on Optics Logic &bull; Senior Developer Tool
+            Sensor Equivalence Engine v4.1.0 &bull; IMAX Integrated &bull; Senior Developer Tool
         </footer>
     </div>
 
     <script>
+        // Database of physical sensor dimensions
+        // Diagonal = sqrt(w^2 + h^2). 35mm FF diagonal is ~43.27mm
+        // factor = FF_Diagonal / This_Diagonal
         const sensorData = [
-            { name: "4x5 Large Format", factor: 0.26 },
-            { name: "6x7 Film Format", factor: 0.5 },
-            { name: "6x4.5 Film Format", factor: 0.62 },
-            { name: "Medium Format (GFX)", factor: 0.79 },
-            { name: "35mm Full Frame", factor: 1.0 },
-            { name: "APS-H (Canon 1D)", factor: 1.3 },
-            { name: "APS-C (Standard)", factor: 1.5 },
-            { name: "APS-C (Canon)", factor: 1.6 },
-            { name: "Micro Four Thirds", factor: 2.0 },
-            { name: "1-inch Sensor", factor: 2.72 },
-            { name: "2/3-inch Sensor", factor: 3.9 }
+            { name: "IMAX (15/70mm Film)", w: 70.4, h: 48.5, factor: 0.51 },
+            { name: "4x5 Large Format", w: 127.0, h: 101.6, factor: 0.26 },
+            { name: "6x7 Film Format", w: 70.0, h: 56.0, factor: 0.5 },
+            { name: "6x4.5 Film Format", w: 56.0, h: 42.0, factor: 0.62 },
+            { name: "Medium Format (GFX)", w: 43.8, h: 32.9, factor: 0.79 },
+            { name: "35mm Full Frame", w: 36.0, h: 24.0, factor: 1.0 },
+            { name: "APS-H (Canon 1D)", w: 27.9, h: 18.6, factor: 1.3 },
+            { name: "APS-C (Standard)", w: 23.6, h: 15.7, factor: 1.52 },
+            { name: "APS-C (Canon)", w: 22.2, h: 14.8, factor: 1.61 },
+            { name: "Micro Four Thirds", w: 17.3, h: 13.0, factor: 2.0 },
+            { name: "1-inch Sensor", w: 13.2, h: 8.8, factor: 2.72 },
+            { name: "2/3-inch Sensor", w: 8.8, h: 6.6, factor: 3.9 }
         ];
 
         const el = {
@@ -397,11 +424,13 @@ SPECIFICATIONS:
             outFb: document.getElementById('outFocalB'), outAb: document.getElementById('outApB'), outMb: document.getElementById('outMpB'),
             fDelta: document.getElementById('fDelta'), aDelta: document.getElementById('aDelta'), mDelta: document.getElementById('mDelta'),
             help: document.getElementById('helpSection'), btnHelp: document.getElementById('helpBtn'),
-            table: document.getElementById('refTable'),
+            tableDensity: document.getElementById('refTableDensity'), tableDim: document.getElementById('refTableDimensions'),
             body: document.body, themeBtn: document.getElementById('themeToggle'), themeLabel: document.getElementById('themeLabel'),
             invTarget: document.getElementById('targetEq'), invTargetFormat: document.getElementById('targetFormat'),
             invSensor: document.getElementById('targetSensor'), invResult: document.getElementById('invertResult'),
-            pBCont: document.getElementById('pBContainer')
+            pBCont: document.getElementById('pBContainer'),
+            tabDensity: document.getElementById('tabDensity'), tabDimensions: document.getElementById('tabDimensions'),
+            viewDensity: document.getElementById('viewDensity'), viewDimensions: document.getElementById('viewDimensions')
         };
 
         function populateSelects() {
@@ -412,9 +441,9 @@ SPECIFICATIONS:
                     opt.value = s.factor;
                     opt.textContent = `${s.name} [${s.factor}x]`;
                     if (select === el.sA && s.factor === 1.0) opt.selected = true;
-                    if (select === el.sB && s.factor === 1.5) opt.selected = true;
+                    if (select === el.sB && s.factor === 1.52) opt.selected = true;
                     if (select === el.invTargetFormat && s.factor === 1.0) opt.selected = true;
-                    if (select === el.invSensor && s.factor === 1.5) opt.selected = true;
+                    if (select === el.invSensor && s.factor === 1.52) opt.selected = true;
                     select.appendChild(opt);
                 });
             });
@@ -441,7 +470,6 @@ SPECIFICATIONS:
         }
 
         function updateAll(triggerId) {
-            // Lens Syncing
             if (el.sync.checked) {
                 el.pBCont.classList.add('opacity-50', 'pointer-events-none');
                 if (triggerId.includes('A')) {
@@ -455,7 +483,6 @@ SPECIFICATIONS:
                 el.pBCont.classList.remove('opacity-50', 'pointer-events-none');
             }
 
-            // Custom detection
             if (triggerId.includes('_S') || triggerId.includes('_E')) {
                 const side = triggerId.includes('A') ? 'A' : 'B';
                 el['p' + side].value = 'custom';
@@ -473,7 +500,6 @@ SPECIFICATIONS:
             const valA = getValues('A');
             const valB = getValues('B');
 
-            // Outputs
             el.outFa.textContent = getRangeString(valA.fs, valA.fe, valA.factor);
             el.outAa.textContent = getRangeString(valA.as, valA.ae, valA.factor);
             el.outMa.textContent = valA.m.toFixed(1);
@@ -482,27 +508,50 @@ SPECIFICATIONS:
             el.outAb.textContent = getRangeString(valB.as, valB.ae, valB.factor);
             el.outMb.textContent = valB.m.toFixed(1);
 
-            // Delta Visualization
             const diffM = valB.m - valA.m;
             const mpColor = diffM > 0 ? 'text-rose-500' : (diffM < 0 ? 'text-emerald-500' : 'text-slate-400');
             el.mDelta.innerHTML = `<span class="${mpColor}">${diffM > 0 ? '+' : ''}${diffM.toFixed(1)} MP vs A</span>`;
             el.fDelta.textContent = "Field of View Range";
             el.aDelta.textContent = "Relative Background Blur";
 
-            updateTable(valA.m);
+            updateTables(valA.m, valA.factor);
             updateInvert();
         }
 
-        function updateTable(refMP) {
-            el.table.innerHTML = sensorData.map(s => {
-                const cropMP = (refMP / (s.factor * s.factor)).toFixed(1);
-                const area = (100 / (s.factor * s.factor)).toFixed(1);
+        function updateTables(refMP, refFactor) {
+            // Shared Logic: Sort by size descending
+            const sortedData = [...sensorData].sort((a,b) => (a.w*a.h) < (b.w*b.h) ? 1 : -1);
+
+            // Resolution and Multiplier Table
+            el.tableDensity.innerHTML = sortedData.map(s => {
+                const relMultiplier = (s.factor / refFactor).toFixed(2);
+                const areaRel = (100 / (relMultiplier * relMultiplier)).toFixed(1);
+                const cropMP = (refMP / (relMultiplier * relMultiplier)).toFixed(1);
+                
                 return `
                     <tr class="border-b border-slate-200 dark:border-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800/20">
                         <td class="p-4 font-medium text-slate-700 dark:text-slate-300">${s.name}</td>
-                        <td class="p-4 text-center font-mono text-blue-500">${s.factor}x</td>
-                        <td class="p-4 text-center font-mono text-slate-400">${area}%</td>
+                        <td class="p-4 text-center font-mono text-blue-500">${relMultiplier}x</td>
+                        <td class="p-4 text-center font-mono text-slate-400">${areaRel}%</td>
                         <td class="p-4 text-right font-mono text-amber-500">${cropMP} MP</td>
+                    </tr>
+                `;
+            }).join('');
+
+            // Dimensions Table
+            el.tableDim.innerHTML = sortedData.map(s => {
+                const area = (s.w * s.h).toFixed(1);
+                const diagonal = Math.sqrt(s.w**2 + s.h**2).toFixed(1);
+                const relMultiplier = (s.factor / refFactor).toFixed(2);
+                
+                return `
+                    <tr class="border-b border-slate-200 dark:border-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800/20">
+                        <td class="p-4 font-medium text-slate-700 dark:text-slate-300">${s.name}</td>
+                        <td class="p-4 text-center font-mono text-slate-400">${s.w}</td>
+                        <td class="p-4 text-center font-mono text-slate-400">${s.h}</td>
+                        <td class="p-4 text-center font-mono text-emerald-500">${area}</td>
+                        <td class="p-4 text-center font-mono text-slate-500">${diagonal}</td>
+                        <td class="p-4 text-right font-mono text-blue-400 font-bold">${relMultiplier}x</td>
                     </tr>
                 `;
             }).join('');
@@ -514,6 +563,21 @@ SPECIFICATIONS:
             const mFactor = parseFloat(el.invSensor.value) || 1;
             el.invResult.textContent = ((target / tFactor) * mFactor).toFixed(1);
         }
+
+        // Tab Switching Logic
+        el.tabDensity.addEventListener('click', () => {
+            el.tabDensity.classList.add('active');
+            el.tabDimensions.classList.remove('active');
+            el.viewDensity.classList.remove('hidden');
+            el.viewDimensions.classList.add('hidden');
+        });
+
+        el.tabDimensions.addEventListener('click', () => {
+            el.tabDimensions.classList.add('active');
+            el.tabDensity.classList.remove('active');
+            el.viewDimensions.classList.remove('hidden');
+            el.viewDensity.classList.add('hidden');
+        });
 
         el.themeBtn.addEventListener('click', () => {
             const isDark = el.body.classList.contains('dark');
