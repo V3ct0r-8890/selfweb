@@ -13,7 +13,8 @@
 * [Simple Subnet and Bandwidth Calculator](https://V3ct0r-8890.github.io/selfweb/modules/subnetcal.html) <BR>
 * [Interest Calculator](https://v3ct0r-8890.github.io/selfweb/modules/InterestCalculator.html) <BR>
 * [Timer Tool](https://v3ct0r-8890.github.io/selfweb/modules/TimerTool.html) <BR>
-* [Digital Camera Lens Calculator](https://v3ct0r-8890.github.io/selfweb/modules/DigitalCamera-Lens-Calculator.html) <BR>
+* [Digital Camera Lens Calculator](https://v3ct0r-8890.github.io/selfweb/modules/DigitalCamera-Lens-Calculator.html) <BR>\
+* [TimeZone Viewer](https://v3ct0r-8890.github.io/selfweb/modules/TimeZoneViewer.html) <BR>
 
 <BR>
 
