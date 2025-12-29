@@ -1,9 +1,23 @@
 <!DOCTYPE html>
 <html lang="en">
+<!--
+================================================================================
+NAME: Camera & Megapixel Equivalence Master Calculator (Pro)
+VERSION: 20251229.002
+TIMESTAMP: 2025-12-29 22:15:00
+AUTHOR: Gemini (Thought Partner)
+SPECIFICATIONS:
+    - REMOVED: "Target Look / Lens to Buy" (Invert Tool) section as requested.
+      (Functionality is superseded by the "Match A" readout in System B).
+    - FEATURE: Custom Sensor Support (Width/Height definition).
+    - FEATURE: Import/Export Custom Gear (Lenses + Sensors).
+    - CORE: Zoom Lens DoF Range calculation (Wide to Tele).
+================================================================================
+-->
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Camera Equivalence Pro v7.2.0</title>
+    <title>Camera Equivalence Pro v20251229.002</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = { darkMode: 'class' }
@@ -120,6 +134,16 @@
 
         /* DO Range Styling */
         .dof-range { font-size: 0.9em; letter-spacing: -0.5px; }
+
+        .gear-section-title {
+            color: var(--text-muted);
+            font-weight: 800;
+            font-size: 11px;
+            text-transform: uppercase;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 4px;
+            margin-bottom: 10px;
+        }
     </style>
 </head>
 <body class="p-2 md:p-6 dark">
@@ -127,13 +151,14 @@
     <div class="max-w-5xl mx-auto">
         <header class="mb-4 flex justify-between items-center border-b border-slate-700/50 pb-3">
             <div>
-                <h1 class="text-xl font-bold text-blue-400">Optics Comparison <span class="text-xs font-normal text-slate-500 ml-2">v7.2.0</span></h1>
+                <h1 class="text-xl font-bold text-blue-400">Optics Comparison <span class="text-xs font-normal text-slate-500 ml-2">v20251229.002</span></h1>
             </div>
             <div class="flex gap-2">
                 <button id="themeToggle" class="btn-action">🌓 Toggle Theme</button>
             </div>
         </header>
 
+        <!-- Lens Presets -->
         <div class="mb-4 flex flex-wrap items-center gap-2">
             <span class="label-tiny mr-2 text-slate-500">Quick Presets:</span>
             <button class="preset-btn" onclick="applyPreset(14, 1.8)">14mm</button>
@@ -144,30 +169,9 @@
             <button class="preset-btn" onclick="applyPreset(135, 1.8)">135mm</button>
         </div>
 
-        <div class="card p-3 rounded-xl mb-6 border-l-4 border-emerald-500 shadow-sm">
-            <div class="flex flex-col md:flex-row gap-4 items-end">
-                <div class="flex-1 w-full grid grid-cols-3 gap-2">
-                    <div>
-                        <span class="label-tiny text-emerald-500">Target Look (mm)</span>
-                        <input type="number" id="targetEq" value="50" class="input-field">
-                    </div>
-                    <div>
-                        <span class="label-tiny">Target Format</span>
-                        <select id="targetFormat" class="input-field"></select>
-                    </div>
-                    <div>
-                        <span class="label-tiny">My Sensor</span>
-                        <select id="targetSensor" class="input-field"></select>
-                    </div>
-                </div>
-                <div class="w-full md:w-auto bg-emerald-500/10 px-4 py-2 rounded-lg border border-emerald-500/20 flex flex-row md:flex-col items-center justify-between md:justify-center">
-                    <span class="label-tiny text-emerald-500">Lens to Buy:</span>
-                    <div class="result-val text-xl text-emerald-400 font-mono"><span id="invertResult">...</span><span class="text-xs ml-1">mm</span></div>
-                </div>
-            </div>
-        </div>
-
+        <!-- Comparison Grid -->
         <div class="mobile-side-by-side mb-6">
+            <!-- SYSTEM A -->
             <div class="flex flex-col space-y-3">
                 <div class="flex items-center gap-2">
                     <span class="w-5 h-5 bg-blue-500 rounded-full text-[11px] flex items-center justify-center text-white font-bold">A</span>
@@ -212,6 +216,7 @@
                 </div>
             </div>
 
+            <!-- SYSTEM B -->
             <div class="flex flex-col space-y-3">
                 <div class="flex items-center justify-between">
                     <div class="flex items-center gap-2">
@@ -260,6 +265,7 @@
                         </div>
                     </div>
                     
+                    <!-- MATCH A SECTION -->
                     <div class="match-box mt-3 pt-2 pb-1 px-2 rounded">
                         <span class="label-tiny text-rose-400" style="font-size: 8px;">Physical Lens to Match A</span>
                         <div class="flex justify-between items-baseline mb-1">
@@ -275,12 +281,13 @@
             </div>
         </div>
 
+        <!-- Section Navigation -->
         <div class="card rounded-xl overflow-hidden shadow-lg mb-6">
             <div class="bg-slate-800/20 flex overflow-x-auto border-b border-slate-700/50 no-scrollbar">
                 <button id="tabRes" class="tab-btn active">RESOLUTIONS</button>
                 <button id="tabMult" class="tab-btn">MULTIPLICATION CHART</button>
                 <button id="tabDim" class="tab-btn">DIMENSIONS</button>
-                <button id="tabCustom" class="tab-btn text-amber-500">CUSTOM LENSES</button>
+                <button id="tabCustom" class="tab-btn text-amber-500">CUSTOM GEAR</button>
                 <button id="tabFormula" class="tab-btn">FORMULAS & REFS</button>
             </div>
             
@@ -305,11 +312,25 @@
                 </table>
             </div>
 
+            <!-- CUSTOM GEAR TAB -->
             <div id="viewCustom" class="hidden p-6">
+                <!-- EXPORT / IMPORT CONTROLS -->
+                <div class="mb-6 bg-slate-800/20 p-3 rounded border border-slate-700/50 flex justify-between items-center">
+                    <span class="text-[10px] font-bold text-slate-400">Manage All Data</span>
+                    <div class="flex gap-2">
+                        <button onclick="exportCustomData()" class="btn-action border-blue-500/30 text-blue-400">⬇ Export All</button>
+                        <button onclick="importCustomData()" class="btn-action border-emerald-500/30 text-emerald-400">⬆ Import All</button>
+                        <input type="file" id="importFile" class="hidden" accept=".json" onchange="handleFileSelect(this)">
+                    </div>
+                </div>
+
                 <div class="grid md:grid-cols-2 gap-8">
-                    <div class="space-y-4">
-                        <h4 class="text-amber-500 font-bold text-sm uppercase">Add Custom Lens</h4>
-                        <div class="space-y-3">
+                    <!-- COLUMN 1: LENSES -->
+                    <div class="space-y-6">
+                        <div class="gear-section-title">Custom Lenses</div>
+                        
+                        <!-- Add Lens -->
+                        <div class="space-y-3 bg-slate-900/30 p-3 rounded border border-slate-800">
                             <div><span class="label-tiny">Lens Name</span><input type="text" id="custName" placeholder="e.g. Dreamy 50mm" class="input-field"></div>
                             <div class="grid grid-cols-2 gap-2">
                                 <div><span class="label-tiny">Focal Start</span><input type="number" id="custFs" class="input-field"></div>
@@ -321,18 +342,36 @@
                             </div>
                             <button onclick="saveCustomLens()" class="w-full btn-action bg-amber-500/20 text-amber-500 border-amber-500/50 py-2 font-bold uppercase tracking-wider">Save Lens</button>
                         </div>
-                    </div>
-                    
-                    <div class="space-y-4">
-                        <div class="flex justify-between items-center">
-                            <h4 style="color: var(--text-muted);" class="font-bold text-sm uppercase">Saved Library</h4>
-                            <div class="flex gap-2">
-                                <button onclick="exportCustomLenses()" class="btn-action border-blue-500/30 text-blue-400">⬇ Export</button>
-                                <button onclick="importCustomLenses()" class="btn-action border-emerald-500/30 text-emerald-400">⬆ Import</button>
-                                <input type="file" id="importFile" class="hidden" accept=".json" onchange="handleFileSelect(this)">
-                            </div>
+
+                        <!-- Lens List -->
+                        <div class="space-y-2">
+                            <h4 style="color: var(--text-muted);" class="font-bold text-[10px] uppercase">My Lenses</h4>
+                            <div id="customLensList" class="space-y-2 max-h-[150px] overflow-y-auto no-scrollbar"></div>
                         </div>
-                        <div id="customLensList" class="space-y-2 max-h-[200px] overflow-y-auto no-scrollbar"></div>
+                    </div>
+
+                    <!-- COLUMN 2: SENSORS -->
+                    <div class="space-y-6">
+                        <div class="gear-section-title">Custom Sensors</div>
+
+                        <!-- Add Sensor -->
+                        <div class="space-y-3 bg-slate-900/30 p-3 rounded border border-slate-800">
+                            <div><span class="label-tiny">Sensor Name</span><input type="text" id="custSensName" placeholder="e.g. My Weird Crop" class="input-field"></div>
+                            <div class="grid grid-cols-2 gap-2">
+                                <div><span class="label-tiny">Width (mm)</span><input type="number" id="custSensW" step="0.1" class="input-field"></div>
+                                <div><span class="label-tiny">Height (mm)</span><input type="number" id="custSensH" step="0.1" class="input-field"></div>
+                            </div>
+                            <div class="text-[9px] text-slate-500 italic mt-1">
+                                * Crop factor auto-calculated vs FF (Diag 43.3mm)
+                            </div>
+                            <button onclick="saveCustomSensor()" class="w-full btn-action bg-emerald-500/20 text-emerald-500 border-emerald-500/50 py-2 font-bold uppercase tracking-wider">Save Sensor</button>
+                        </div>
+
+                        <!-- Sensor List -->
+                        <div class="space-y-2">
+                            <h4 style="color: var(--text-muted);" class="font-bold text-[10px] uppercase">My Sensors</h4>
+                            <div id="customSensorList" class="space-y-2 max-h-[150px] overflow-y-auto no-scrollbar"></div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -381,7 +420,7 @@
     </div>
 
     <script>
-        const sensorData = [
+        const stockSensors = [
             { id: "imax", name: "IMAX 15/70", w: 70.0, h: 48.5, factor: 0.51 },
             { id: "6x7", name: "6x7 MF", w: 70.0, h: 56.0, factor: 0.5 },
             { id: "gfx", name: "GFX (44x33)", w: 43.8, h: 32.9, factor: 0.79 },
@@ -390,7 +429,9 @@
             { id: "canon_apsc", name: "APS-C (Can)", w: 22.2, h: 14.8, factor: 1.61 },
             { id: "mft", name: "MFT", w: 17.3, h: 13.0, factor: 2.0 },
             { id: "1in", name: "1-inch", w: 13.2, h: 8.8, factor: 2.72 }
-        ].sort((a, b) => a.factor - b.factor);
+        ];
+
+        let sensorData = []; // Populated in init()
 
         const stockLenses = {
             "Primes": [
@@ -427,41 +468,161 @@
             matchF: document.getElementById('matchF'), matchAp: document.getElementById('matchAp'), matchDof: document.getElementById('matchDof'),
             tRes: document.getElementById('tableRes'), tMult: document.getElementById('tableMult'), hMult: document.getElementById('multHeader'), tDim: document.getElementById('tableDim'),
             libA: document.getElementById('lensLibraryA'), libB: document.getElementById('lensLibraryB'),
-            invT: document.getElementById('targetEq'), invTF: document.getElementById('targetFormat'), invS: document.getElementById('targetSensor'), invR: document.getElementById('invertResult'),
             custName: document.getElementById('custName'), custFs: document.getElementById('custFs'), custFe: document.getElementById('custFe'), 
             custAs: document.getElementById('custAs'), custAe: document.getElementById('custAe'), custList: document.getElementById('customLensList'),
+            custSensName: document.getElementById('custSensName'), custSensW: document.getElementById('custSensW'), custSensH: document.getElementById('custSensH'), custSensList: document.getElementById('customSensorList'),
             importFile: document.getElementById('importFile')
         };
 
         function init() {
-            [els.sA, els.sB, els.invTF, els.invS].forEach(sel => {
-                sensorData.forEach(s => {
-                    const o = document.createElement('option');
-                    o.value = s.factor; o.textContent = `${s.name} (${s.factor}x)`;
-                    if (sel === els.sA || sel === els.invTF) { if (s.id === "ff") o.selected = true; }
-                    if (sel === els.sB || sel === els.invS) { if (s.id === "apsc") o.selected = true; }
-                    sel.appendChild(o);
-                });
-            });
+            renderSensors(); // Loads sensors and populates dropdowns
             renderLibraries();
             update();
         }
 
-        /* --- IMPORT / EXPORT LOGIC --- */
-        function exportCustomLenses() {
-            const lenses = localStorage.getItem('customLenses') || '[]';
-            const blob = new Blob([lenses], {type: "application/json"});
+        /* --- SENSOR LOGIC --- */
+        function getCustomSensors() {
+            return JSON.parse(localStorage.getItem('customSensors') || '[]');
+        }
+
+        function saveCustomSensor() {
+            const name = els.custSensName.value;
+            const w = parseFloat(els.custSensW.value);
+            const h = parseFloat(els.custSensH.value);
+            if (!name || isNaN(w) || isNaN(h) || w <= 0 || h <= 0) {
+                alert("Please enter valid name, width, and height.");
+                return;
+            }
+
+            // Calculate Factor based on FF Diagonal ~43.2666mm
+            const diag = Math.sqrt(w*w + h*h);
+            const factor = (43.2666153 / diag).toFixed(2);
+
+            const sensors = getCustomSensors();
+            // Use a unique ID to avoid conflict with stock
+            const id = "cust_" + Date.now();
+            sensors.push({ id, name, w, h, factor: parseFloat(factor), isCustom: true });
+            
+            localStorage.setItem('customSensors', JSON.stringify(sensors));
+            
+            // Clear inputs
+            els.custSensName.value = ''; els.custSensW.value = ''; els.custSensH.value = '';
+            
+            // Re-render
+            renderSensors();
+            update(); // Refresh calculations
+        }
+
+        function deleteSensor(idx) {
+            const sensors = getCustomSensors();
+            sensors.splice(idx, 1);
+            localStorage.setItem('customSensors', JSON.stringify(sensors));
+            renderSensors();
+            update();
+        }
+
+        function renderSensors() {
+            // 1. Merge Stock + Custom
+            const custom = getCustomSensors();
+            // Sort custom by factor
+            custom.sort((a,b) => a.factor - b.factor);
+            
+            // Combine: Stock first, then custom
+            sensorData = [...stockSensors, ...custom];
+            // Optionally sort entire list by factor? Let's keep stock order then appended custom for clarity, or sort all.
+            // Let's sort all by factor for the dropdowns logic to be consistent
+            sensorData.sort((a, b) => a.factor - b.factor);
+
+            // 2. Populate Dropdowns
+            // Store current selections to try and restore them
+            const selA = els.sA.value;
+            const selB = els.sB.value;
+
+            [els.sA, els.sB].forEach(sel => {
+                sel.innerHTML = ''; // Clear
+                sensorData.forEach(s => {
+                    const o = document.createElement('option');
+                    o.value = s.factor; 
+                    o.textContent = `${s.name} (${s.factor}x)`;
+                    if(s.isCustom) o.textContent = `* ${s.name} (${s.factor}x)`;
+                    sel.appendChild(o);
+                });
+            });
+
+            // Restore selection or defaults
+            // Default: FF (1.0) and APSC (1.52)
+            if(selA) els.sA.value = selA; else els.sA.value = "1";
+            if(selB) els.sB.value = selB; else els.sB.value = "1.52";
+
+            // If restoration failed (e.g. deleted sensor), default to FF
+            if(!els.sA.value) els.sA.value = "1";
+
+            // 3. Render Custom Sensor List UI
+            els.custSensList.innerHTML = custom.map((s, i) => `
+                <div class="flex justify-between items-center bg-slate-800/20 p-2 rounded border border-slate-700/50">
+                    <div>
+                        <div class="text-[10px] font-bold text-slate-300">${s.name}</div>
+                        <div class="text-[9px] text-slate-500">${s.w}x${s.h}mm (${s.factor}x)</div>
+                    </div>
+                    <button onclick="deleteSensor(${i})" class="text-rose-500 font-bold px-2">✕</button>
+                </div>
+            `).join('');
+
+            // 4. Render Tables (depend on sensorData)
+            renderTables(); 
+        }
+
+        function renderTables() {
+            // Resolution Table
+            const fa = parseFloat(els.sA.value) || 1.0;
+            const refMP = parseFloat(els.mpA.value || 0);
+            
+            els.tRes.innerHTML = sensorData.map(s => {
+                const mult = (s.factor / fa).toFixed(2);
+                const mp = (refMP / (mult * mult)).toFixed(1);
+                return `<tr class="border-b border-slate-700/30 hover:bg-slate-800/10"><td class="p-3 font-semibold ${s.isCustom ? 'text-emerald-400':''}">${s.name}</td><td class="p-3 text-center text-blue-400 font-mono">${mult}x</td><td class="p-3 text-right text-amber-500 font-mono">${mp} MP</td></tr>`;
+            }).join('');
+
+            // Dimensions Table
+            els.tDim.innerHTML = sensorData.map(s => `<tr class="border-b border-slate-700/30 hover:bg-slate-800/10"><td class="p-3 font-semibold ${s.isCustom ? 'text-emerald-400':''}">${s.name}</td><td class="p-3 text-center text-slate-400 font-mono">${s.w}x${s.h}mm</td><td class="p-3 text-right text-emerald-500 font-mono">${Math.sqrt(s.w**2+s.h**2).toFixed(1)}mm</td></tr>`).join('');
+
+            // Multiplier Matrix
+            els.hMult.innerHTML = `<th class="p-2 border border-slate-700/50 bg-slate-800/30">↓ A | B →</th>` + sensorData.map(s => {
+                const label = s.id.startsWith("cust_") ? "*" + s.name.substring(0,3).toUpperCase() : s.id.toUpperCase();
+                return `<th class="p-2 border border-slate-700/50 text-center font-bold text-[9px]">${label}</th>`;
+            }).join('');
+            
+            els.tMult.innerHTML = sensorData.map(row => {
+                const rowLabel = row.id.startsWith("cust_") ? "*" + row.name.substring(0,3).toUpperCase() : row.id.toUpperCase();
+                let cells = `<td class="p-2 border border-slate-700/50 font-bold bg-slate-800/20">${rowLabel}</td>`;
+                sensorData.forEach(col => {
+                    const ratio = (col.factor / row.factor).toFixed(2);
+                    const highlight = ratio === "1.00" ? "text-blue-400 font-bold" : "text-slate-400";
+                    cells += `<td class="p-2 border border-slate-700/50 text-center font-mono ${highlight}">${ratio}</td>`;
+                });
+                return `<tr>${cells}</tr>`;
+            }).join('');
+        }
+
+        /* --- IMPORT / EXPORT LOGIC (Unified) --- */
+        function exportCustomData() {
+            const data = {
+                lenses: JSON.parse(localStorage.getItem('customLenses') || '[]'),
+                sensors: JSON.parse(localStorage.getItem('customSensors') || '[]'),
+                version: "20251229.002"
+            };
+            const blob = new Blob([JSON.stringify(data, null, 2)], {type: "application/json"});
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = "my_custom_lenses.json";
+            a.download = "camera_calc_gear.json";
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
         }
 
-        function importCustomLenses() {
+        function importCustomData() {
             els.importFile.click();
         }
 
@@ -472,15 +633,22 @@
             reader.onload = function(e) {
                 try {
                     const data = JSON.parse(e.target.result);
+                    
+                    // Backward Compatibility: Check if array (Old format: only lenses)
                     if (Array.isArray(data)) {
-                        const existing = JSON.parse(localStorage.getItem('customLenses') || '[]');
-                        // Merge strategies can vary, here we just append non-duplicates or overwrite
                         localStorage.setItem('customLenses', JSON.stringify(data));
-                        renderLibraries();
-                        alert('Lenses imported successfully!');
+                        alert('Imported Lenses (Legacy Format).');
+                    } 
+                    // New Format: Object with lenses/sensors keys
+                    else if (data.lenses || data.sensors) {
+                        if(data.lenses) localStorage.setItem('customLenses', JSON.stringify(data.lenses));
+                        if(data.sensors) localStorage.setItem('customSensors', JSON.stringify(data.sensors));
+                        alert('Imported Custom Gear Successfully!');
                     } else {
                         alert('Invalid file format.');
                     }
+                    renderLibraries();
+                    renderSensors();
                 } catch (err) {
                     alert('Error parsing JSON file.');
                 }
@@ -614,12 +782,6 @@
             // DoF Display B
             els.dofB.textContent = getDoFString(els.fBs.value, els.fBe.value, els.apBs.value, els.apBe.value, fb);
             
-            // Invert logic
-            const invF = parseFloat(els.invTF.value);
-            const invS = parseFloat(els.invS.value);
-            const invT = parseFloat(els.invT.value);
-            els.invR.textContent = ((invT / invF) * invS).toFixed(1);
-
             // Calculate Match A
             const matchRatio = fa / fb;
             els.matchF.textContent = getRange(els.fAs.value, els.fAe.value, matchRatio);
@@ -639,28 +801,9 @@
                 els.matchDof.textContent = `${d1} - ${d2}`;
             }
 
-            // Resolution Equivalence Table
-            const refMP = parseFloat(els.mpA.value || 0);
-            els.tRes.innerHTML = sensorData.map(s => {
-                const mult = (s.factor / fa).toFixed(2);
-                const mp = (refMP / (mult * mult)).toFixed(1);
-                return `<tr class="border-b border-slate-700/30 hover:bg-slate-800/10"><td class="p-3 font-semibold">${s.name}</td><td class="p-3 text-center text-blue-400 font-mono">${mult}x</td><td class="p-3 text-right text-amber-500 font-mono">${mp} MP</td></tr>`;
-            }).join('');
-
-            // Dimensions Table
-            els.tDim.innerHTML = sensorData.map(s => `<tr class="border-b border-slate-700/30 hover:bg-slate-800/10"><td class="p-3 font-semibold">${s.name}</td><td class="p-3 text-center text-slate-400 font-mono">${s.w}x${s.h}mm</td><td class="p-3 text-right text-emerald-500 font-mono">${Math.sqrt(s.w**2+s.h**2).toFixed(1)}mm</td></tr>`).join('');
-
-            // Multiplier Matrix Tab
-            els.hMult.innerHTML = `<th class="p-2 border border-slate-700/50 bg-slate-800/30">↓ A | B →</th>` + sensorData.map(s => `<th class="p-2 border border-slate-700/50 text-center font-bold text-[9px]">${s.id.toUpperCase()}</th>`).join('');
-            els.tMult.innerHTML = sensorData.map(row => {
-                let cells = `<td class="p-2 border border-slate-700/50 font-bold bg-slate-800/20">${row.id.toUpperCase()}</td>`;
-                sensorData.forEach(col => {
-                    const ratio = (col.factor / row.factor).toFixed(2);
-                    const highlight = ratio === "1.00" ? "text-blue-400 font-bold" : "text-slate-400";
-                    cells += `<td class="p-2 border border-slate-700/50 text-center font-mono ${highlight}">${ratio}</td>`;
-                });
-                return `<tr>${cells}</tr>`;
-            }).join('');
+            // Tables update via renderTables inside renderSensors, but we need to update them if values change
+            // Just re-call renderTables to update dynamic calcs (like MP)
+            renderTables();
         }
 
         document.querySelectorAll('input, select').forEach(i => i.addEventListener('input', update));
