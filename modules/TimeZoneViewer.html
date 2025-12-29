@@ -1,47 +1,3 @@
-<!-- 
-  Project: Vertical Time Zone Viewer
-  Revision: 20251229.018
-  Author: Gemini (Senior Developer)
-
-  Project Specification:
-  1. Purpose: A comprehensive vertical timeline tool for high-density time zone comparison across multiple regions, suitable for global team coordination.
-  2. Core Layout:
-     - Header: Brand title, centralized live digital clock (Date + Time), date jumper, and configuration tools.
-     - Left Column: Anchored Reference Column showing the user's Device Local Time and Date. Fixed sticky position on both axes.
-     - Dynamic Columns: Support for up to 4 additional user-defined time zones.
-  3. Time & Range Logic:
-     - Start Point: Dynamically adjustable. Defaults to 00:00 (Midnight) of the current calendar day, but can be set to any date via "Go to Date".
-     - Duration: Configurable span of 3, 7, 14, or 30 days from the start point.
-     - Increments: 1-hour vertical intervals.
-     - Daily Delineation: A solid high-contrast line appears at the start of every new day (based on visible hours).
-     - Visible Hours: User can filter the daily view to specific hours (e.g., 08:00 - 20:00) to hide non-relevant times.
-  4. Features & Interaction:
-     - Live Digital Clock: Centered top display with [Month Full Name] [DD], [YYYY] and live HH:MM:SS.
-     - Working Hours: Configurable start/end hours (e.g., 09:00-18:00). Highlights professional windows in green.
-     - Public Holidays: Fetches and displays holiday names based on country codes using the Nager.Date API. Handles year-boundaries automatically.
-     - Robust Fetching: Improved error handling for holiday API to prevent JSON parsing crashes on empty responses.
-     - ISO 8601 Enforcement: Forces Gregorian calendar for holiday lookups to support regions like Thailand (Thai Solar Calendar) correctly.
-     - City Aliases: Built-in mapping for common cities (Washington DC, Beijing) to their IANA Time Zone IDs.
-     - Holiday Styling: High-visibility gold/orange background highlight for holiday cells, calculated per zone.
-     - Weekend Highlighting: Saturday (Light Blue) and Sunday (Light Red) rows for visual context.
-     - Manage Zones: Enhanced modal to Add or Edit existing zones. Search results show Country Codes (e.g., "TH", "US").
-     - Column Reordering: Arrow buttons in column headers to move zones left/right.
-     - Click-to-Copy: Automated clipboard copying of full formatted date/time strings.
-  5. Data & Persistence:
-     - Auto-Save: Browser LocalStorage stores all preferences, zones, and working hour configurations.
-     - Portability: JSON Export/Import for configuration backup/migration.
-  6. Technical Stack:
-     - Vanilla JavaScript (ES6+), HTML5, CSS3.
-     - Intl API for time zone accuracy.
-     - Fetch API for external holiday data.
-
-  HELP / USAGE:
-  - Add Zone: Click "Add Time Zone". Type "Washington" to find US Eastern Time. Auto-fills Country Code.
-  - Move Zone: Hover over a column header and use the Left/Right arrows to reorder.
-  - Edit Zone: Click the "Edit" (Pencil) icon in any column header to modify that specific zone's settings.
-  - Copy Time: Click any cell in the grid to copy the full timestamp to your clipboard.
-  - Jump Date: Use the "Go to Date" picker to change the timeline's start date to any specific day.
--->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -69,11 +25,20 @@
             --toast-text: #fff;
             
             --sat-bg: #f0f7ff;
-            --sun-bg: #fff5f5;
+            --sun-bg: #fff5f5; 
             --work-bg: #ebfbee; 
-            --holiday-bg: #ffec99; /* Vibrant Gold */
-            --holiday-text: #d9480f; /* Dark Orange text */
+            
+            /* Public Holiday */
+            --holiday-bg: #ffec99; 
+            --holiday-text: #d9480f; 
+            
+            /* Company Holiday */
+            --co-holiday-bg: #ffe8cc; 
+            --co-holiday-text: #e8590c;
+            
             --day-sep-color: #000000;
+            --sidebar-bg: #f8f9fa;
+            --sidebar-width: 250px;
         }
 
         [data-theme="dark"] {
@@ -96,9 +61,15 @@
             --sat-bg: #1a2635;
             --sun-bg: #351a1a;
             --work-bg: #1a351a; 
-            --holiday-bg: #664d03; /* Deep Gold */
+            
+            --holiday-bg: #664d03; 
             --holiday-text: #ffec99;
+            
+            --co-holiday-bg: #5c2b0e;
+            --co-holiday-text: #ffc078;
+            
             --day-sep-color: #ffffff;
+            --sidebar-bg: #1a1a1a;
         }
 
         * { box-sizing: border-box; }
@@ -115,6 +86,7 @@
             font-size: 13px;
         }
 
+        /* --- Header --- */
         header {
             background-color: var(--header-bg);
             padding: 8px 16px;
@@ -124,6 +96,7 @@
             gap: 8px;
             z-index: 200; 
             box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            flex-shrink: 0;
         }
 
         .header-top { display: flex; justify-content: space-between; align-items: center; }
@@ -145,21 +118,102 @@
         }
         button:hover { background-color: var(--row-hover); border-color: var(--accent-color); }
         button.primary { background-color: var(--accent-color); color: white; border: none; }
+        button.danger { color: var(--current-time-color); border-color: var(--current-time-color); }
+        button.danger:hover { background-color: var(--current-time-color); color: white; }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
 
-        /* Timeline Grid */
+        /* --- Main Layout --- */
+        #main-container {
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+            position: relative;
+            flex-direction: row; 
+        }
+
+        /* --- Sidebar (Left Panel) --- */
+        #sidebar {
+            width: var(--sidebar-width);
+            background-color: var(--sidebar-bg);
+            border-right: 1px solid var(--border-color);
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+            padding: 10px;
+            gap: 20px;
+        }
+
+        /* --- Calendar Section in Sidebar --- */
+        #calendar-dashboard {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            width: 100%;
+        }
+        
+        .cal-controls-row {
+            display: flex;
+            width: 100%;
+            gap: 5px;
+        }
+        .cal-nav-btn {
+            font-size: 0.9rem; background: var(--btn-bg); border: 1px solid var(--btn-border); 
+            color: var(--accent-color); cursor: pointer; padding: 4px 0;
+            border-radius: 4px; text-align: center;
+        }
+        .cal-nav-btn:hover { background-color: var(--row-hover); }
+        .cal-nav-btn.today-btn { flex: 1; font-weight: bold; }
+        .cal-nav-btn.arrow-btn { width: 30px; }
+        
+        .mini-cal {
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            padding: 5px;
+            width: 100%;
+            background: var(--bg-color);
+        }
+        .mini-cal h4 { margin: 0 0 5px 0; text-align: center; font-size: 0.85rem; }
+        .mini-cal table { width: 100%; border-collapse: collapse; font-size: 0.75rem; text-align: center; }
+        .mini-cal th { color: var(--accent-color); font-weight: 600; font-size: 0.7rem; }
+        .mini-cal td { padding: 3px 0; cursor: pointer; border-radius: 2px; }
+        .mini-cal td:hover { background-color: var(--row-hover); font-weight: bold; }
+        
+        .mini-cal .cal-day-today { background-color: var(--accent-color); color: white; border-radius: 50%; font-weight: bold; }
+        .mini-cal .cal-day-holiday { 
+            background-color: var(--co-holiday-bg); 
+            color: var(--co-holiday-text); 
+            font-weight: bold; 
+            border-radius: 4px;
+        }
+        .mini-cal .cal-day-selected { border: 1px solid var(--accent-color); font-weight: bold; }
+        .mini-cal .cal-day-sunday { background-color: var(--sun-bg); }
+
+        /* --- Holiday List Section in Sidebar --- */
+        .sidebar-section h3 { margin: 0 0 10px 0; font-size: 0.9rem; border-bottom: 2px solid var(--border-color); padding-bottom: 5px; color: var(--accent-color); }
+        .holiday-list-item {
+            font-size: 0.8rem;
+            padding: 6px 0;
+            border-bottom: 1px dashed var(--border-color);
+            display: flex;
+            justify-content: space-between;
+        }
+        .holiday-list-item .h-date { font-weight: bold; font-family: monospace; }
+        .holiday-list-item .h-name { text-align: right; color: var(--co-holiday-text); flex: 1; margin-left: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+        /* --- Timeline Grid --- */
         #viewport { flex: 1; overflow-y: auto; position: relative; scrollbar-width: thin; }
         #grid { display: grid; position: relative; min-width: 100%; }
 
+        /* --- Grid Elements --- */
         .col-header {
             position: sticky; top: 0; background-color: var(--header-bg);
             padding: 10px 5px; text-align: center; border-bottom: 2px solid var(--border-color);
             border-right: 1px solid var(--border-color); z-index: 50; font-weight: 600;
         }
-        
         .col-header.ref-cell { left: 0; z-index: 150; background-color: var(--header-bg); }
         .col-header:last-child { border-right: none; }
-        .col-header .tz-name { font-size: 0.9rem; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .col-header .tz-offset { font-size: 0.7rem; font-weight: 400; opacity: 0.6; }
         
         .col-controls { position: absolute; top: 2px; right: 2px; display: flex; gap: 4px; visibility: hidden; }
         .col-header:hover .col-controls { visibility: visible; }
@@ -167,27 +221,29 @@
         .col-btn.remove { color: var(--current-time-color); }
         .col-btn.edit { color: var(--accent-color); }
         .col-btn.move { font-weight: bold; }
-        .col-btn.move:hover { color: var(--accent-color); }
 
         .cell {
             height: var(--cell-height); border-bottom: 1px solid var(--border-color);
             border-right: 1px solid var(--border-color); display: flex; align-items: center; justify-content: center;
             font-variant-numeric: tabular-nums; cursor: pointer; transition: background 0.1s; position: relative;
         }
-        .cell:last-child { border-right: none; }
         .cell:active { background-color: var(--accent-color) !important; color: white !important; }
-        
         .ref-cell { background-color: var(--ref-col-bg); font-weight: 700; color: var(--accent-color); position: sticky; left: 0; z-index: 10; }
 
-        /* Day Separator - Solid high-contrast line between days */
         .day-separator { border-top: 3px solid var(--day-sep-color) !important; }
 
         .is-night { background-color: var(--night-bg); color: var(--night-text); }
         .is-day { background-color: transparent; font-weight: 500; }
         .is-work-hour { background-color: var(--work-bg) !important; }
-        .is-saturday { background-color: var(--sat-bg) !important; }
+        .is-saturday { background-color: var(--sat-bg) !important; } 
         .is-sunday { background-color: var(--sun-bg) !important; }
         .is-holiday { background-color: var(--holiday-bg) !important; color: var(--holiday-text) !important; }
+        
+        .is-company-holiday { 
+            background-color: var(--co-holiday-bg) !important; 
+            color: var(--co-holiday-text) !important; 
+            font-weight: bold;
+        }
 
         .holiday-badge {
             position: absolute; bottom: 1px; right: 2px; font-size: 0.6rem; color: inherit;
@@ -217,7 +273,7 @@
         }
 
         .overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.4); display: none; justify-content: center; align-items: center; z-index: 300; }
-        .modal { background-color: var(--bg-color); padding: 20px; border-radius: 8px; width: 420px; max-width: 95vw; box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
+        .modal { background-color: var(--bg-color); padding: 20px; border-radius: 8px; width: 480px; max-width: 95vw; box-shadow: 0 10px 30px rgba(0,0,0,0.2); max-height: 90vh; overflow-y: auto; }
         .modal h2 { margin: 0 0 15px 0; font-size: 1.1rem; }
         .field { margin-bottom: 12px; }
         .field label { display: block; font-size: 0.8rem; margin-bottom: 4px; font-weight: 600; }
@@ -227,8 +283,22 @@
         #search-results { max-height: 180px; overflow-y: auto; border: 1px solid var(--border-color); margin-top: 4px; border-radius: 4px; display: none; }
         .search-item { padding: 6px 10px; cursor: pointer; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; }
         .search-item:hover { background: var(--row-hover); }
-        .search-item .cc { opacity: 0.6; font-size: 0.75rem; font-weight: bold; }
+        
+        .week-day-selector { display: flex; gap: 5px; flex-wrap: wrap; }
+        .week-day-selector label { font-weight: normal; font-size: 0.8rem; display: flex; align-items: center; gap: 2px; cursor: pointer; padding: 2px 6px; border: 1px solid var(--border-color); border-radius: 4px; }
+        .week-day-selector input:checked + span { color: var(--accent-color); font-weight: bold; }
 
+        /* Holiday Manager Styles */
+        .hol-manager-box { border: 1px solid var(--border-color); border-radius: 4px; padding: 10px; background: var(--header-bg); }
+        .hol-input-group { display: flex; gap: 6px; margin-bottom: 8px; }
+        .hol-input-group input[type="date"] { width: 130px; }
+        .hol-input-group input[type="text"] { flex: 1; }
+        
+        .hol-actions { display: flex; gap: 6px; margin-bottom: 8px; }
+        .hol-actions button { flex: 1; font-size: 0.8rem; }
+        
+        #hol-select { width: 100%; height: 120px; border: 1px solid var(--btn-border); border-radius: 4px; margin-bottom: 8px; font-family: monospace; }
+        
         #file-input { display: none; }
     </style>
 </head>
@@ -245,7 +315,7 @@
             <button onclick="toggleTheme()" id="theme-btn">🌙</button>
             <button onclick="openModal('settings-modal')">Settings</button>
             <button onclick="exportConfig()">Export</button>
-            <button onclick="document.getElementById('file-input').click()">Import</button>
+            <button onclick="document.getElementById('file-input').click()">Import Config</button>
             <button onclick="openZoneModal(-1)" class="primary">Add Time Zone</button>
         </div>
     </div>
@@ -258,49 +328,129 @@
     </div>
 </header>
 
-<input type="file" id="file-input" accept=".json">
+<div id="main-container">
+    <aside id="sidebar">
+        <div id="calendar-dashboard"></div>
+        
+        <div class="sidebar-section">
+            <h3>Company Holidays</h3>
+            <div id="co-holiday-list">
+                <div style="opacity:0.6; font-size:0.8rem;">No holidays in view range.</div>
+            </div>
+        </div>
+    </aside>
 
-<div id="viewport"><div id="grid"><div id="now-line"></div></div></div>
+    <div id="viewport">
+        <div id="grid">
+            <div id="now-line"></div>
+        </div>
+    </div>
+</div>
+
+<input type="file" id="file-input" accept=".json">
 <div id="toast">Copied</div>
 
-<!-- Settings Modal -->
 <div id="settings-modal" class="overlay">
     <div class="modal">
         <h2>Planner Configuration</h2>
-        <div class="field">
-            <label>Daily Visible Hours (Local Reference Time)</label>
-            <div style="display:flex; gap:10px; align-items: center;">
-                <input type="number" id="set-vis-start" min="0" max="23" placeholder="0">
-                <span>to</span>
-                <input type="number" id="set-vis-end" min="0" max="23" placeholder="23">
-            </div>
-            <div style="font-size: 0.75rem; opacity: 0.7; margin-top: 4px;">Hides rows outside this range to reduce scrolling.</div>
+        
+        <div class="field" style="background: var(--ref-col-bg); padding: 10px; border-radius: 6px; border: 1px solid var(--accent-color);">
+            <label style="color: var(--accent-color);">Primary Work Zone (Company Holiday Target)</label>
+            <select id="set-primary-zone">
+                </select>
+            <div style="font-size: 0.75rem; opacity: 0.8; margin-top: 4px;">Company Holidays will only apply to this zone.</div>
         </div>
+
         <div class="field">
-            <label>Working Hours Highlight (Green)</label>
-            <div style="display:flex; gap:10px; align-items: center;">
-                <input type="number" id="set-work-start" min="0" max="23" placeholder="9">
-                <span>to</span>
-                <input type="number" id="set-work-end" min="0" max="23" placeholder="17">
+            <label>Work Days (Check active days)</label>
+            <div class="week-day-selector">
+                <label><input type="checkbox" class="wd-chk" value="1"> <span>Mon</span></label>
+                <label><input type="checkbox" class="wd-chk" value="2"> <span>Tue</span></label>
+                <label><input type="checkbox" class="wd-chk" value="3"> <span>Wed</span></label>
+                <label><input type="checkbox" class="wd-chk" value="4"> <span>Thu</span></label>
+                <label><input type="checkbox" class="wd-chk" value="5"> <span>Fri</span></label>
+                <label><input type="checkbox" class="wd-chk" value="6"> <span>Sat</span></label>
+                <label><input type="checkbox" class="wd-chk" value="0"> <span>Sun</span></label>
             </div>
         </div>
+
         <div class="field">
-            <label>View Range (Duration)</label>
-            <select id="set-range">
-                <option value="3">3 Days</option>
-                <option value="7">7 Days</option>
-                <option value="14">14 Days</option>
-                <option value="30">30 Days (Max)</option>
+            <label>Week Start Day</label>
+            <select id="set-week-start">
+                <option value="1">Monday (Business Standard)</option>
+                <option value="0">Sunday (International)</option>
+                <option value="6">Saturday (Middle East)</option>
             </select>
         </div>
+
         <div class="field">
-            <label>Row Density</label>
-            <select id="set-density">
-                <option value="24">Compact (24px)</option>
-                <option value="28">Standard (28px)</option>
-                <option value="36">Comfortable (36px)</option>
+            <label>Calendar Display</label>
+            <select id="set-cal-mode">
+                <option value="0">Hidden</option>
+                <option value="1">1 Month</option>
+                <option value="3">3 Months</option>
             </select>
         </div>
+        <div style="display: flex; gap: 10px;">
+            <div class="field" style="flex:1;">
+                <label>Work Hours</label>
+                <div style="display:flex; gap:5px; align-items:center;">
+                    <input type="number" id="set-work-start" min="0" max="23"> - <input type="number" id="set-work-end" min="0" max="23">
+                </div>
+            </div>
+            <div class="field" style="flex:1;">
+                <label>Visible Hours</label>
+                <div style="display:flex; gap:5px; align-items:center;">
+                    <input type="number" id="set-vis-start" min="0" max="23"> - <input type="number" id="set-vis-end" min="0" max="23">
+                </div>
+            </div>
+        </div>
+        <div style="display: flex; gap: 10px;">
+            <div class="field" style="flex:1;">
+                <label>Row Height</label>
+                <input type="number" id="set-density" min="20" max="60">
+            </div>
+            <div class="field" style="flex:1;">
+                <label>Duration</label>
+                <select id="set-range">
+                    <option value="3">3 Days</option>
+                    <option value="7">7 Days</option>
+                    <option value="14">14 Days</option>
+                    <option value="30">30 Days</option>
+                </select>
+            </div>
+        </div>
+
+        <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 10px 0;">
+
+        <div class="field">
+            <label>Manage Company Holidays</label>
+            <div class="hol-manager-box">
+                <select id="hol-select" size="5" onchange="loadHolidayDetails()">
+                    </select>
+
+                <div class="hol-input-group">
+                    <input type="date" id="hol-date-in">
+                    <input type="text" id="hol-name-in" placeholder="Holiday Name">
+                </div>
+
+                <div class="hol-actions">
+                     <button onclick="addHoliday()" class="primary">Add New</button>
+                     <button onclick="updateHoliday()" id="btn-hol-update" disabled>Update</button>
+                     <button onclick="deleteHoliday()" id="btn-hol-delete" class="danger" disabled>Delete</button>
+                </div>
+                
+                <div style="margin-top:8px; display:flex; justify-content:space-between; align-items:center; border-top:1px solid #ddd; padding-top:5px;">
+                     <div style="font-size:0.75rem; opacity:0.7;">Bulk Actions:</div>
+                     <div>
+                         <button onclick="exportHolidaysCSV()" style="font-size:0.75rem;">Export CSV</button>
+                         <button onclick="document.getElementById('csv-upload').click()" style="font-size:0.75rem;">Import CSV</button>
+                     </div>
+                </div>
+                <input type="file" id="csv-upload" accept=".csv, .txt" style="display:none;">
+            </div>
+        </div>
+
         <div class="modal-btns">
             <button onclick="closeModal('settings-modal')">Cancel</button>
             <button class="primary" onclick="applySettings()">Apply Settings</button>
@@ -308,17 +458,16 @@
     </div>
 </div>
 
-<!-- Manage Zone Modal -->
 <div id="add-modal" class="overlay">
     <div class="modal">
         <h2 id="modal-title">Manage Region</h2>
         <div class="field">
-            <label>Display Name (Label)</label>
+            <label>Display Name</label>
             <input type="text" id="tz-label" placeholder="e.g. Bangkok Office">
         </div>
         <div class="field">
-            <label>Search City or Offset (e.g. GMT+7)</label>
-            <input type="text" id="tz-search" placeholder="Type Washington, Beijing, etc..." autocomplete="off">
+            <label>Search City/Offset</label>
+            <input type="text" id="tz-search" placeholder="Type city..." autocomplete="off">
             <div id="search-results"></div>
         </div>
         <div class="field">
@@ -326,8 +475,8 @@
             <input type="text" id="tz-id-display" readonly style="opacity: 0.7;">
         </div>
         <div class="field">
-            <label>Country Code for Holidays (e.g. US, TH, GB)</label>
-            <input type="text" id="tz-country-code" maxlength="2" placeholder="e.g. US">
+            <label>Country Code (for Public Holidays)</label>
+            <input type="text" id="tz-country-code" maxlength="2" placeholder="e.g. TH">
         </div>
         <div class="modal-btns">
             <button onclick="closeModal('add-modal')">Cancel</button>
@@ -337,10 +486,28 @@
 </div>
 
 <script>
-    const STORAGE_KEY = 'tz_viewer_v4_data';
+    const STORAGE_KEY = 'tz_viewer_v5_data';
     const ONE_HOUR = 3600000;
     
-    // Extended Country Map for major zones
+    // Config Defaults
+    let config = { 
+        theme: 'light', 
+        rangeDays: 7, 
+        density: 28, 
+        workStart: 9, 
+        workEnd: 17, 
+        visStart: 0, 
+        visEnd: 23,
+        workDays: [1,2,3,4,5], 
+        calMode: 3, 
+        weekStart: 1, // 0=Sun, 1=Mon, 6=Sat
+        companyHolidays: {}, 
+        zones: [],
+        primaryZone: null 
+    };
+    
+    // Globals
+    const DEVICE_TZ = Intl.DateTimeFormat().resolvedOptions().timeZone;
     const ZONE_CC_MAP = {
         'Asia/Bangkok': 'TH', 'Asia/Tokyo': 'JP', 'Asia/Seoul': 'KR', 'Asia/Singapore': 'SG',
         'America/New_York': 'US', 'America/Los_Angeles': 'US', 'America/Chicago': 'US', 'America/Denver': 'US',
@@ -349,60 +516,178 @@
         'Asia/Taipei': 'TW', 'Asia/Dubai': 'AE', 'Asia/Shanghai': 'CN', 'Asia/Kolkata': 'IN',
         'Asia/Ho_Chi_Minh': 'VN', 'Europe/Zurich': 'CH'
     };
-
-    // Alias map to help find zones by City name
     const CITY_ALIASES = {
         'washington': 'America/New_York', 'dc': 'America/New_York', 'nyc': 'America/New_York',
-        'new york': 'America/New_York', 'sf': 'America/Los_Angeles', 'san francisco': 'America/Los_Angeles',
-        'beijing': 'Asia/Shanghai', 'shanghai': 'Asia/Shanghai', 'china': 'Asia/Shanghai',
-        'new delhi': 'Asia/Kolkata', 'delhi': 'Asia/Kolkata', 'india': 'Asia/Kolkata',
-        'hanoi': 'Asia/Bangkok', 'ho chi minh': 'Asia/Ho_Chi_Minh', 'saigon': 'Asia/Ho_Chi_Minh',
-        'moscow': 'Europe/Moscow', 'kl': 'Asia/Kuala_Lumpur'
+        'new york': 'America/New_York', 'sf': 'America/Los_Angeles', 'beijing': 'Asia/Shanghai', 
+        'shanghai': 'Asia/Shanghai', 'new delhi': 'Asia/Kolkata', 'hanoi': 'Asia/Bangkok', 
+        'ho chi minh': 'Asia/Ho_Chi_Minh', 'moscow': 'Europe/Moscow', 'kl': 'Asia/Kuala_Lumpur'
     };
 
-    let config = { 
-        theme: 'light', 
-        rangeDays: 7, 
-        density: 28, 
-        workStart: 9, 
-        workEnd: 17, 
-        visStart: 0, // Default visible start hour
-        visEnd: 23,  // Default visible end hour
-        zones: [] 
-    };
-    
     let holidayData = {}; 
     let allTimeZones = [];
     let editingZoneIndex = -1;
     let viewStartTime = new Date().setHours(0,0,0,0);
+    let calDashboardRefDate = new Date();
 
+    // --- Init ---
     window.onload = () => {
-        loadConfig(); initTheme(); initSearch(); initDateTimePickers(); render();
-        setInterval(updateLiveClock, 1000); setInterval(updateNowLine, 60000); setTimeout(scrollToNow, 150);
+        loadConfig(); 
+        initTheme(); 
+        initSearch(); 
+        initDateTimePickers(); 
+        
+        calDashboardRefDate = new Date(viewStartTime);
+        calDashboardRefDate.setDate(1); 
+
+        render(); 
+        renderCalendars();
+        renderSidebar();
+        
+        setInterval(updateLiveClock, 1000); 
+        setInterval(updateNowLine, 60000); 
+        setTimeout(scrollToNow, 150);
+        
+        // CSV Upload Listener
+        document.getElementById('csv-upload').onchange = (e) => {
+            const file = e.target.files[0];
+            if(file) {
+                const reader = new FileReader();
+                reader.onload = (ev) => { parseCSV(ev.target.result); renderSettingsHolidayList(); };
+                reader.readAsText(file);
+            }
+        };
     };
 
     function loadConfig() {
         const saved = localStorage.getItem(STORAGE_KEY);
-        const deviceTZ = Intl.DateTimeFormat().resolvedOptions().timeZone;
-        if (saved) { try { config = { ...config, ...JSON.parse(saved) }; } catch (e) {} }
+        if (saved) { 
+            try { config = { ...config, ...JSON.parse(saved) }; } catch (e) {} 
+        }
         
-        // Ensure new properties exist
+        if (!Array.isArray(config.workDays)) config.workDays = [1,2,3,4,5];
+        if (!config.companyHolidays || typeof config.companyHolidays !== 'object') config.companyHolidays = {};
         if (config.visStart === undefined) config.visStart = 0;
         if (config.visEnd === undefined) config.visEnd = 23;
+        if (config.density === undefined) config.density = 28;
+        if (config.calMode === undefined) config.calMode = 3;
+        if (config.weekStart === undefined) config.weekStart = 1; 
+        if (!config.primaryZone) config.primaryZone = DEVICE_TZ;
 
         if (config.zones.length === 0) {
             config.zones = [
-                { label: 'Local Time', zone: deviceTZ, country: (ZONE_CC_MAP[deviceTZ] || '') },
+                { label: 'Local Time', zone: DEVICE_TZ, country: (ZONE_CC_MAP[DEVICE_TZ] || '') },
                 { label: 'GMT Reference', zone: 'UTC', country: '' }
             ];
         }
         refreshAllHolidays();
     }
 
+    // --- Holiday Manager Logic ---
+    function renderSettingsHolidayList() {
+        const sel = document.getElementById('hol-select');
+        sel.innerHTML = '';
+        const entries = Object.entries(config.companyHolidays).sort((a,b) => a[0].localeCompare(b[0]));
+        
+        entries.forEach(([date, name]) => {
+            const opt = document.createElement('option');
+            opt.value = date;
+            opt.text = `${date} : ${name}`;
+            sel.appendChild(opt);
+        });
+        
+        // Reset Inputs
+        document.getElementById('hol-date-in').value = '';
+        document.getElementById('hol-name-in').value = '';
+        document.getElementById('btn-hol-update').disabled = true;
+        document.getElementById('btn-hol-delete').disabled = true;
+    }
+
+    function loadHolidayDetails() {
+        const sel = document.getElementById('hol-select');
+        const date = sel.value;
+        if(date && config.companyHolidays[date]) {
+            document.getElementById('hol-date-in').value = date;
+            document.getElementById('hol-name-in').value = config.companyHolidays[date];
+            document.getElementById('btn-hol-update').disabled = false;
+            document.getElementById('btn-hol-delete').disabled = false;
+        }
+    }
+
+    function addHoliday() {
+        const d = document.getElementById('hol-date-in').value;
+        const n = document.getElementById('hol-name-in').value.trim();
+        if(!d || !n) { alert("Please provide date and name."); return; }
+        
+        config.companyHolidays[d] = n;
+        renderSettingsHolidayList();
+    }
+
+    function updateHoliday() {
+        const sel = document.getElementById('hol-select');
+        const oldDate = sel.value;
+        const newDate = document.getElementById('hol-date-in').value;
+        const newName = document.getElementById('hol-name-in').value.trim();
+        
+        if(!newDate || !newName) { alert("Invalid data."); return; }
+        
+        if(oldDate !== newDate) {
+            delete config.companyHolidays[oldDate];
+        }
+        config.companyHolidays[newDate] = newName;
+        renderSettingsHolidayList();
+    }
+
+    function deleteHoliday() {
+        const sel = document.getElementById('hol-select');
+        const date = sel.value;
+        if(date && confirm(`Delete holiday on ${date}?`)) {
+            delete config.companyHolidays[date];
+            renderSettingsHolidayList();
+        }
+    }
+
+    function exportHolidaysCSV() {
+        const entries = Object.entries(config.companyHolidays).sort((a,b) => a[0].localeCompare(b[0]));
+        if(entries.length === 0) { alert("No holidays to export."); return; }
+        
+        let csvContent = "Date,Holiday Name\n";
+        entries.forEach(([date, name]) => {
+            csvContent += `${date},${name}\n`;
+        });
+
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.setAttribute("href", url);
+        link.setAttribute("download", `holidays_${new Date().toISOString().slice(0,10)}.csv`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+
+    function parseCSV(text) {
+        const lines = text.split(/\r?\n/);
+        let count = 0;
+        lines.forEach(line => {
+            if (!line.trim()) return;
+            const commaIndex = line.indexOf(',');
+            if (commaIndex > -1) {
+                const datePart = line.substring(0, commaIndex).trim();
+                const namePart = line.substring(commaIndex + 1).trim();
+                if (/^\d{4}-\d{2}-\d{2}$/.test(datePart) && namePart.length > 0) {
+                    config.companyHolidays[datePart] = namePart;
+                    count++;
+                }
+            }
+        });
+        alert(`Imported/Updated ${count} holidays.`);
+    }
+
+    // --- API & Core Data ---
     function refreshAllHolidays() {
         const startYear = new Date(viewStartTime).getFullYear();
         const endYear = new Date(viewStartTime + (config.rangeDays * 24 * ONE_HOUR)).getFullYear();
-        
         config.zones.forEach(z => {
             if(z.country) {
                 fetchHolidays(z.country, startYear);
@@ -415,30 +700,23 @@
         if (!countryCode) return;
         const key = `${countryCode.toUpperCase()}_${year}`;
         if (holidayData[key] || holidayData[`${key}_loading`]) return; 
-        
         holidayData[`${key}_loading`] = true;
 
         try {
             const res = await fetch(`https://date.nager.at/api/v3/PublicHolidays/${year}/${countryCode}`);
-            if (!res.ok) {
-                 delete holidayData[`${key}_loading`];
-                 return;
-            }
-            const text = await res.text();
-            if (!text) { 
-                 delete holidayData[`${key}_loading`];
-                return;
-            }
-            const data = JSON.parse(text);
-            holidayData[key] = data.reduce((acc, h) => { acc[h.date] = h.localName; return acc; }, {});
-            delete holidayData[`${key}_loading`];
-            render(); 
-        } catch (e) {
-            console.error(`Error fetching holidays for ${countryCode} ${year}`, e);
-            delete holidayData[`${key}_loading`];
-        }
+            if (res.ok) {
+                const text = await res.text();
+                if(text) {
+                    const data = JSON.parse(text);
+                    holidayData[key] = data.reduce((acc, h) => { acc[h.date] = h.localName; return acc; }, {});
+                    delete holidayData[`${key}_loading`];
+                    render(); 
+                }
+            } else { delete holidayData[`${key}_loading`]; }
+        } catch (e) { console.error(e); delete holidayData[`${key}_loading`]; }
     }
 
+    // --- UI Rendering ---
     function updateLiveClock() {
         const timeEl = document.getElementById('live-time');
         const dateEl = document.getElementById('live-date');
@@ -454,22 +732,25 @@
         grid.style.gridTemplateColumns = `repeat(${zoneCount}, 1fr)`;
         document.documentElement.style.setProperty('--cell-height', config.density + 'px');
 
+        // Header
         const refHeader = document.createElement('div');
         refHeader.className = 'col-header ref-cell';
-        refHeader.innerHTML = `<span class="tz-name">Local Reference</span><span class="tz-offset">Device Default</span>`;
+        refHeader.innerHTML = `<span class="tz-name">Local Ref</span><span class="tz-offset">Device</span>`;
+        if (DEVICE_TZ === config.primaryZone) refHeader.style.borderBottom = "3px solid var(--co-holiday-text)";
         grid.appendChild(refHeader);
 
         config.zones.forEach((z, i) => {
             const header = document.createElement('div');
             header.className = 'col-header';
+            if (z.zone === config.primaryZone) header.style.borderBottom = "3px solid var(--co-holiday-text)";
             
-            let moveControls = '';
-            if (i > 0) moveControls += `<span class="col-btn move" onclick="moveZone(${i}, -1)" title="Move Left">←</span>`;
-            if (i < config.zones.length - 1) moveControls += `<span class="col-btn move" onclick="moveZone(${i}, 1)" title="Move Right">→</span>`;
-
+            let ctrls = '';
+            if (i > 0) ctrls += `<span class="col-btn move" onclick="moveZone(${i}, -1)">←</span>`;
+            if (i < config.zones.length - 1) ctrls += `<span class="col-btn move" onclick="moveZone(${i}, 1)">→</span>`;
+            
             header.innerHTML = `
                 <div class="col-controls">
-                    ${moveControls}
+                    ${ctrls}
                     <span class="col-btn edit" onclick="openZoneModal(${i})">✏️</span>
                     <span class="col-btn remove" onclick="removeZone(${i})">✕</span>
                 </div>
@@ -485,102 +766,381 @@
 
         for (let t = startTime; t < endTime; t += ONE_HOUR) {
             const rowTime = new Date(t);
-            const hourOfRef = rowTime.getHours();
+            const hour = rowTime.getHours();
+            if (hour < config.visStart || hour > config.visEnd) continue;
 
-            // Filter Visible Hours (Inclusive of bounds)
-            // e.g. Start 8, End 18. If hour is 7, skip. If hour is 19, skip.
-            if (hourOfRef < config.visStart || hourOfRef > config.visEnd) continue;
-
+            const isStartOfDay = (hour === 0) || (hour === config.visStart && config.visStart > 0);
+            
             const isSat = rowTime.getDay() === 6;
             const isSun = rowTime.getDay() === 0;
-            
-            // Separator Logic: 
-            // If midnight is visible, separate at midnight.
-            // If midnight is hidden, separate at the first visible hour (visStart).
-            const isStartOfDay = (hourOfRef === 0) || (hourOfRef === config.visStart && config.visStart > 0);
 
+            // Ref Cell
+            const refIsPrimary = (DEVICE_TZ === config.primaryZone);
+            const refCoHol = refIsPrimary ? checkCompanyHoliday(rowTime, DEVICE_TZ) : false;
+            
             const localDateStr = rowTime.toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short' });
-            const refCell = createCell(rowTime, Intl.DateTimeFormat().resolvedOptions().timeZone, "Local Time", isSat, isSun, true);
+            const refCell = createCell(rowTime, DEVICE_TZ, "Local Time", isSat, isSun, true, null, refCoHol);
             
             if (isStartOfDay) refCell.classList.add('day-separator');
-            
-            // Update Date Label logic to ensure it appears on the first visible row of the day
-            const isNewDay = localDateStr !== lastDateString;
-            if (isNewDay) {
+            if (localDateStr !== lastDateString) {
                 refCell.innerHTML += `<span class="date-label new-day">${localDateStr}</span>`;
             } else {
                 refCell.innerHTML += `<span class="date-label">${localDateStr}</span>`;
             }
-            
             lastDateString = localDateStr;
             grid.appendChild(refCell);
 
             config.zones.forEach(z => {
-                const cell = createCell(rowTime, z.zone, z.label, isSat, isSun, false, z.country);
+                const isPrimary = (z.zone === config.primaryZone);
+                const isCoHol = isPrimary ? checkCompanyHoliday(rowTime, z.zone) : false;
+                
+                const cell = createCell(rowTime, z.zone, z.label, isSat, isSun, false, z.country, isCoHol);
                 if (isStartOfDay) cell.classList.add('day-separator');
                 grid.appendChild(cell);
             });
         }
         updateNowLine();
+        renderCalendars();
     }
 
-    function createCell(time, zone, label, isSat, isSun, isRef, country) {
+    function createCell(time, zone, label, isSat, isSun, isRef, country, isCoHol) {
         const cell = document.createElement('div');
         const zTime = new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: zone }).format(time);
         const hour = parseInt(zTime.split(':')[0]);
-        const isDay = hour >= 7 && hour < 19;
-        const isWork = hour >= config.workStart && hour < config.workEnd;
+        const dayIdx = time.getDay(); 
+        
+        // Work logic
+        const isWorkDay = config.workDays && config.workDays.includes(dayIdx);
+        const isWorkHour = isWorkDay && (hour >= config.workStart && hour < config.workEnd);
 
         let holidayName = null;
         if (country) {
-            const targetDate = new Intl.DateTimeFormat('en-CA', { 
-                year: 'numeric', month: '2-digit', day: '2-digit', 
-                timeZone: zone, calendar: 'iso8601'
-            }).format(time);
-            
+            const targetDate = new Intl.DateTimeFormat('en-CA', { year: 'numeric', month: '2-digit', day: '2-digit', timeZone: zone, calendar: 'iso8601' }).format(time);
             const targetYear = targetDate.substring(0, 4);
             holidayName = holidayData[`${country.toUpperCase()}_${targetYear}`]?.[targetDate];
         }
 
-        let cls = `cell row-hover-effect ${isDay ? 'is-day' : 'is-night'} ${isWork ? 'is-work-hour' : ''} ${isSat ? 'is-saturday' : ''} ${isSun ? 'is-sunday' : ''}`;
+        let cls = `cell row-hover-effect`;
         if (isRef) cls += ' ref-cell';
-        if (holidayName) cls += ' is-holiday';
+        
+        if (isCoHol) cls += ' is-company-holiday';
+        else if (holidayName) cls += ' is-holiday';
+        else if (isWorkHour) cls += ' is-work-hour';
+        else if (isSat && !isWorkDay) cls += ' is-saturday';
+        else if (isSun && !isWorkDay) cls += ' is-sunday';
+        else cls += (hour >= 6 && hour < 18 ? ' is-day' : ' is-night');
+
         cell.className = cls;
         cell.innerText = zTime;
-        if (holidayName) cell.innerHTML += `<span class="holiday-badge" title="${holidayName}">${holidayName}</span>`;
+        
+        if (isCoHol) {
+             const iso = getZoneISODate(time, zone);
+             const name = config.companyHolidays[iso];
+             cell.innerHTML += `<span class="holiday-badge" title="${name}">${name}</span>`;
+        } else if (holidayName) {
+            cell.innerHTML += `<span class="holiday-badge" title="${holidayName}">${holidayName}</span>`;
+        }
+
         cell.onclick = () => copyToClipboard(time, zone, label);
         return cell;
     }
 
-    function initSearch() {
-        try { allTimeZones = Intl.supportedValuesOf('timeZone'); } catch (e) { allTimeZones = ['UTC','Asia/Bangkok','America/New_York']; }
-        const input = document.getElementById('tz-search');
-        const results = document.getElementById('search-results');
+    function checkCompanyHoliday(dateObj, zone) {
+        const iso = getZoneISODate(dateObj, zone);
+        return config.companyHolidays && config.companyHolidays.hasOwnProperty(iso);
+    }
+    
+    function getZoneISODate(dateObj, zone) {
+        return new Intl.DateTimeFormat('en-CA', { year: 'numeric', month: '2-digit', day: '2-digit', timeZone: zone, calendar: 'iso8601' }).format(dateObj);
+    }
+
+    function renderSidebar() {
+        const list = document.getElementById('co-holiday-list');
+        list.innerHTML = '';
+        const entries = Object.entries(config.companyHolidays || {}).sort((a,b) => a[0].localeCompare(b[0]));
         
+        if (entries.length === 0) {
+            list.innerHTML = '<div style="opacity:0.6; padding:10px; font-size:0.8rem;">No custom holidays.<br>Import in Settings.</div>';
+            return;
+        }
+
+        // Sidebar Sync: Current Month + Next Month
+        const y = calDashboardRefDate.getFullYear();
+        const m = calDashboardRefDate.getMonth();
+        // start date: 1st of viewed month
+        const startIso = new Date(y, m, 1).toISOString().split('T')[0];
+        // end date: last day of NEXT month
+        const endIso = new Date(y, m + 2, 0).toISOString().split('T')[0];
+
+        const upcoming = entries.filter(e => e[0] >= startIso && e[0] <= endIso);
+        
+        if (upcoming.length === 0) {
+             list.innerHTML = '<div style="opacity:0.6; padding:10px; font-size:0.8rem;">No holidays in view range.</div>';
+             return;
+        }
+
+        upcoming.forEach(([date, name]) => {
+            const div = document.createElement('div');
+            div.className = 'holiday-list-item';
+            div.innerHTML = `<span class="h-date">${date}</span><span class="h-name">${name}</span>`;
+            list.appendChild(div);
+        });
+    }
+
+    // --- Dashboard Calendars ---
+    function moveCalendar(months) {
+        calDashboardRefDate.setMonth(calDashboardRefDate.getMonth() + months);
+        renderCalendars();
+        renderSidebar(); // Update sidebar on nav
+    }
+
+    function jumpToDate(isoDate) {
+        const d = new Date(isoDate); d.setHours(0,0,0,0);
+        viewStartTime = d.getTime();
+        document.getElementById('jump-date').value = isoDate;
+        render(); refreshAllHolidays();
+    }
+
+    function renderCalendars() {
+        const container = document.getElementById('calendar-dashboard');
+        container.innerHTML = '';
+
+        if (config.calMode == 0) { container.style.display = 'none'; return; }
+        container.style.display = 'flex';
+
+        // Horizontal Nav Row
+        const navRow = document.createElement('div');
+        navRow.className = 'cal-controls-row';
+        navRow.innerHTML = `
+            <button class="cal-nav-btn arrow-btn" onclick="moveCalendar(-1)">◀</button>
+            <button class="cal-nav-btn today-btn" onclick="scrollToNow()">Today</button>
+            <button class="cal-nav-btn arrow-btn" onclick="moveCalendar(1)">▶</button>
+        `;
+        container.appendChild(navRow);
+
+        const y = calDashboardRefDate.getFullYear();
+        const m = calDashboardRefDate.getMonth();
+
+        if (config.calMode == 1) {
+            container.appendChild(createMiniCalendar(new Date(y, m, 1)));
+        } else {
+            container.appendChild(createMiniCalendar(new Date(y, m - 1, 1)));
+            container.appendChild(createMiniCalendar(new Date(y, m, 1)));
+            container.appendChild(createMiniCalendar(new Date(y, m + 1, 1)));
+        }
+    }
+
+    function createMiniCalendar(date) {
+        const year = date.getFullYear();
+        const month = date.getMonth(); 
+        const wrapper = document.createElement('div');
+        wrapper.className = 'mini-cal';
+        
+        const monthNames = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+        wrapper.innerHTML = `<h4>${monthNames[month]} ${year}</h4>`;
+
+        const table = document.createElement('table');
+        
+        // Dynamic Header based on Week Start
+        const days = ['S','M','T','W','T','F','S']; // 0-6
+        let headerHtml = '<thead><tr>';
+        for(let i=0; i<7; i++) {
+            const dIndex = (config.weekStart + i) % 7;
+            headerHtml += `<th>${days[dIndex]}</th>`;
+        }
+        headerHtml += '</tr></thead>';
+
+        let html = headerHtml + '<tbody><tr>';
+        
+        const firstDay = new Date(year, month, 1).getDay(); // 0=Sun
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+        // Dynamic Empty Slots
+        // Logic: (ActualFirstDay - ConfigStartDay + 7) % 7
+        const emptySlots = (firstDay - config.weekStart + 7) % 7;
+
+        for (let i = 0; i < emptySlots; i++) html += '<td></td>';
+
+        const viewIso = new Date(viewStartTime).toISOString().split('T')[0];
+
+        for (let d = 1; d <= daysInMonth; d++) {
+            const currentDayOfWeek = (emptySlots + d - 1) % 7;
+            if (currentDayOfWeek === 0 && d > 1) html += '</tr><tr>';
+            
+            // Calculate actual day of week for styling (0=Sun)
+            // The logic above 'currentDayOfWeek' is just column index (0-6) relative to start
+            // Actual day index = (config.weekStart + colIndex) % 7
+            const actualDayIdx = (config.weekStart + currentDayOfWeek) % 7;
+
+            const iso = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+            let cls = '';
+            
+            const todayIso = new Date().toISOString().split('T')[0];
+            
+            if (iso === viewIso) cls = 'cal-day-selected'; 
+            else if (iso === todayIso) cls = 'cal-day-today';
+            else if (config.companyHolidays && config.companyHolidays[iso]) cls = 'cal-day-holiday';
+            else if (actualDayIdx === 0) cls = 'cal-day-sunday'; // Highlight Sunday
+
+            html += `<td class="${cls}" onclick="jumpToDate('${iso}')">${d}</td>`;
+        }
+        html += '</tr></tbody>';
+        table.innerHTML = html;
+        wrapper.appendChild(table);
+        return wrapper;
+    }
+
+    // --- Helpers ---
+    function updateNowLine() {
+        const line = document.getElementById('now-line');
+        const now = Date.now();
+        if (now < viewStartTime || now > viewStartTime + (config.rangeDays * 24 * ONE_HOUR)) { 
+            line.style.display = 'none'; return; 
+        }
+        const nowDate = new Date(now);
+        const diffMs = now - viewStartTime;
+        const diffTotalHours = diffMs / ONE_HOUR;
+        const diffDays = Math.floor(diffTotalHours / 24);
+        const nowHour = nowDate.getHours();
+        
+        if (nowHour < config.visStart || nowHour > config.visEnd) { line.style.display = 'none'; return; }
+        
+        const hoursPerDay = (config.visEnd - config.visStart + 1);
+        const visibleHoursPassedToday = nowHour - config.visStart + (nowDate.getMinutes() / 60);
+        const totalVisibleHours = (diffDays * hoursPerDay) + visibleHoursPassedToday;
+        const top = (totalVisibleHours * config.density) + document.querySelector('.col-header').offsetHeight;
+        
+        line.style.display = 'block'; line.style.top = top + 'px';
+    }
+
+    function scrollToNow() {
+        const now = new Date();
+        viewStartTime = now.setHours(0,0,0,0);
+        calDashboardRefDate = new Date(now); calDashboardRefDate.setDate(1);
+
+        document.getElementById('jump-date').value = new Date().toISOString().split('T')[0];
+        render(); refreshAllHolidays(); renderSidebar();
+        setTimeout(() => {
+            updateNowLine();
+            const vp = document.getElementById('viewport');
+            const line = document.getElementById('now-line');
+            if (line && line.style.display !== 'none') vp.scrollTop = parseInt(line.style.top) - (vp.clientHeight / 2);
+            else vp.scrollTop = 0;
+        }, 50);
+    }
+
+    function getOffset(z) { try { return new Intl.DateTimeFormat('en-US', { timeZone: z, timeZoneName: 'shortOffset' }).format(new Date()).split(', ')[1]; } catch(e) { return 'GMT'; } }
+    
+    function copyToClipboard(date, zone, label) {
+        const fmt = new Intl.DateTimeFormat('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false, timeZone: zone });
+        const text = `${label}: ${fmt.format(date)} (${getOffset(zone)})`;
+        const el = document.createElement("textarea"); el.value = text; el.style.position = "fixed"; el.style.left = "-9999px";
+        document.body.appendChild(el); el.select(); document.execCommand('copy'); document.body.removeChild(el);
+        const toast = document.getElementById('toast'); toast.style.display = 'block'; setTimeout(() => toast.style.display = 'none', 1500);
+    }
+
+    function toggleTheme() { config.theme = config.theme === 'light' ? 'dark' : 'light'; initTheme(); saveConfig(); render(); }
+    function initTheme() { document.body.setAttribute('data-theme', config.theme); document.getElementById('theme-btn').innerText = config.theme === 'light' ? '🌙' : '☀️'; }
+    
+    function openModal(id) { 
+        if(id==='settings-modal') {
+            document.getElementById('set-work-start').value = config.workStart !== undefined ? config.workStart : 9;
+            document.getElementById('set-work-end').value = config.workEnd !== undefined ? config.workEnd : 17;
+            document.getElementById('set-vis-start').value = config.visStart !== undefined ? config.visStart : 0;
+            document.getElementById('set-vis-end').value = config.visEnd !== undefined ? config.visEnd : 23;
+            document.getElementById('set-range').value = config.rangeDays !== undefined ? config.rangeDays : 7;
+            document.getElementById('set-density').value = config.density !== undefined ? config.density : 28;
+            document.getElementById('set-cal-mode').value = config.calMode !== undefined ? config.calMode : 3;
+            document.getElementById('set-week-start').value = config.weekStart !== undefined ? config.weekStart : 1;
+            
+            // Populate Primary Zone Dropdown
+            const pSel = document.getElementById('set-primary-zone');
+            pSel.innerHTML = '';
+            // Device Option
+            const devOpt = document.createElement('option');
+            devOpt.value = DEVICE_TZ;
+            devOpt.innerText = `Device Local (${DEVICE_TZ})`;
+            pSel.appendChild(devOpt);
+            // Added Zones
+            config.zones.forEach(z => {
+                if(z.zone !== DEVICE_TZ) {
+                    const op = document.createElement('option');
+                    op.value = z.zone;
+                    op.innerText = `${z.label} (${z.zone})`;
+                    pSel.appendChild(op);
+                }
+            });
+            pSel.value = config.primaryZone || DEVICE_TZ;
+
+            if (Array.isArray(config.workDays)) {
+                document.querySelectorAll('.wd-chk').forEach(cb => {
+                    cb.checked = config.workDays.includes(parseInt(cb.value));
+                });
+            }
+            renderSettingsHolidayList();
+        }
+        document.getElementById(id).style.display = 'flex'; 
+    }
+    
+    function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+    function removeZone(i) { if(confirm('Remove this zone?')) { config.zones.splice(i, 1); saveConfig(); render(); } }
+    
+    function moveZone(index, direction) {
+        if (index + direction < 0 || index + direction >= config.zones.length) return;
+        const temp = config.zones[index];
+        config.zones[index] = config.zones[index + direction];
+        config.zones[index + direction] = temp;
+        saveConfig(); render();
+    }
+
+    function saveConfig() { localStorage.setItem(STORAGE_KEY, JSON.stringify(config)); }
+    
+    function applySettings() {
+        config.workStart = parseInt(document.getElementById('set-work-start').value) || 9;
+        config.workEnd = parseInt(document.getElementById('set-work-end').value) || 17;
+        config.visStart = parseInt(document.getElementById('set-vis-start').value);
+        if(isNaN(config.visStart)) config.visStart = 0;
+        config.visEnd = parseInt(document.getElementById('set-vis-end').value);
+        if(isNaN(config.visEnd)) config.visEnd = 23;
+        config.rangeDays = parseInt(document.getElementById('set-range').value);
+        config.density = parseInt(document.getElementById('set-density').value) || 28;
+        config.calMode = parseInt(document.getElementById('set-cal-mode').value);
+        config.weekStart = parseInt(document.getElementById('set-week-start').value);
+        config.primaryZone = document.getElementById('set-primary-zone').value;
+        
+        const selectedDays = [];
+        document.querySelectorAll('.wd-chk:checked').forEach(cb => selectedDays.push(parseInt(cb.value)));
+        config.workDays = selectedDays;
+
+        finishApply();
+    }
+
+    function finishApply() {
+        saveConfig(); render(); renderSidebar(); renderCalendars(); closeModal('settings-modal'); refreshAllHolidays();
+    }
+
+    function exportConfig() {
+        const blob = new Blob([JSON.stringify(config, null, 2)], { type: 'application/json' });
+        const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `tzv_config_${new Date().toISOString().slice(0,10)}.json`; a.click();
+    }
+
+    function initSearch() {
+        try { allTimeZones = Intl.supportedValuesOf('timeZone'); } catch (e) { allTimeZones = ['UTC']; }
+        const input = document.getElementById('tz-search');
         input.oninput = (e) => {
             const val = e.target.value.toLowerCase();
-            results.innerHTML = '';
-            if (!val) { results.style.display = 'none'; return; }
-            
+            const res = document.getElementById('search-results');
+            res.innerHTML = '';
+            if (!val) { res.style.display = 'none'; return; }
             for (const [city, zone] of Object.entries(CITY_ALIASES)) {
-                if (city.includes(val)) {
-                    addSearchItem(`City: ${city.charAt(0).toUpperCase() + city.slice(1)}`, zone, (ZONE_CC_MAP[zone] || ''));
-                }
+                if (city.includes(val)) addSearchItem(`City: ${city.charAt(0).toUpperCase() + city.slice(1)}`, zone, (ZONE_CC_MAP[zone] || ''));
             }
-
-            const gmtMatch = val.match(/^(gmt|utc)\s*([+-])\s*(\d{1,2})$/);
-            if (gmtMatch) {
-                const zoneId = `Etc/GMT${gmtMatch[2] === '+' ? '-' : '+'}${parseInt(gmtMatch[3])}`;
-                addSearchItem(`Manual: GMT${gmtMatch[2]}${gmtMatch[3]}`, zoneId, '');
-            }
-            
             allTimeZones.filter(tz => tz.toLowerCase().includes(val)).slice(0, 15).forEach(tz => {
                 addSearchItem(tz.replace(/_/g, ' '), tz, (ZONE_CC_MAP[tz] || ''));
             });
-            results.style.display = results.children.length ? 'block' : 'none';
+            res.style.display = 'block';
         };
     }
-
     function addSearchItem(label, zoneId, cc) {
         const div = document.createElement('div');
         div.className = 'search-item';
@@ -588,25 +1148,20 @@
         div.onclick = () => {
             document.getElementById('tz-id-display').value = zoneId;
             if(cc) document.getElementById('tz-country-code').value = cc;
-            if(!document.getElementById('tz-label').value) {
-                let cleanLabel = label.startsWith('City: ') ? label.replace('City: ', '') : label.split('/').pop().replace(/_/g, ' ');
-                document.getElementById('tz-label').value = cleanLabel;
-            }
+            if(!document.getElementById('tz-label').value) document.getElementById('tz-label').value = label.startsWith('City: ')?label.replace('City: ',''):label.split('/').pop().replace(/_/g,' ');
             document.getElementById('search-results').style.display = 'none';
         };
         document.getElementById('search-results').appendChild(div);
     }
-
+    
     function openZoneModal(index) {
         editingZoneIndex = index;
         const title = document.getElementById('modal-title');
         const labelIn = document.getElementById('tz-label');
         const idIn = document.getElementById('tz-id-display');
         const ccIn = document.getElementById('tz-country-code');
-        const searchIn = document.getElementById('tz-search');
-        
-        searchIn.value = '';
         document.getElementById('search-results').style.display = 'none';
+        document.getElementById('tz-search').value = '';
 
         if (index === -1) {
             title.innerText = "Add New Region";
@@ -618,139 +1173,31 @@
         }
         openModal('add-modal');
     }
-
     function confirmSaveZone() {
         const label = document.getElementById('tz-label').value.trim();
         const zone = document.getElementById('tz-id-display').value.trim();
         const country = document.getElementById('tz-country-code').value.toUpperCase().trim();
-        
-        if (!label || !zone) { alert("Please select a zone and provide a label."); return; }
-
-        const zoneData = { label, zone, country };
+        if (!label || !zone) { alert("Invalid zone data."); return; }
+        const data = { label, zone, country };
         if (editingZoneIndex === -1) {
-            if (config.zones.length >= 4) { alert("Maximum of 4 additional zones reached."); return; }
-            config.zones.push(zoneData);
-        } else {
-            config.zones[editingZoneIndex] = zoneData;
-        }
-
-        refreshAllHolidays(); saveConfig(); render(); closeModal('add-modal');
+            if (config.zones.length >= 4) { alert("Max zones reached."); return; }
+            config.zones.push(data);
+        } else config.zones[editingZoneIndex] = data;
+        finishApply(); closeModal('add-modal');
     }
 
-    function moveZone(index, direction) {
-        if (index + direction < 0 || index + direction >= config.zones.length) return;
-        const temp = config.zones[index];
-        config.zones[index] = config.zones[index + direction];
-        config.zones[index + direction] = temp;
-        saveConfig();
-        render();
-    }
-
-    function applySettings() {
-        config.workStart = parseInt(document.getElementById('set-work-start').value) || 9;
-        config.workEnd = parseInt(document.getElementById('set-work-end').value) || 17;
-        
-        config.visStart = parseInt(document.getElementById('set-vis-start').value);
-        if(isNaN(config.visStart) || config.visStart < 0) config.visStart = 0;
-        
-        config.visEnd = parseInt(document.getElementById('set-vis-end').value);
-        if(isNaN(config.visEnd) || config.visEnd > 23) config.visEnd = 23;
-
-        config.rangeDays = parseInt(document.getElementById('set-range').value);
-        config.density = parseInt(document.getElementById('set-density').value);
-        refreshAllHolidays(); saveConfig(); render(); closeModal('settings-modal');
-    }
-
-    function updateNowLine() {
-        const line = document.getElementById('now-line');
-        const now = Date.now();
-        // Check bounds
-        if (now < viewStartTime || now > viewStartTime + (config.rangeDays * 24 * ONE_HOUR)) { 
-            line.style.display = 'none'; return; 
-        }
-        
-        // Calculate position based on Visible Hours logic
-        // We need to count how many *visible* hours have passed since viewStartTime
-        const nowDate = new Date(now);
-        const diffMs = now - viewStartTime;
-        const diffTotalHours = diffMs / ONE_HOUR;
-        const diffDays = Math.floor(diffTotalHours / 24);
-        
-        const nowHour = nowDate.getHours();
-        
-        // If current hour is outside visible range, hide line
-        if (nowHour < config.visStart || nowHour > config.visEnd) {
-            line.style.display = 'none'; return;
-        }
-        
-        // Calculate offset in visible grid
-        const hoursPerDay = (config.visEnd - config.visStart + 1);
-        const visibleHoursPassedToday = nowHour - config.visStart + (nowDate.getMinutes() / 60);
-        
-        const totalVisibleHours = (diffDays * hoursPerDay) + visibleHoursPassedToday;
-        
-        const colHeaderH = document.querySelector('.col-header')?.offsetHeight || 30;
-        const top = (totalVisibleHours * config.density) + colHeaderH;
-        
-        line.style.display = 'block'; line.style.top = top + 'px';
-    }
-
-    function scrollToNow() {
-        viewStartTime = new Date().setHours(0,0,0,0);
-        document.getElementById('jump-date').value = new Date().toISOString().split('T')[0];
-        render();
-        refreshAllHolidays();
-        // Recalculate and scroll
-        setTimeout(() => {
-            updateNowLine();
-            const vp = document.getElementById('viewport');
-            const line = document.getElementById('now-line');
-            if (line && line.style.display !== 'none') vp.scrollTop = parseInt(line.style.top) - (vp.clientHeight / 2);
-            else vp.scrollTop = 0;
-        }, 50);
-    }
-
-    function getOffset(z) { try { return new Intl.DateTimeFormat('en-US', { timeZone: z, timeZoneName: 'shortOffset' }).format(new Date()).split(', ')[1]; } catch(e) { return 'GMT'; } }
-    function copyToClipboard(date, zone, label) {
-        const fmt = new Intl.DateTimeFormat('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false, timeZone: zone });
-        const text = `${label}: ${fmt.format(date)} (${getOffset(zone)})`;
-        const el = document.createElement("textarea"); el.value = text; el.style.position = "fixed"; el.style.left = "-9999px";
-        document.body.appendChild(el); el.select(); document.execCommand('copy'); document.body.removeChild(el);
-        const toast = document.getElementById('toast'); toast.style.display = 'block'; setTimeout(() => toast.style.display = 'none', 1500);
-    }
-    function toggleTheme() { config.theme = config.theme === 'light' ? 'dark' : 'light'; initTheme(); saveConfig(); render(); }
-    function initTheme() { document.body.setAttribute('data-theme', config.theme); document.getElementById('theme-btn').innerText = config.theme === 'light' ? '🌙' : '☀️'; }
-    function openModal(id) { 
-        if(id==='settings-modal') {
-            document.getElementById('set-work-start').value = config.workStart;
-            document.getElementById('set-work-end').value = config.workEnd;
-            document.getElementById('set-vis-start').value = config.visStart;
-            document.getElementById('set-vis-end').value = config.visEnd;
-            document.getElementById('set-range').value = config.rangeDays;
-            document.getElementById('set-density').value = config.density;
-        }
-        document.getElementById(id).style.display = 'flex'; 
-    }
-    function closeModal(id) { document.getElementById(id).style.display = 'none'; }
-    function removeZone(i) { if(confirm('Remove this zone?')) { config.zones.splice(i, 1); saveConfig(); render(); } }
-    function saveConfig() { localStorage.setItem(STORAGE_KEY, JSON.stringify(config)); }
-    function exportConfig() {
-        const blob = new Blob([JSON.stringify(config, null, 2)], { type: 'application/json' });
-        const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `tzv_config_${new Date().toISOString().slice(0,10)}.json`; a.click();
-    }
     function initDateTimePickers() {
         const jump = document.getElementById('jump-date'); 
         jump.value = new Date().toISOString().split('T')[0];
         jump.onchange = (e) => {
             if(!e.target.value) return;
-            const selected = new Date(e.target.value);
-            selected.setHours(0,0,0,0);
+            const selected = new Date(e.target.value); selected.setHours(0,0,0,0);
             viewStartTime = selected.getTime();
-            render();
-            refreshAllHolidays();
-            document.getElementById('viewport').scrollTop = 0;
+            calDashboardRefDate = new Date(selected); calDashboardRefDate.setDate(1);
+            render(); refreshAllHolidays(); document.getElementById('viewport').scrollTop = 0;
         };
     }
+    
     document.getElementById('file-input').onchange = (e) => {
         const reader = new FileReader(); reader.onload = (ev) => { try { config = JSON.parse(ev.target.result); saveConfig(); location.reload(); } catch(e){} };
         reader.readAsText(e.target.files[0]);
