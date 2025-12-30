@@ -39,6 +39,11 @@
             --day-sep-color: #000000;
             --sidebar-bg: #f8f9fa;
             --sidebar-width: 250px;
+            
+            /* Column Widths */
+            --date-col-w: 100px;
+            --hol-col-w: 120px;
+            --time-col-w: 60px;
         }
 
         [data-theme="dark"] {
@@ -122,6 +127,12 @@
         button.danger:hover { background-color: var(--current-time-color); color: white; }
         button:disabled { opacity: 0.5; cursor: not-allowed; }
 
+        .header-toggle-label {
+            display: flex; align-items: center; gap: 6px; font-size: 0.8rem; cursor: pointer;
+            border: 1px solid var(--btn-border); padding: 4px 8px; border-radius: 4px; background: var(--btn-bg);
+        }
+        .header-toggle-label:hover { background: var(--row-hover); }
+
         /* --- Main Layout --- */
         #main-container {
             flex: 1;
@@ -144,7 +155,6 @@
             gap: 20px;
         }
 
-        /* --- Calendar Section in Sidebar --- */
         #calendar-dashboard {
             display: flex;
             flex-direction: column;
@@ -190,7 +200,6 @@
         .mini-cal .cal-day-selected { border: 1px solid var(--accent-color); font-weight: bold; }
         .mini-cal .cal-day-sunday { background-color: var(--sun-bg); }
 
-        /* --- Holiday List Section in Sidebar --- */
         .sidebar-section h3 { margin: 0 0 10px 0; font-size: 0.9rem; border-bottom: 2px solid var(--border-color); padding-bottom: 5px; color: var(--accent-color); }
         .holiday-list-item {
             font-size: 0.8rem;
@@ -212,7 +221,11 @@
             padding: 10px 5px; text-align: center; border-bottom: 2px solid var(--border-color);
             border-right: 1px solid var(--border-color); z-index: 50; font-weight: 600;
         }
-        .col-header.ref-cell { left: 0; z-index: 150; background-color: var(--header-bg); }
+        
+        .col-header.ref-col-date { left: 0; z-index: 150; width: var(--date-col-w); }
+        .col-header.ref-col-hol { left: var(--date-col-w); z-index: 150; width: var(--hol-col-w); }
+        .col-header.ref-col-time { left: calc(var(--date-col-w) + var(--hol-col-w)); z-index: 150; width: var(--time-col-w); }
+        
         .col-header:last-child { border-right: none; }
         
         .col-controls { position: absolute; top: 2px; right: 2px; display: flex; gap: 4px; visibility: hidden; }
@@ -222,13 +235,66 @@
         .col-btn.edit { color: var(--accent-color); }
         .col-btn.move { font-weight: bold; }
 
+        /* General Cell Styling */
         .cell {
-            height: var(--cell-height); border-bottom: 1px solid var(--border-color);
-            border-right: 1px solid var(--border-color); display: flex; align-items: center; justify-content: center;
-            font-variant-numeric: tabular-nums; cursor: pointer; transition: background 0.1s; position: relative;
+            height: var(--cell-height); 
+            border-bottom: 1px solid var(--border-color);
+            border-right: 1px solid var(--border-color); 
+            display: flex; 
+            align-items: center; 
+            padding-left: 10px;
+            font-variant-numeric: tabular-nums; 
+            cursor: pointer; 
+            transition: background 0.1s; 
+            position: relative;
+            white-space: nowrap; 
+            overflow: hidden;
         }
         .cell:active { background-color: var(--accent-color) !important; color: white !important; }
-        .ref-cell { background-color: var(--ref-col-bg); font-weight: 700; color: var(--accent-color); position: sticky; left: 0; z-index: 10; }
+        
+        .cell-inner-date { 
+            font-size: 0.65rem; 
+            opacity: 0.6; 
+            margin-right: 6px; 
+            font-weight: normal;
+            display: inline-block;
+        }
+        .cell-inner-time { font-weight: 500; }
+
+        /* 1. Ref Date Cell */
+        .ref-cell-date {
+            background-color: var(--ref-col-bg);
+            position: sticky;
+            left: 0;
+            z-index: 10;
+            justify-content: flex-start;
+            font-size: 0.75rem;
+            color: var(--accent-color);
+            font-weight: bold;
+            padding: 0 6px;
+        }
+
+        /* 2. Ref Holiday Cell */
+        .ref-cell-hol {
+            background-color: var(--ref-col-bg);
+            position: sticky;
+            left: var(--date-col-w);
+            z-index: 10;
+            padding: 0 4px;
+            justify-content: flex-start;
+        }
+
+        /* 3. Ref Time Cell */
+        .ref-cell-time {
+            background-color: var(--ref-col-bg);
+            position: sticky;
+            left: calc(var(--date-col-w) + var(--hol-col-w));
+            z-index: 10;
+            justify-content: center;
+            font-weight: 700;
+            color: var(--text-color);
+            padding: 0;
+        }
 
         .day-separator { border-top: 3px solid var(--day-sep-color) !important; }
 
@@ -245,17 +311,35 @@
             font-weight: bold;
         }
 
-        .holiday-badge {
-            position: absolute; bottom: 1px; right: 2px; font-size: 0.6rem; color: inherit;
-            font-weight: 900; white-space: nowrap; max-width: 90%; overflow: hidden; text-overflow: ellipsis;
-            pointer-events: none; text-transform: uppercase;
+        .ref-hol-badge {
+            font-size: 0.65rem; 
+            background: var(--co-holiday-bg); 
+            color: var(--co-holiday-text); 
+            padding: 2px 4px; 
+            border-radius: 3px; 
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 100%;
+            display: block;
         }
 
-        .date-label {
-            font-size: 0.6rem; text-transform: uppercase; position: absolute; left: 4px; top: 1px;
-            opacity: 0.6; pointer-events: none; font-weight: 400;
+        .holiday-badge {
+            position: absolute; 
+            right: 4px; 
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 0.7rem; 
+            color: inherit;
+            font-weight: 900; 
+            white-space: nowrap; 
+            max-width: 45%; 
+            overflow: hidden; 
+            text-overflow: ellipsis;
+            pointer-events: none; 
+            text-transform: uppercase;
+            text-align: right;
         }
-        .date-label.new-day { font-size: 0.65rem; opacity: 1; font-weight: 900; color: var(--accent-color); top: 3px; }
 
         #now-line {
             position: absolute; left: 0; right: 0; height: 2px; background-color: var(--current-time-color);
@@ -288,7 +372,6 @@
         .week-day-selector label { font-weight: normal; font-size: 0.8rem; display: flex; align-items: center; gap: 2px; cursor: pointer; padding: 2px 6px; border: 1px solid var(--border-color); border-radius: 4px; }
         .week-day-selector input:checked + span { color: var(--accent-color); font-weight: bold; }
 
-        /* Holiday Manager Styles */
         .hol-manager-box { border: 1px solid var(--border-color); border-radius: 4px; padding: 10px; background: var(--header-bg); }
         .hol-input-group { display: flex; gap: 6px; margin-bottom: 8px; }
         .hol-input-group input[type="date"] { width: 130px; }
@@ -312,6 +395,9 @@
             <div class="live-time" id="live-time">00:00:00</div>
         </div>
         <div class="actions">
+            <label class="header-toggle-label">
+                <input type="checkbox" id="header-show-dates" onchange="toggleShowDates()"> Show Dates
+            </label>
             <button onclick="toggleTheme()" id="theme-btn">🌙</button>
             <button onclick="openModal('settings-modal')">Settings</button>
             <button onclick="exportConfig()">Export</button>
@@ -500,7 +586,8 @@
         visEnd: 23,
         workDays: [1,2,3,4,5], 
         calMode: 3, 
-        weekStart: 1, // 0=Sun, 1=Mon, 6=Sat
+        weekStart: 1, 
+        showZoneDates: false,
         companyHolidays: {}, 
         zones: [],
         primaryZone: null 
@@ -571,7 +658,12 @@
         if (config.density === undefined) config.density = 28;
         if (config.calMode === undefined) config.calMode = 3;
         if (config.weekStart === undefined) config.weekStart = 1; 
+        if (config.showZoneDates === undefined) config.showZoneDates = false;
         if (!config.primaryZone) config.primaryZone = DEVICE_TZ;
+
+        // Ensure Checkbox state matches config
+        const chk = document.getElementById('header-show-dates');
+        if(chk) chk.checked = config.showZoneDates;
 
         if (config.zones.length === 0) {
             config.zones = [
@@ -725,19 +817,35 @@
         timeEl.innerText = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
     }
 
+    function toggleShowDates() {
+        config.showZoneDates = document.getElementById('header-show-dates').checked;
+        saveConfig();
+        render();
+    }
+
     function render() {
         const grid = document.getElementById('grid');
         grid.innerHTML = '<div id="now-line"></div>';
-        const zoneCount = config.zones.length + 1;
-        grid.style.gridTemplateColumns = `repeat(${zoneCount}, 1fr)`;
+        const zoneCount = config.zones.length;
+        // Cols: Date(Fixed), Holiday(Fixed), Time(Fixed), then Zones
+        grid.style.gridTemplateColumns = `var(--date-col-w) var(--hol-col-w) var(--time-col-w) repeat(${zoneCount}, 1fr)`;
         document.documentElement.style.setProperty('--cell-height', config.density + 'px');
 
-        // Header
-        const refHeader = document.createElement('div');
-        refHeader.className = 'col-header ref-cell';
-        refHeader.innerHTML = `<span class="tz-name">Local Ref</span><span class="tz-offset">Device</span>`;
-        if (DEVICE_TZ === config.primaryZone) refHeader.style.borderBottom = "3px solid var(--co-holiday-text)";
-        grid.appendChild(refHeader);
+        // Headers
+        const dateHeader = document.createElement('div');
+        dateHeader.className = 'col-header ref-col-date';
+        dateHeader.innerHTML = 'Date';
+        grid.appendChild(dateHeader);
+
+        const holHeader = document.createElement('div');
+        holHeader.className = 'col-header ref-col-hol';
+        holHeader.innerHTML = 'Holiday';
+        grid.appendChild(holHeader);
+
+        const timeHeader = document.createElement('div');
+        timeHeader.className = 'col-header ref-col-time';
+        timeHeader.innerHTML = 'Local';
+        grid.appendChild(timeHeader);
 
         config.zones.forEach((z, i) => {
             const header = document.createElement('div');
@@ -771,25 +879,60 @@
 
             const isStartOfDay = (hour === 0) || (hour === config.visStart && config.visStart > 0);
             
-            const isSat = rowTime.getDay() === 6;
-            const isSun = rowTime.getDay() === 0;
+            // Check day based on local ref
+            const dayIdx = rowTime.getDay();
+            const isWorkDay = config.workDays.includes(dayIdx);
+            
+            const isSat = dayIdx === 6;
+            const isSun = dayIdx === 0;
 
-            // Ref Cell
+            // --- Reference Data ---
             const refIsPrimary = (DEVICE_TZ === config.primaryZone);
             const refCoHol = refIsPrimary ? checkCompanyHoliday(rowTime, DEVICE_TZ) : false;
             
-            const localDateStr = rowTime.toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short' });
-            const refCell = createCell(rowTime, DEVICE_TZ, "Local Time", isSat, isSun, true, null, refCoHol);
+            const localDateStr = rowTime.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
             
-            if (isStartOfDay) refCell.classList.add('day-separator');
+            // 1. Date Cell
+            const dateCell = document.createElement('div');
+            let dateCls = 'cell ref-cell-date';
+            if (isSat && !isWorkDay) dateCls += ' is-saturday';
+            if (isSun && !isWorkDay) dateCls += ' is-sunday';
+            if (isStartOfDay) dateCls += ' day-separator';
+            dateCell.className = dateCls;
+            
             if (localDateStr !== lastDateString) {
-                refCell.innerHTML += `<span class="date-label new-day">${localDateStr}</span>`;
-            } else {
-                refCell.innerHTML += `<span class="date-label">${localDateStr}</span>`;
+                dateCell.innerHTML = `<div>${localDateStr}</div>`;
             }
-            lastDateString = localDateStr;
-            grid.appendChild(refCell);
+            grid.appendChild(dateCell);
 
+            // 2. Holiday Cell
+            const holCell = document.createElement('div');
+            let holCls = 'cell ref-cell-hol';
+            if (isSat && !isWorkDay) holCls += ' is-saturday';
+            if (isSun && !isWorkDay) holCls += ' is-sunday';
+            if (isStartOfDay) holCls += ' day-separator';
+            holCell.className = holCls;
+            
+            if (localDateStr !== lastDateString && refCoHol) {
+                const iso = getZoneISODate(rowTime, DEVICE_TZ);
+                const name = config.companyHolidays[iso];
+                holCell.innerHTML = `<span class="ref-hol-badge" title="${name}">${name}</span>`;
+            }
+            grid.appendChild(holCell);
+
+            // 3. Time Cell
+            const timeCell = document.createElement('div');
+            let timeCls = 'cell ref-cell-time';
+            if (isSat && !isWorkDay) timeCls += ' is-saturday';
+            if (isSun && !isWorkDay) timeCls += ' is-sunday';
+            if (isStartOfDay) timeCls += ' day-separator';
+            timeCell.className = timeCls;
+            timeCell.innerText = rowTime.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', hour12:false});
+            grid.appendChild(timeCell);
+
+            lastDateString = localDateStr;
+
+            // 4. Zone Cells
             config.zones.forEach(z => {
                 const isPrimary = (z.zone === config.primaryZone);
                 const isCoHol = isPrimary ? checkCompanyHoliday(rowTime, z.zone) : false;
@@ -831,7 +974,16 @@
         else cls += (hour >= 6 && hour < 18 ? ' is-day' : ' is-night');
 
         cell.className = cls;
-        cell.innerText = zTime;
+        // Inner Content
+        let innerHTML = `<span class="cell-inner-time">${zTime}</span>`;
+
+        // If Show Dates in Zones is ON - Inline version
+        if (config.showZoneDates) {
+             const zDatePart = new Intl.DateTimeFormat('en-GB', { weekday:'short', day:'2-digit', timeZone: zone }).format(time);
+             innerHTML = `<span class="cell-inner-date">${zDatePart}</span>` + innerHTML;
+        }
+
+        cell.innerHTML = innerHTML;
         
         if (isCoHol) {
              const iso = getZoneISODate(time, zone);
