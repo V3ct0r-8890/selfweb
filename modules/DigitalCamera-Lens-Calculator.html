@@ -3,10 +3,14 @@
 <!--
 ================================================================================
 NAME: Camera & Megapixel Equivalence Master Calculator (Pro)
-VERSION: 20251229.002
-TIMESTAMP: 2025-12-29 22:15:00
+VERSION: 20251230.001
+TIMESTAMP: 2025-12-30 16:45:00
 AUTHOR: Gemini (Thought Partner)
 SPECIFICATIONS:
+    - FEATURE: Added "Visual DoF" Tab.
+    - LOGIC: Visualizes Depth of Field bars relative to subject distance (2m).
+    - LOGIC: Handles Zoom ranges (Start/End) for both systems simultaneously.
+    - UI: Visual scale from 0m to 5m with gradient fades for infinity.
     - REMOVED: "Target Look / Lens to Buy" (Invert Tool) section as requested.
       (Functionality is superseded by the "Match A" readout in System B).
     - FEATURE: Custom Sensor Support (Width/Height definition).
@@ -17,7 +21,7 @@ SPECIFICATIONS:
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Camera Equivalence Pro v20251229.002</title>
+    <title>Camera Equivalence Pro v20251230.001</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = { darkMode: 'class' }
@@ -144,6 +148,57 @@ SPECIFICATIONS:
             padding-bottom: 4px;
             margin-bottom: 10px;
         }
+
+        /* Visual DoF Styles */
+        .visual-track {
+            position: relative;
+            height: 24px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 4px;
+            margin-bottom: 8px;
+            overflow: hidden;
+        }
+        .visual-bar {
+            position: absolute;
+            height: 100%;
+            top: 0;
+            opacity: 0.7;
+            border-left: 2px solid rgba(255,255,255,0.5);
+            border-right: 2px solid rgba(255,255,255,0.5);
+            transition: all 0.3s ease;
+        }
+        .visual-bar.inf {
+            border-right: none;
+            mask-image: linear-gradient(to right, black 80%, transparent 100%);
+            -webkit-mask-image: linear-gradient(to right, black 80%, transparent 100%);
+        }
+        .visual-subject-line {
+            position: absolute;
+            left: 40%; /* 2m on 5m scale */
+            top: 0; bottom: 0;
+            width: 2px;
+            background: #f59e0b; /* Amber */
+            z-index: 10;
+        }
+        .visual-label {
+            position: absolute;
+            left: 4px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 9px;
+            font-weight: bold;
+            color: #fff;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+            z-index: 20;
+            pointer-events: none;
+        }
+        .scale-marker {
+            position: absolute;
+            bottom: 0;
+            font-size: 8px;
+            color: var(--text-muted);
+            transform: translateX(-50%);
+        }
     </style>
 </head>
 <body class="p-2 md:p-6 dark">
@@ -151,7 +206,7 @@ SPECIFICATIONS:
     <div class="max-w-5xl mx-auto">
         <header class="mb-4 flex justify-between items-center border-b border-slate-700/50 pb-3">
             <div>
-                <h1 class="text-xl font-bold text-blue-400">Optics Comparison <span class="text-xs font-normal text-slate-500 ml-2">v20251229.002</span></h1>
+                <h1 class="text-xl font-bold text-blue-400">Optics Comparison <span class="text-xs font-normal text-slate-500 ml-2">v20251230.001</span></h1>
             </div>
             <div class="flex gap-2">
                 <button id="themeToggle" class="btn-action">🌓 Toggle Theme</button>
@@ -284,14 +339,38 @@ SPECIFICATIONS:
         <!-- Section Navigation -->
         <div class="card rounded-xl overflow-hidden shadow-lg mb-6">
             <div class="bg-slate-800/20 flex overflow-x-auto border-b border-slate-700/50 no-scrollbar">
-                <button id="tabRes" class="tab-btn active">RESOLUTIONS</button>
+                <button id="tabVisual" class="tab-btn active text-emerald-400">VISUAL DOF</button>
+                <button id="tabRes" class="tab-btn">RESOLUTIONS</button>
                 <button id="tabMult" class="tab-btn">MULTIPLICATION CHART</button>
                 <button id="tabDim" class="tab-btn">DIMENSIONS</button>
                 <button id="tabCustom" class="tab-btn text-amber-500">CUSTOM GEAR</button>
                 <button id="tabFormula" class="tab-btn">FORMULAS & REFS</button>
             </div>
             
-            <div id="viewRes" class="overflow-x-auto">
+            <!-- VISUAL DOF TAB (NEW) -->
+            <div id="viewVisual" class="p-6">
+                <div class="mb-4 text-center">
+                    <span class="label-tiny text-slate-400">Subject Distance (Fixed)</span>
+                    <h3 class="text-xl font-bold text-amber-500">2.0 Meters</h3>
+                    <p class="text-[10px] text-slate-500 mt-1">Scale visualized from 0m to 5m. Arrows indicate infinity.</p>
+                </div>
+                
+                <!-- Scale Reference -->
+                <div class="relative h-6 mb-2 border-b border-slate-700/50 w-full">
+                    <span class="scale-marker" style="left:0%">0m</span>
+                    <span class="scale-marker" style="left:20%">1m</span>
+                    <span class="scale-marker font-bold text-amber-500" style="left:40%">2m</span>
+                    <span class="scale-marker" style="left:60%">3m</span>
+                    <span class="scale-marker" style="left:80%">4m</span>
+                    <span class="scale-marker" style="left:100%">5m+</span>
+                </div>
+
+                <div id="visualContainer" class="space-y-4">
+                    <!-- Javascript populates this -->
+                </div>
+            </div>
+
+            <div id="viewRes" class="hidden overflow-x-auto">
                 <table class="w-full text-left text-[11px]">
                     <thead><tr class="bg-slate-800/30 text-slate-500 uppercase text-[9px]"><th class="p-3">Format Name</th><th class="p-3 text-center">Multiplier (vs A)</th><th class="p-3 text-right">Detail Equivalence</th></tr></thead>
                     <tbody id="tableRes"></tbody>
@@ -471,7 +550,8 @@ SPECIFICATIONS:
             custName: document.getElementById('custName'), custFs: document.getElementById('custFs'), custFe: document.getElementById('custFe'), 
             custAs: document.getElementById('custAs'), custAe: document.getElementById('custAe'), custList: document.getElementById('customLensList'),
             custSensName: document.getElementById('custSensName'), custSensW: document.getElementById('custSensW'), custSensH: document.getElementById('custSensH'), custSensList: document.getElementById('customSensorList'),
-            importFile: document.getElementById('importFile')
+            importFile: document.getElementById('importFile'),
+            visualCont: document.getElementById('visualContainer')
         };
 
         function init() {
@@ -493,24 +573,15 @@ SPECIFICATIONS:
                 alert("Please enter valid name, width, and height.");
                 return;
             }
-
-            // Calculate Factor based on FF Diagonal ~43.2666mm
             const diag = Math.sqrt(w*w + h*h);
             const factor = (43.2666153 / diag).toFixed(2);
-
             const sensors = getCustomSensors();
-            // Use a unique ID to avoid conflict with stock
             const id = "cust_" + Date.now();
             sensors.push({ id, name, w, h, factor: parseFloat(factor), isCustom: true });
-            
             localStorage.setItem('customSensors', JSON.stringify(sensors));
-            
-            // Clear inputs
             els.custSensName.value = ''; els.custSensW.value = ''; els.custSensH.value = '';
-            
-            // Re-render
             renderSensors();
-            update(); // Refresh calculations
+            update();
         }
 
         function deleteSensor(idx) {
@@ -522,24 +593,16 @@ SPECIFICATIONS:
         }
 
         function renderSensors() {
-            // 1. Merge Stock + Custom
             const custom = getCustomSensors();
-            // Sort custom by factor
             custom.sort((a,b) => a.factor - b.factor);
-            
-            // Combine: Stock first, then custom
             sensorData = [...stockSensors, ...custom];
-            // Optionally sort entire list by factor? Let's keep stock order then appended custom for clarity, or sort all.
-            // Let's sort all by factor for the dropdowns logic to be consistent
             sensorData.sort((a, b) => a.factor - b.factor);
 
-            // 2. Populate Dropdowns
-            // Store current selections to try and restore them
             const selA = els.sA.value;
             const selB = els.sB.value;
 
             [els.sA, els.sB].forEach(sel => {
-                sel.innerHTML = ''; // Clear
+                sel.innerHTML = ''; 
                 sensorData.forEach(s => {
                     const o = document.createElement('option');
                     o.value = s.factor; 
@@ -549,15 +612,10 @@ SPECIFICATIONS:
                 });
             });
 
-            // Restore selection or defaults
-            // Default: FF (1.0) and APSC (1.52)
             if(selA) els.sA.value = selA; else els.sA.value = "1";
             if(selB) els.sB.value = selB; else els.sB.value = "1.52";
-
-            // If restoration failed (e.g. deleted sensor), default to FF
             if(!els.sA.value) els.sA.value = "1";
 
-            // 3. Render Custom Sensor List UI
             els.custSensList.innerHTML = custom.map((s, i) => `
                 <div class="flex justify-between items-center bg-slate-800/20 p-2 rounded border border-slate-700/50">
                     <div>
@@ -568,12 +626,10 @@ SPECIFICATIONS:
                 </div>
             `).join('');
 
-            // 4. Render Tables (depend on sensorData)
             renderTables(); 
         }
 
         function renderTables() {
-            // Resolution Table
             const fa = parseFloat(els.sA.value) || 1.0;
             const refMP = parseFloat(els.mpA.value || 0);
             
@@ -583,10 +639,8 @@ SPECIFICATIONS:
                 return `<tr class="border-b border-slate-700/30 hover:bg-slate-800/10"><td class="p-3 font-semibold ${s.isCustom ? 'text-emerald-400':''}">${s.name}</td><td class="p-3 text-center text-blue-400 font-mono">${mult}x</td><td class="p-3 text-right text-amber-500 font-mono">${mp} MP</td></tr>`;
             }).join('');
 
-            // Dimensions Table
             els.tDim.innerHTML = sensorData.map(s => `<tr class="border-b border-slate-700/30 hover:bg-slate-800/10"><td class="p-3 font-semibold ${s.isCustom ? 'text-emerald-400':''}">${s.name}</td><td class="p-3 text-center text-slate-400 font-mono">${s.w}x${s.h}mm</td><td class="p-3 text-right text-emerald-500 font-mono">${Math.sqrt(s.w**2+s.h**2).toFixed(1)}mm</td></tr>`).join('');
 
-            // Multiplier Matrix
             els.hMult.innerHTML = `<th class="p-2 border border-slate-700/50 bg-slate-800/30">↓ A | B →</th>` + sensorData.map(s => {
                 const label = s.id.startsWith("cust_") ? "*" + s.name.substring(0,3).toUpperCase() : s.id.toUpperCase();
                 return `<th class="p-2 border border-slate-700/50 text-center font-bold text-[9px]">${label}</th>`;
@@ -604,12 +658,12 @@ SPECIFICATIONS:
             }).join('');
         }
 
-        /* --- IMPORT / EXPORT LOGIC (Unified) --- */
+        /* --- IMPORT / EXPORT LOGIC --- */
         function exportCustomData() {
             const data = {
                 lenses: JSON.parse(localStorage.getItem('customLenses') || '[]'),
                 sensors: JSON.parse(localStorage.getItem('customSensors') || '[]'),
-                version: "20251229.002"
+                version: "20251230.001"
             };
             const blob = new Blob([JSON.stringify(data, null, 2)], {type: "application/json"});
             const url = URL.createObjectURL(blob);
@@ -633,14 +687,10 @@ SPECIFICATIONS:
             reader.onload = function(e) {
                 try {
                     const data = JSON.parse(e.target.result);
-                    
-                    // Backward Compatibility: Check if array (Old format: only lenses)
                     if (Array.isArray(data)) {
                         localStorage.setItem('customLenses', JSON.stringify(data));
                         alert('Imported Lenses (Legacy Format).');
-                    } 
-                    // New Format: Object with lenses/sensors keys
-                    else if (data.lenses || data.sensors) {
+                    } else if (data.lenses || data.sensors) {
                         if(data.lenses) localStorage.setItem('customLenses', JSON.stringify(data.lenses));
                         if(data.sensors) localStorage.setItem('customSensors', JSON.stringify(data.sensors));
                         alert('Imported Custom Gear Successfully!');
@@ -654,9 +704,8 @@ SPECIFICATIONS:
                 }
             };
             reader.readAsText(file);
-            input.value = ''; // Reset
+            input.value = '';
         }
-        /* ----------------------------- */
 
         function renderLibraries() {
             const custom = JSON.parse(localStorage.getItem('customLenses') || '[]');
@@ -704,23 +753,37 @@ SPECIFICATIONS:
             renderLibraries();
         }
 
+        // --- NEW DOF LOGIC ---
+        function getDoFData(f, n, factor) {
+            if (!f || !n) return null;
+            const d = 2000; // 2m fixed
+            const c = (0.03 / factor);
+            const f_mm = parseFloat(f);
+            const n_val = parseFloat(n);
+            
+            const h = (f_mm * f_mm) / (n_val * c) + f_mm;
+            
+            const near = (d * (h - f_mm)) / (h + d - (2 * f_mm));
+            let far = (d * (h - f_mm)) / (h - d);
+            
+            // Handle Infinity
+            let isInf = false;
+            if (far < 0 || far > 1000000) { far = Infinity; isInf = true; }
+            
+            return { near, far, isInf, total: isInf ? Infinity : far - near };
+        }
+
         function calculateDoF(f, n, factor) {
-            if (!f || !n) return "0.0";
-            const d = 2000, c = (0.03 / factor);
-            const h = (f * f) / (n * c) + f;
-            const near = (d * (h - f)) / (h + d - (2 * f));
-            const far = (d * (h - f)) / (h - d);
-            if (far < 0 || far > 1000000) return "∞";
-            return ((far - near) / 10).toFixed(1);
+            const data = getDoFData(f, n, factor);
+            if(!data) return "0.0";
+            if(data.isInf) return "∞";
+            return (data.total / 10).toFixed(1);
         }
 
         // Helper to handle ranges
         function getDoFString(fs, fe, as, ae, factor) {
             const d1 = calculateDoF(parseFloat(fs), parseFloat(as), factor);
-            // If Prime (start == end) or missing End val
             if (!fe || fe == fs || fe == 0) return d1;
-            
-            // If Zoom
             const endAp = (ae && ae != 0) ? ae : as;
             const d2 = calculateDoF(parseFloat(fe), parseFloat(endAp), factor);
             return `${d1} - ${d2}`;
@@ -755,6 +818,73 @@ SPECIFICATIONS:
             return `${start.toFixed(1)}-${end.toFixed(1)}`;
         }
 
+        function createVisualBar(label, colorClass, dofData) {
+            if (!dofData) return '';
+            
+            // Map 0-5000mm to 0-100%
+            const maxDist = 5000;
+            const nearPct = Math.max(0, (dofData.near / maxDist) * 100);
+            
+            // Calculate width
+            let widthPct = 0;
+            let isInf = false;
+            
+            if (dofData.isInf || dofData.far > maxDist) {
+                widthPct = 100 - nearPct;
+                isInf = true;
+            } else {
+                widthPct = ((dofData.far - dofData.near) / maxDist) * 100;
+            }
+
+            // Styles
+            const bgClass = colorClass === 'A' ? 'bg-blue-500' : 'bg-rose-500';
+            const infClass = isInf ? 'inf' : '';
+            const arrow = isInf ? '<span style="position:absolute; right: -12px; top: 2px;">→</span>' : '';
+
+            return `
+            <div class="visual-track">
+                <div class="visual-subject-line"></div>
+                <div class="visual-label">${label}</div>
+                <div class="visual-bar ${bgClass} ${infClass}" style="left: ${nearPct}%; width: ${widthPct}%">
+                    ${arrow}
+                </div>
+            </div>`;
+        }
+
+        function renderVisualTab() {
+            const fa = parseFloat(els.sA.value);
+            const fb = parseFloat(els.sB.value);
+            
+            let html = '';
+
+            // System A Start
+            const daS = getDoFData(els.fAs.value, els.apAs.value, fa);
+            html += createVisualBar(`A Start: ${els.fAs.value}mm f/${els.apAs.value}`, 'A', daS);
+
+            // System A End (If Zoom)
+            if(els.fAe.value && els.fAe.value != els.fAs.value) {
+                const ae = els.apAe.value || els.apAs.value;
+                const daE = getDoFData(els.fAe.value, ae, fa);
+                html += createVisualBar(`A End: ${els.fAe.value}mm f/${ae}`, 'A', daE);
+            }
+
+            // Spacer
+            html += '<div class="h-2 border-t border-slate-700/30 my-2"></div>';
+
+            // System B Start
+            const dbS = getDoFData(els.fBs.value, els.apBs.value, fb);
+            html += createVisualBar(`B Start: ${els.fBs.value}mm f/${els.apBs.value}`, 'B', dbS);
+
+             // System B End (If Zoom)
+             if(els.fBe.value && els.fBe.value != els.fBs.value) {
+                const be = els.apBe.value || els.apBs.value;
+                const dbE = getDoFData(els.fBe.value, be, fb);
+                html += createVisualBar(`B End: ${els.fBe.value}mm f/${be}`, 'B', dbE);
+            }
+
+            els.visualCont.innerHTML = html;
+        }
+
         function update() {
             if (els.sync.checked) {
                 els.fBs.value = els.fAs.value; els.fBe.value = els.fAe.value;
@@ -782,12 +912,11 @@ SPECIFICATIONS:
             // DoF Display B
             els.dofB.textContent = getDoFString(els.fBs.value, els.fBe.value, els.apBs.value, els.apBe.value, fb);
             
-            // Calculate Match A
+            // Match A
             const matchRatio = fa / fb;
             els.matchF.textContent = getRange(els.fAs.value, els.fAe.value, matchRatio);
             els.matchAp.textContent = getRange(els.apAs.value, els.apAe.value, matchRatio);
             
-            // Calculate Match DoF (Range Support)
             const mFs = parseFloat(els.fAs.value) * matchRatio;
             const mFe = (els.fAe.value && els.fAe.value != 0) ? parseFloat(els.fAe.value) * matchRatio : mFs;
             const mAs = parseFloat(els.apAs.value) * matchRatio;
@@ -801,15 +930,16 @@ SPECIFICATIONS:
                 els.matchDof.textContent = `${d1} - ${d2}`;
             }
 
-            // Tables update via renderTables inside renderSensors, but we need to update them if values change
-            // Just re-call renderTables to update dynamic calcs (like MP)
+            renderVisualTab();
             renderTables();
         }
 
         document.querySelectorAll('input, select').forEach(i => i.addEventListener('input', update));
         document.getElementById('themeToggle').onclick = () => { document.body.classList.toggle('dark'); document.body.classList.toggle('light'); };
         
-        const tabs = ['tabRes', 'tabMult', 'tabDim', 'tabCustom', 'tabFormula'], views = ['viewRes', 'viewMult', 'viewDim', 'viewCustom', 'viewFormula'];
+        const tabs = ['tabVisual', 'tabRes', 'tabMult', 'tabDim', 'tabCustom', 'tabFormula'];
+        const views = ['viewVisual', 'viewRes', 'viewMult', 'viewDim', 'viewCustom', 'viewFormula'];
+        
         tabs.forEach((id, idx) => {
             document.getElementById(id).onclick = (e) => {
                 tabs.forEach(t => document.getElementById(t).classList.remove('active'));
