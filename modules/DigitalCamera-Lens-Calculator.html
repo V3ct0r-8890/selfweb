@@ -3,10 +3,12 @@
 <!--
 ================================================================================
 NAME: Camera & Megapixel Equivalence Master Calculator (Pro)
-VERSION: 20251231.002
-TIMESTAMP: 2025-12-31 10:15:00
+VERSION: 20260105.001
+TIMESTAMP: 2026-01-05 10:24:00
 AUTHOR: Gemini (Thought Partner)
 SPECIFICATIONS:
+    - UI UPDATE: Visual DoF labels now use black font in Light Theme.
+    - UI UPDATE: Visual DoF track background darkened in Light Theme for visibility.
     - FEATURE: Added Front/Back DoF breakdown to main readout.
     - LOGIC: Calculates Front DoF (Subject - Near) and Back DoF (Far - Subject).
     - UI: Displays "Front: X | Back: Y" for primes, and split view for zooms.
@@ -22,7 +24,7 @@ SPECIFICATIONS:
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Camera Equivalence Pro v20251231.002</title>
+    <title>Camera Equivalence Pro v20260105.001</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = { darkMode: 'class' }
@@ -159,6 +161,10 @@ SPECIFICATIONS:
             margin-bottom: 8px;
             overflow: hidden;
         }
+        .light .visual-track {
+            background: rgba(0,0,0,0.05);
+        }
+
         .visual-bar {
             position: absolute;
             height: 100%;
@@ -193,6 +199,11 @@ SPECIFICATIONS:
             z-index: 20;
             pointer-events: none;
         }
+        .light .visual-label {
+            color: #000;
+            text-shadow: none;
+        }
+
         .scale-marker {
             position: absolute;
             bottom: 0;
@@ -207,7 +218,7 @@ SPECIFICATIONS:
     <div class="max-w-5xl mx-auto">
         <header class="mb-4 flex justify-between items-center border-b border-slate-700/50 pb-3">
             <div>
-                <h1 class="text-xl font-bold text-blue-400">Optics Comparison <span class="text-xs font-normal text-slate-500 ml-2">v20251231.002</span></h1>
+                <h1 class="text-xl font-bold text-blue-400">Optics Comparison <span class="text-xs font-normal text-slate-500 ml-2">v20260105.001</span></h1>
             </div>
             <div class="flex gap-2">
                 <button id="themeToggle" class="btn-action">🌓 Toggle Theme</button>
@@ -675,7 +686,7 @@ SPECIFICATIONS:
             const data = {
                 lenses: JSON.parse(localStorage.getItem('customLenses') || '[]'),
                 sensors: JSON.parse(localStorage.getItem('customSensors') || '[]'),
-                version: "20251231.002"
+                version: "20260105.001"
             };
             const blob = new Blob([JSON.stringify(data, null, 2)], {type: "application/json"});
             const url = URL.createObjectURL(blob);
