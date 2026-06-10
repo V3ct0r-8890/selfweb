@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -55,20 +56,23 @@
             margin: 0;
             padding: 1rem;
         }
+
         .container {
             max-width: 800px;
             margin: 1rem auto;
             background-color: #fff;
             border: 1px solid #ccc;
             border-radius: 8px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
             overflow: hidden;
         }
+
         .tabs {
             display: flex;
             background-color: #eee;
             border-bottom: 1px solid #ccc;
         }
+
         .tab-button {
             padding: 12px 16px;
             border: none;
@@ -78,39 +82,47 @@
             font-weight: 500;
             color: #555;
         }
+
         .tab-button.active {
             background-color: #fff;
             color: #007bff;
             border-bottom: 2px solid #007bff;
-            margin-bottom: -1px; /* Align with border */
+            margin-bottom: -1px;
+            /* Align with border */
         }
+
         .tab-content {
             display: none;
             padding: 1.5rem;
         }
+
         .tab-content.active {
             display: block;
         }
-        
+
         /* General Form Styles */
         .form-group {
             margin-bottom: 1rem;
         }
+
         .form-group label {
             display: block;
             margin-bottom: 0.5rem;
             font-weight: 500;
         }
+
         input[type="text"],
         input[type="number"],
         select {
             width: 100%;
             padding: 8px;
-            box-sizing: border-box; /* Important for 100% width */
+            box-sizing: border-box;
+            /* Important for 100% width */
             border: 1px solid #ccc;
             border-radius: 4px;
             font-size: 1rem;
         }
+
         button.calc-button {
             background-color: #007bff;
             color: white;
@@ -120,6 +132,7 @@
             cursor: pointer;
             font-size: 1rem;
         }
+
         button.calc-button:hover {
             background-color: #0056b3;
         }
@@ -144,6 +157,7 @@
             border-collapse: collapse;
             margin-top: 1rem;
         }
+
         .simple-table th,
         .simple-table td {
             border: 1px solid #ccc;
@@ -151,6 +165,7 @@
             text-align: left;
             font-family: "Courier New", Courier, monospace;
         }
+
         .simple-table th {
             background-color: #f4f4f4;
             font-weight: 600;
@@ -164,13 +179,16 @@
             gap: 10px;
             align-items: center;
         }
+
         .bw-grid label {
             font-weight: 500;
             margin-bottom: 0;
         }
+
         .bw-grid .span-2 {
             grid-column: 1 / -1;
         }
+
         #calcBandwidthForm,
         #calcVolumeForm {
             border: 1px solid #eee;
@@ -178,6 +196,7 @@
             border-radius: 4px;
             background-color: #fcfcfc;
         }
+
         h3 {
             margin-top: 0;
             border-bottom: 1px solid #eee;
@@ -185,6 +204,7 @@
         }
     </style>
 </head>
+
 <body>
 
     <div class="container">
@@ -200,7 +220,8 @@
             <h2>Subnet Calculator</h2>
             <div class="form-group">
                 <label for="cidrInput">Enter CIDR (e.g., 192.168.10.0/26):</label>
-                <input type="text" id="cidrInput" placeholder="192.168.10.0/26" value="192.168.10.0/26" oninput="calculateSubnet()">
+                <input type="text" id="cidrInput" placeholder="192.168.10.0/26" value="192.168.10.0/26"
+                    oninput="calculateSubnet()">
             </div>
             <div class="form-group">
                 <label for="formatSelect">Output Format:</label>
@@ -211,7 +232,7 @@
                 </select>
             </div>
             <button type="button" class="calc-button" onclick="calculateSubnet()">Calculate</button>
-            
+
             <!-- This div is for the copy/paste text area -->
             <div id="subnetTextOutputArea" class="form-group" style="margin-top: 1rem; display: none;">
                 <label for="subnetOutput">Table Output (for copy/paste):</label>
@@ -243,7 +264,7 @@
                 <div class="bw-grid">
                     <label for="dataVolume">Data Volume:</label>
                     <label for="volumeUnit">Unit:</label>
-                    
+
                     <input type="number" id="dataVolume" value="100" oninput="calculateBandwidth()">
                     <select id="volumeUnit" onchange="calculateBandwidth()">
                         <option value="Bytes">Bytes</option>
@@ -317,7 +338,7 @@
 
                     <label for="resultVolume">Data Volume:</label>
                     <label for="volumeUnitResult">Unit:</label>
-                    
+
                     <input type="text" id="resultVolume" readonly>
                     <select id="volumeUnitResult" onchange="calculateVolume()">
                         <option value="Bytes">Bytes</option>
@@ -366,7 +387,7 @@
         // ------------------------
         // Subnet Calculator Logic
         // ------------------------
-        
+
         /**
          * Converts an IP address string (e.g., "192.168.1.1") to a 32-bit unsigned integer.
          * @param {string} ip - The IP address string.
@@ -399,12 +420,12 @@
         function calculateSubnet() {
             const cidrInput = document.getElementById('cidrInput').value;
             const format = document.getElementById('formatSelect').value;
-            
+
             // Get output elements
             const outputTextarea = document.getElementById('subnetOutput');
             const textOutputDiv = document.getElementById('subnetTextOutputArea');
             const tableOutputDiv = document.getElementById('subnetTableOutput');
-            
+
             const [ip, prefixStr] = cidrInput.split('/');
             if (!ip || !prefixStr) {
                 const errorMsg = "Error: Invalid CIDR format. Expected 'ip/prefix' (e.g., 192.168.1.0/24).";
@@ -432,11 +453,11 @@
                 }
                 return;
             }
-            
+
             const ipInt = ipToInt(ip);
             if (isNaN(ipInt)) {
-                 const errorMsg = "Error: Invalid IP address format.";
-                 if (format === 'onpage') {
+                const errorMsg = "Error: Invalid IP address format.";
+                if (format === 'onpage') {
                     tableOutputDiv.innerHTML = `<p style="color: red;">${errorMsg}</p>`;
                     textOutputDiv.style.display = 'none';
                 } else {
@@ -444,7 +465,7 @@
                     textOutputDiv.style.display = 'block';
                     tableOutputDiv.style.display = 'none';
                 }
-                 return;
+                return;
             }
 
             // Handle output visibility
@@ -462,18 +483,19 @@
 
             // Set headers based on format
             if (format === 'markdown') {
-                table = "| Network | Usable IP Range | Broadcast | Usable IPs |\n";
-                table += "|:---|:---|:---|:---|\n";
+                table = "| Network | Subnet Mask | Usable IP Range | Broadcast | Usable IPs |\n";
+                table += "|:---|:---|:---|:---|:---|\n";
             } else if (format === 'html' || format === 'onpage') {
                 // Use CSS class for on-page, keep inline for copyable HTML
                 const tableTag = (format === 'onpage')
                     ? '<table class="simple-table">'
                     : '<table border="1" style="border-collapse: collapse; width: 100%;">';
-                
+
                 table = tableTag + '\n';
                 table += '  <thead>\n';
                 table += '    <tr>\n';
                 table += '      <th>Network</th>\n';
+                table += '      <th>Subnet Mask</th>\n';
                 table += '      <th>Usable IP Range</th>\n';
                 table += '      <th>Broadcast</th>\n';
                 table += '      <th>Usable IPs</th>\n';
@@ -491,13 +513,14 @@
                 for (let i = 0; i < numSubnets; i++) {
                     const networkInt = parentNetworkInt + (i * subnetSize);
                     const details = getSubnetDetails(networkInt, prefix);
-                    
+
                     // Format row based on selected format
                     if (format === 'markdown') {
-                        table += `| ${details.networkCol} | ${details.rangeCol} | ${details.broadcastCol} | ${details.usableCol} |\n`;
+                        table += `| ${details.networkCol} | ${details.netmaskCol} | ${details.rangeCol} | ${details.broadcastCol} | ${details.usableCol} |\n`;
                     } else if (format === 'html' || format === 'onpage') {
                         table += '    <tr>\n';
                         table += `      <td>${details.networkCol}</td>\n`;
+                        table += `      <td>${details.netmaskCol}</td>\n`;
                         table += `      <td>${details.rangeCol}</td>\n`;
                         table += `      <td>${details.broadcastCol}</td>\n`;
                         table += `      <td>${details.usableCol}</td>\n`;
@@ -509,13 +532,14 @@
                 const networkMask = (0xFFFFFFFF << (32 - prefix)) >>> 0;
                 const networkInt = ipInt & networkMask;
                 const details = getSubnetDetails(networkInt, prefix);
-                
+
                 // Format row based on selected format
                 if (format === 'markdown') {
-                    table += `| ${details.networkCol} | ${details.rangeCol} | ${details.broadcastCol} | ${details.usableCol} |\n`;
+                    table += `| ${details.networkCol} | ${details.netmaskCol} | ${details.rangeCol} | ${details.broadcastCol} | ${details.usableCol} |\n`;
                 } else if (format === 'html' || format === 'onpage') {
                     table += '    <tr>\n';
                     table += `      <td>${details.networkCol}</td>\n`;
+                    table += `      <td>${details.netmaskCol}</td>\n`;
                     table += `      <td>${details.rangeCol}</td>\n`;
                     table += `      <td>${details.broadcastCol}</td>\n`;
                     table += `      <td>${details.usableCol}</td>\n`;
@@ -546,10 +570,12 @@
         function getSubnetDetails(networkInt, prefix) {
             const networkIp = intToIp(networkInt);
             const networkCol = `${networkIp}/${prefix}`;
+            const netmaskCol = intToIp((0xFFFFFFFF << (32 - prefix)) >>> 0);
 
             if (prefix === 32) {
                 return {
                     networkCol: networkCol,
+                    netmaskCol: netmaskCol,
                     rangeCol: networkIp,
                     broadcastCol: networkIp,
                     usableCol: "1"
@@ -560,6 +586,7 @@
                 const ip2 = intToIp(networkInt + 1);
                 return {
                     networkCol: networkCol,
+                    netmaskCol: netmaskCol,
                     rangeCol: `${networkIp} - ${ip2}`,
                     broadcastCol: ip2, // Technically neither is broadcast, but this denotes the end
                     usableCol: "2"
@@ -573,6 +600,7 @@
 
             return {
                 networkCol: networkCol,
+                netmaskCol: netmaskCol,
                 rangeCol: `${intToIp(startIpInt)} - ${intToIp(endIpInt)}`,
                 broadcastCol: intToIp(broadcastInt),
                 usableCol: String(usableIps)
@@ -645,11 +673,11 @@
             const totalBytes = volume * BYTES_PER[volUnit];
             const totalBits = totalBytes * 8;
             const totalSeconds = time * SECONDS_PER[timeUnit];
-            
+
             const bitsPerSecond = totalBits / totalSeconds;
-            
+
             const resultBandwidth = bitsPerSecond / BITS_PER[resultUnit];
-            
+
             resultField.value = formatNumber(resultBandwidth);
         }
 
@@ -669,17 +697,17 @@
             const resultField = document.getElementById('resultVolume');
 
             const bitsPerSecond = bwVal * BITS_PER[bwUnit];
-            
+
             const totalSeconds = timeVal * SECONDS_PER[timeUnitString];
-            
+
             const totalBits = bitsPerSecond * totalSeconds;
             const totalBytes = totalBits / 8;
 
             const resultVolume = totalBytes / BYTES_PER[resultUnitString];
-            
+
             resultField.value = formatNumber(resultVolume);
         }
-        
+
         /**
          * Formats a number to a reasonable number of decimal places.
          * @param {number} num - The number to format.
@@ -688,7 +716,7 @@
         function formatNumber(num) {
             if (isNaN(num)) return "0";
             if (!isFinite(num)) return "Infinity";
-            
+
             // Use 'toPrecision' to avoid long decimals from floating point math
             return parseFloat(num.toPrecision(6)).toString();
         }
@@ -699,11 +727,12 @@
             document.getElementById('formatSelect').value = 'onpage';
             calculateSubnet();
             calculateBandwidth();
-            
+
             // This call populates the 'Calculate Data Volume' tab on load.
-            calculateVolume(); 
+            calculateVolume();
         });
     </script>
 
 </body>
+
 </html>
