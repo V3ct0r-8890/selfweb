@@ -1,17 +1,18 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>INS Food Additive Search</title>
-    
+
     <!-- Load React and ReactDOM -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    
+
     <!-- Load Babel for JSX support in browser -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    
+
     <!-- Load Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
 
@@ -20,18 +21,22 @@
         ::-webkit-scrollbar {
             width: 8px;
         }
+
         ::-webkit-scrollbar-track {
             background: #f1f5f9;
         }
+
         ::-webkit-scrollbar-thumb {
-            background: #cbd5e1; 
+            background: #cbd5e1;
             border-radius: 4px;
         }
+
         ::-webkit-scrollbar-thumb:hover {
-            background: #94a3b8; 
+            background: #94a3b8;
         }
     </style>
 </head>
+
 <body class="bg-slate-50 text-slate-900 font-sans selection:bg-blue-200">
     <div id="root"></div>
 
@@ -40,28 +45,28 @@
 
         // --- Icons ---
         const IconSearch = ({ className }) => (
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" /></svg>
         );
         const IconInfo = ({ className }) => (
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="10" /><path d="M12 16v-4" /><path d="M12 8h.01" /></svg>
         );
         const IconAlertTriangle = ({ className }) => (
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" /><path d="M12 9v4" /><path d="M12 17h.01" /></svg>
         );
         const IconLeaf = ({ className }) => (
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 13-11 18Z"/><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 13-11 18Z"/></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 13-11 18Z" /><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 13-11 18Z" /></svg>
         );
         const IconFlaskConical = ({ className }) => (
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M10 2v7.527a2 2 0 0 1-.211.896L4.72 20.55a1 1 0 0 0 .9 1.45h12.76a1 1 0 0 0 .9-1.45l-5.069-10.127A2 2 0 0 1 14 9.527V2"/><path d="M8.5 2h7"/><path d="M7 16h10"/></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M10 2v7.527a2 2 0 0 1-.211.896L4.72 20.55a1 1 0 0 0 .9 1.45h12.76a1 1 0 0 0 .9-1.45l-5.069-10.127A2 2 0 0 1 14 9.527V2" /><path d="M8.5 2h7" /><path d="M7 16h10" /></svg>
         );
         const IconX = ({ className }) => (
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
         );
         const IconDatabase = ({ className }) => (
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><ellipse cx="12" cy="5" rx="9" ry="3" /><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3" /><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5" /></svg>
         );
         const IconArrowRight = ({ className }) => (
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M5 12h14" /><path d="m12 5 7 7-7 7" /></svg>
         );
 
         // --- Expanded Database ---
@@ -420,6 +425,225 @@
             { ins: "1518", name: "Triacetin", chemicalName: "Glyceryl triacetate", functionalClass: "Humectant", adi: "Not specified", description: "Humectant.", category: "other" },
             { ins: "1520", name: "Propylene glycol", chemicalName: "Propylene glycol", functionalClass: "Humectant", adi: "0–25 mg/kg bw", description: "Humectant, solvent.", category: "other" },
             { ins: "1521", name: "PEG", chemicalName: "Polyethylene glycol", functionalClass: "Anti-foaming", adi: "0-10 mg/kg bw", description: "Anti-foaming agent.", category: "other" }
+        ,
+            { ins: "905d", name: "Mineral oil high viscosity", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "427", name: "Cassia gum", chemicalName: "Not specified", functionalClass: "Emulsifier, Stabiliser, Thickener", adi: "Not specified", description: "Emulsifier, Stabiliser, Thickener.", category: "emulsifier" },
+            { ins: "419", name: "Gum ghatti", chemicalName: "Not specified", functionalClass: "Stabiliser, Thickener", adi: "Not specified", description: "Stabiliser, Thickener.", category: "emulsifier" },
+            { ins: "225", name: "Calcium Disulphite", chemicalName: "Not specified", functionalClass: "Antioxidant, Preservative", adi: "Not specified", description: "Antioxidant, Preservative.", category: "preservative" },
+            { ins: "160e", name: "Beta-apo-8′-carotenal (c30)", chemicalName: "Not specified", functionalClass: "Colour", adi: "Not specified", description: "Colour.", category: "color" },
+            { ins: "948", name: "Oxygen", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "159", name: "E15x - E15x food additive", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "916", name: "Calcium iodate", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "266", name: "Sodium dehydroacetate", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "227", name: "Calcium bisulphite", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "638", name: "E638", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "222", name: "Sodium bisulphite", chemicalName: "Not specified", functionalClass: "Antioxidant, Preservative", adi: "Not specified", description: "Antioxidant, Preservative.", category: "preservative" },
+            { ins: "219", name: "Sodium methyl p-hydroxybenzoate", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "160f", name: "Ethyl ester of beta-apo-8'-carotenic acid (C 30)", chemicalName: "Not specified", functionalClass: "Colour", adi: "Not specified", description: "Colour.", category: "color" },
+            { ins: "908", name: "Rice bran wax", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "969", name: "Advantame", chemicalName: "Not specified", functionalClass: "Sweetener", adi: "Not specified", description: "Sweetener.", category: "sweetener" },
+            { ins: "905c", name: "Petroleum wax", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "383", name: "calcium glycerophosphate", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "496", name: "Sorbitan trioleate", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "307b", name: "concentrated tocopherol", chemicalName: "Not specified", functionalClass: "Antioxidant", adi: "Not specified", description: "Antioxidant.", category: "antioxidant" },
+            { ins: "231", name: "Orthophenyl phenol", chemicalName: "Not specified", functionalClass: "Preservative", adi: "Not specified", description: "Preservative.", category: "preservative" },
+            { ins: "309", name: "Delta-tocopherol", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "1510", name: "Ethanol", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "1203", name: "Polyvinyl alcohol", chemicalName: "Not specified", functionalClass: "Thickener", adi: "Not specified", description: "Thickener.", category: "emulsifier" },
+            { ins: "166", name: "Sandalwood", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "154", name: "Brown FK", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "161d", name: "Rubixanthin", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "131", name: "Patent blue v", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "962", name: "Salt of aspartame-acesulfame", chemicalName: "Not specified", functionalClass: "Sweetener", adi: "Not specified", description: "Sweetener.", category: "sweetener" },
+            { ins: "924a", name: "Potassium bromate", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "322a", name: "Oat lecithin", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "201", name: "Sodium sorbate", chemicalName: "Not specified", functionalClass: "Preservative", adi: "Not specified", description: "Preservative.", category: "preservative" },
+            { ins: "217", name: "Sodium propyl para-hydroxybenzoate", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "163f", name: "Petunidin", chemicalName: "Not specified", functionalClass: "Colour", adi: "Not specified", description: "Colour.", category: "color" },
+            { ins: "241", name: "Gum Guaicum", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "963", name: "Tagatose", chemicalName: "Not specified", functionalClass: "Sweetener", adi: "Not specified", description: "Sweetener.", category: "sweetener" },
+            { ins: "960b", name: "Rebaudioside from multiple gene donors expressed in Yarrowia lipolityca", chemicalName: "Not specified", functionalClass: "Sweetener", adi: "Not specified", description: "Sweetener.", category: "sweetener" },
+            { ins: "125", name: "Scarlet GN", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "163e", name: "Peonidin", chemicalName: "Not specified", functionalClass: "Colour", adi: "Not specified", description: "Colour.", category: "color" },
+            { ins: "458", name: "Gamma-Cyclodextrine", chemicalName: "Not specified", functionalClass: "Stabiliser, Thickener", adi: "Not specified", description: "Stabiliser, Thickener.", category: "emulsifier" },
+            { ins: "440a", name: "Pectin", chemicalName: "Not specified", functionalClass: "Emulsifier, Stabiliser, Thickener", adi: "Not specified", description: "Emulsifier, Stabiliser, Thickener.", category: "emulsifier" },
+            { ins: "440a", name: "E440aiii - Potassium pectate", chemicalName: "Not specified", functionalClass: "Emulsifier, Stabiliser, Thickener", adi: "Not specified", description: "Emulsifier, Stabiliser, Thickener.", category: "emulsifier" },
+            { ins: "303", name: "Potassium ascorbate", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "215", name: "Sodium ethyl p-hydroxybenzoate", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "429", name: "peptone", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "944", name: "Propane", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "161c", name: "Cryptoaxanthin", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "181", name: "Tannin", chemicalName: "Not specified", functionalClass: "Colour, Emulsifier, Stabiliser, Thickener", adi: "Not specified", description: "Colour, Emulsifier, Stabiliser, Thickener.", category: "color" },
+            { ins: "1205", name: "Basic methacrylate copolymer", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "221", name: "Sodium sulphite", chemicalName: "Not specified", functionalClass: "Antioxidant, Preservative", adi: "Not specified", description: "Antioxidant, Preservative.", category: "preservative" },
+            { ins: "209", name: "Heptylparaben", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "918", name: "Nitrogen oxides", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "164", name: "saffron", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "906", name: "Benzoin resin", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "905f", name: "Mineral oil medium and low viscosity class II", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "307a", name: "D-Alpha-tocopherol", chemicalName: "Not specified", functionalClass: "Antioxidant", adi: "Not specified", description: "Antioxidant.", category: "antioxidant" },
+            { ins: "537", name: "ferrous hexacyanomanganate", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "240", name: "Formaldehyde", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "180", name: "Litholrubine bk", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "487", name: "sodium dodecyl sulfate", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "111", name: "Orange GGN", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "143", name: "Fast Green FCF", chemicalName: "Not specified", functionalClass: "Colour", adi: "Not specified", description: "Colour.", category: "color" },
+            { ins: "232", name: "Sodium orthophenyl phenol", chemicalName: "Not specified", functionalClass: "Preservative", adi: "Not specified", description: "Preservative.", category: "preservative" },
+            { ins: "285", name: "Sodium tetraborate (borax)", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "237", name: "Sodium formiate", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "553a", name: "E553aii - Magnesium trisilicate", chemicalName: "Not specified", functionalClass: "Thickener", adi: "Not specified", description: "Thickener.", category: "emulsifier" },
+            { ins: "233", name: "Thiabendazole", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "1206", name: "Neutral methacrylate copolymer", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "323", name: "Anoxomer", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "105", name: "Fast Yellow AB", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "1204", name: "Pullulan", chemicalName: "Not specified", functionalClass: "Thickener", adi: "Not specified", description: "Thickener.", category: "emulsifier" },
+            { ins: "1209", name: "Polyvinyl alcohol-polyethylene glycol-graft-co-polymer", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "905e", name: "Mineral oil medium viscosity", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "946", name: "octafluorocyclobutane", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "130", name: "Indanthrene blue RS", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "485", name: "Sodium stearoyl fumarate", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "161f", name: "Rhodoxanthin", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "905c", name: "E905ci - Microcrystalline wax", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "242", name: "Dimethyl dicarbonate", chemicalName: "Not specified", functionalClass: "Preservative", adi: "Not specified", description: "Preservative.", category: "preservative" },
+            { ins: "203", name: "Calcium sorbate", chemicalName: "Not specified", functionalClass: "Preservative", adi: "Not specified", description: "Preservative.", category: "preservative" },
+            { ins: "505", name: "Ferrous carbonate", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "960a", name: "Steviol glycosides from Stevia", chemicalName: "Not specified", functionalClass: "Sweetener", adi: "Not specified", description: "Sweetener.", category: "sweetener" },
+            { ins: "574", name: "Gluconic acid", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "230", name: "Biphenyl", chemicalName: "Not specified", functionalClass: "Preservative", adi: "Not specified", description: "Preservative.", category: "preservative" },
+            { ins: "182", name: "Orcein", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "163d", name: "Pelargonidin", chemicalName: "Not specified", functionalClass: "Colour", adi: "Not specified", description: "Colour.", category: "color" },
+            { ins: "161", name: "E161i - Citranaxanthin", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "440b", name: "pectin amide", chemicalName: "Not specified", functionalClass: "Emulsifier, Stabiliser, Thickener", adi: "Not specified", description: "Emulsifier, Stabiliser, Thickener.", category: "emulsifier" },
+            { ins: "313", name: "Ethyl gallate", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "411", name: "E411 food additive", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "163c", name: "Malvidin", chemicalName: "Not specified", functionalClass: "Colour", adi: "Not specified", description: "Colour.", category: "color" },
+            { ins: "489", name: "Methyl glucoside-coconut oil ester", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "1423", name: "Acetylated distarch glycerol", chemicalName: "Not specified", functionalClass: "Emulsifier, Stabiliser, Thickener", adi: "Not specified", description: "Emulsifier, Stabiliser, Thickener.", category: "emulsifier" },
+            { ins: "1517", name: "Glyceryl diacetate", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "317", name: "Erythorbin acid", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "924b", name: "Calcium bromate", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "502", name: "Carbonates", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "239", name: "Hexamethylene tetramine", chemicalName: "Not specified", functionalClass: "Preservative", adi: "Not specified", description: "Preservative.", category: "preservative" },
+            { ins: "121", name: "Citrus Red 2", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "264", name: "Ammonium acetate", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "543", name: "E543 food additive", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "580", name: "Magnesium Gluconate", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "161e", name: "Violaxanthin", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "1441", name: "Hydroxy propyl distarch glycerine", chemicalName: "Not specified", functionalClass: "Emulsifier, Stabiliser, Thickener", adi: "Not specified", description: "Emulsifier, Stabiliser, Thickener.", category: "emulsifier" },
+            { ins: "101a", name: "E101a food additive", chemicalName: "Not specified", functionalClass: "Colour", adi: "Not specified", description: "Colour.", category: "color" },
+            { ins: "961", name: "Neotame", chemicalName: "Not specified", functionalClass: "Sweetener", adi: "Not specified", description: "Sweetener.", category: "sweetener" },
+            { ins: "243", name: "Ethyl lauroyl arginate", chemicalName: "Not specified", functionalClass: "Preservative", adi: "Not specified", description: "Preservative.", category: "preservative" },
+            { ins: "539", name: "sodium thiosulfate", chemicalName: "Not specified", functionalClass: "Antioxidant, Sequestrant", adi: "Not specified", description: "Antioxidant, Sequestrant.", category: "antioxidant" },
+            { ins: "572", name: "Magnesium stearate", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "161g", name: "Canthaxanthin", chemicalName: "Not specified", functionalClass: "Colour", adi: "Not specified", description: "Colour.", category: "color" },
+            { ins: "913", name: "Lanolin", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "163b", name: "Delphinidin", chemicalName: "Not specified", functionalClass: "Colour", adi: "Not specified", description: "Colour.", category: "color" },
+            { ins: "553a", name: "synthetic magnesium silicates", chemicalName: "Not specified", functionalClass: "Thickener", adi: "Not specified", description: "Thickener.", category: "emulsifier" },
+            { ins: "900a", name: "Dimethyl polysiloxane", chemicalName: "Not specified", functionalClass: "Emulsifier", adi: "Not specified", description: "Emulsifier.", category: "emulsifier" },
+            { ins: "467", name: "Ethulose", chemicalName: "Not specified", functionalClass: "Emulsifier, Stabiliser, Thickener", adi: "Not specified", description: "Emulsifier, Stabiliser, Thickener.", category: "emulsifier" },
+            { ins: "426", name: "Soybean hemicellulose", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "160", name: "Carotenoids", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "462", name: "Ethyl cellulose", chemicalName: "Not specified", functionalClass: "Carrier, Thickener", adi: "Not specified", description: "Carrier, Thickener.", category: "emulsifier" },
+            { ins: "265", name: "Dehydroacetic acid", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "915", name: "Esters of Colophane", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "958", name: "Glycyrrhizin", chemicalName: "Not specified", functionalClass: "Sweetener", adi: "Not specified", description: "Sweetener.", category: "sweetener" },
+            { ins: "1421", name: "Acetylated starch", chemicalName: "Not specified", functionalClass: "Emulsifier, Stabiliser, Thickener", adi: "Not specified", description: "Emulsifier, Stabiliser, Thickener.", category: "emulsifier" },
+            { ins: "488", name: "Ethoxylated Mono- and Di-Glycerides", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "238", name: "Calcium formiate", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "917", name: "potassium iodate", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "1443", name: "Hydroxy propyl distarch glycerol", chemicalName: "Not specified", functionalClass: "Emulsifier, Stabiliser, Thickener", adi: "Not specified", description: "Emulsifier, Stabiliser, Thickener.", category: "emulsifier" },
+            { ins: "267", name: "Buffered vinegar", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "226", name: "Calcium sulphite", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "472", name: "acid esters of mono- and diglycerides of fatty acids", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "573", name: "Aluminium stearate", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "929", name: "acetone peroxide", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "314", name: "Guaiacum", chemicalName: "Not specified", functionalClass: "Antioxidant", adi: "Not specified", description: "Antioxidant.", category: "antioxidant" },
+            { ins: "161a", name: "Flavoxanthin", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "324", name: "Ethoxyquin", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "922", name: "Potassium persulfate", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "905g", name: "Mineral oil medium and low viscosity class III", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "919", name: "Nitrosyl chloride", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "927", name: "Azodicarbonamide and Carbamide", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "216", name: "Propyl para-hydroxybenzoate", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "484", name: "Stearyl citrate", chemicalName: "Not specified", functionalClass: "Antioxidant, Emulsifier, Sequestrant", adi: "Not specified", description: "Antioxidant, Emulsifier, Sequestrant.", category: "antioxidant" },
+            { ins: "931", name: "Nitrogen", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "318", name: "Calcium erythorbin", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "126", name: "Ponceau 6R", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "306", name: "Tocopherol-rich extract", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "414a", name: "E414a food additive", chemicalName: "Not specified", functionalClass: "Carrier, Emulsifier, Stabiliser, Thickener", adi: "Not specified", description: "Carrier, Emulsifier, Stabiliser, Thickener.", category: "emulsifier" },
+            { ins: "408", name: "Bakers yeast glycan", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "161h", name: "Zeaxanthin", chemicalName: "Not specified", functionalClass: "Colour", adi: "Not specified", description: "Colour.", category: "color" },
+            { ins: "560", name: "Potassium silicate", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "1504", name: "ethyl acetate", chemicalName: "Not specified", functionalClass: "Carrier", adi: "Not specified", description: "Carrier.", category: "other" },
+            { ins: "284", name: "Boric acid", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "490", name: "Propylene glycol", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "470", name: "Sodium/potassium/calcium and magnesium salts of fatty acids", chemicalName: "Not specified", functionalClass: "Emulsifier, Stabiliser, Thickener", adi: "Not specified", description: "Emulsifier, Stabiliser, Thickener.", category: "emulsifier" },
+            { ins: "923", name: "ammonium persulfate", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "905a", name: "mineral oil", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "165", name: "Gardenia Blue", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "910", name: "Wax ester", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "486", name: "Calcium stearoyl fumarate", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "1452", name: "Starch aluminium octenyl succinate", chemicalName: "Not specified", functionalClass: "Emulsifier, Stabiliser, Thickener", adi: "Not specified", description: "Emulsifier, Stabiliser, Thickener.", category: "emulsifier" },
+            { ins: "945", name: "chloropentafluoroethane", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "1519", name: "Benzyl alcohol", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "214", name: "Ethyl p-hydroxybenzoate", chemicalName: "Not specified", functionalClass: "Preservative", adi: "Not specified", description: "Preservative.", category: "preservative" },
+            { ins: "964", name: "Polyglycitol syrup", chemicalName: "Not specified", functionalClass: "Sweetener", adi: "Not specified", description: "Sweetener.", category: "sweetener" },
+            { ins: "1411", name: "Distarch glycerol", chemicalName: "Not specified", functionalClass: "Emulsifier, Stabiliser, Thickener", adi: "Not specified", description: "Emulsifier, Stabiliser, Thickener.", category: "emulsifier" },
+            { ins: "1499", name: "E14XX - Modified Starch", chemicalName: "Not specified", functionalClass: "Emulsifier, Stabiliser, Thickener", adi: "Not specified", description: "Emulsifier, Stabiliser, Thickener.", category: "emulsifier" },
+            { ins: "236", name: "Formic acid", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "713", name: "Tylosin", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "106", name: "flavin mononucleotide", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "927a", name: "Azodicarbonamide", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "911", name: "Fatty acid methyl ester", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "960c", name: "Enzymatically produced steviol glycosides", chemicalName: "Not specified", functionalClass: "Sweetener", adi: "Not specified", description: "Sweetener.", category: "sweetener" },
+            { ins: "1208", name: "Polyvinylpyrrolidone-vinyl acetate copolymer", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "228", name: "Potassium bisulphite", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "1210", name: "Carbomer", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "152", name: "Black 7984", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "1503", name: "Castor oil", chemicalName: "Not specified", functionalClass: "Carrier, Emulsifier", adi: "Not specified", description: "Carrier, Emulsifier.", category: "emulsifier" },
+            { ins: "960d", name: "Glucosylated steviol glycosides", chemicalName: "Not specified", functionalClass: "Sweetener", adi: "Not specified", description: "Sweetener.", category: "sweetener" },
+            { ins: "900b", name: "Methylphenylpolysiloxane", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "550", name: "Sodium silicate", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "1000", name: "Cholic acid", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "163a", name: "Cyanidin", chemicalName: "Not specified", functionalClass: "Colour", adi: "Not specified", description: "Colour.", category: "color" },
+            { ins: "571", name: "E571", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "586", name: "4-hexylresorcinol", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "392", name: "Extracts of rosemary", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "905c", name: "E905cii - Paraffin wax", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "930", name: "calcium peroxide", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "642", name: "E642", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "473a", name: "Oligoesters of sucrose type I", chemicalName: "Not specified", functionalClass: "Emulsifier, Stabiliser", adi: "Not specified", description: "Emulsifier, Stabiliser.", category: "emulsifier" },
+            { ins: "905b", name: "petroleum jelly", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "546", name: "Magnesium pyrophosphate", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "472g", name: "Succinylated monoglycerides", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "307c", name: "DL-Alpha-tocopherol", chemicalName: "Not specified", functionalClass: "Antioxidant", adi: "Not specified", description: "Antioxidant.", category: "antioxidant" },
+            { ins: "553", name: "Magnesium silicates", chemicalName: "Not specified", functionalClass: "Thickener", adi: "Not specified", description: "Thickener.", category: "emulsifier" },
+            { ins: "246", name: "Glycolipids", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "1207", name: "Anionic methacrylate copolymer", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "949", name: "Hydrogen", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "424", name: "Curdlan", chemicalName: "Not specified", functionalClass: "Stabiliser, Thickener", adi: "Not specified", description: "Stabiliser, Thickener.", category: "emulsifier" },
+            { ins: "457", name: "Alpha-Cyclodextrine", chemicalName: "Not specified", functionalClass: "Stabiliser, Thickener", adi: "Not specified", description: "Stabiliser, Thickener.", category: "emulsifier" },
+            { ins: "150", name: "Caramel", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "1430", name: "Distarch glycerine", chemicalName: "Not specified", functionalClass: "Emulsifier, Stabiliser, Thickener", adi: "Not specified", description: "Emulsifier, Stabiliser, Thickener.", category: "emulsifier" },
+            { ins: "940", name: "Dichlorodifluoromethane", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "440a", name: "E440aii - Sodium pectate", chemicalName: "Not specified", functionalClass: "Emulsifier, Stabiliser, Thickener", adi: "Not specified", description: "Emulsifier, Stabiliser, Thickener.", category: "emulsifier" },
+            { ins: "921", name: "L-cysteine hydrochloride monohydrate", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "557", name: "hemimorphite", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "968", name: "Erythritol", chemicalName: "Not specified", functionalClass: "Humectant, Sweetener", adi: "Not specified", description: "Humectant, Sweetener.", category: "sweetener" },
+            { ins: "909", name: "Spermaceti", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "553a", name: "E553ai - Synthetic magnesium silicate", chemicalName: "Not specified", functionalClass: "Thickener", adi: "Not specified", description: "Thickener.", category: "emulsifier" },
+            { ins: "218", name: "Methyl p-hydroxybenzoate", chemicalName: "Not specified", functionalClass: "Preservative", adi: "Not specified", description: "Preservative.", category: "preservative" },
+            { ins: "440a", name: "E440aiv - Ammonium Pectate", chemicalName: "Not specified", functionalClass: "Emulsifier, Stabiliser, Thickener", adi: "Not specified", description: "Emulsifier, Stabiliser, Thickener.", category: "emulsifier" },
+            { ins: "446", name: "Succistearin", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "161", name: "Xanthophylls", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "710", name: "Spiramycin", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "932", name: "Nitrogen oxide", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "224", name: "Potassium metabisulphite", chemicalName: "Not specified", functionalClass: "Antioxidant, Preservative", adi: "Not specified", description: "Antioxidant, Preservative.", category: "preservative" },
+            { ins: "128", name: "Red 2G", chemicalName: "Not specified", functionalClass: "Colour", adi: "Not specified", description: "Colour.", category: "color" },
+            { ins: "1101", name: "Protease", chemicalName: "Not specified", functionalClass: "Stabiliser", adi: "Not specified", description: "Stabiliser.", category: "emulsifier" },
+            { ins: "308", name: "Gamme-tocopherol", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "639", name: "E369 - Alanin", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" },
+            { ins: "161", name: "E161j - Astaxanthin", chemicalName: "Not specified", functionalClass: "Other", adi: "Not specified", description: "Other.", category: "other" }
         ];
 
         // --- Components ---
@@ -459,7 +683,7 @@
                                 </div>
                                 <h2 className="text-xl text-slate-600 font-medium">{item.name}</h2>
                             </div>
-                            <button 
+                            <button
                                 onClick={onClose}
                                 className="p-2 hover:bg-slate-200 rounded-full transition-colors"
                                 aria-label="Close modal"
@@ -470,7 +694,7 @@
 
                         {/* Content */}
                         <div className="p-6 space-y-6">
-                            
+
                             <div className="grid md:grid-cols-2 gap-6">
                                 <div className="bg-blue-50 p-4 rounded-lg border border-blue-100">
                                     <div className="flex items-center gap-2 mb-2 text-blue-700 font-semibold">
@@ -510,7 +734,7 @@
 
                         {/* Footer */}
                         <div className="p-4 border-t border-gray-100 bg-slate-50 rounded-b-xl text-right">
-                            <button 
+                            <button
                                 onClick={onClose}
                                 className="px-4 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-700 transition-colors text-sm font-medium"
                             >
@@ -535,7 +759,7 @@
                 if (searchTerms.length === 0) return [];
 
                 return ADDITIVES_DB.filter(item => {
-                    return searchTerms.some(term => 
+                    return searchTerms.some(term =>
                         item.ins.toLowerCase().includes(term) ||
                         item.name.toLowerCase().includes(term) ||
                         item.functionalClass.toLowerCase().includes(term) ||
@@ -546,7 +770,7 @@
 
             return (
                 <div className="min-h-screen bg-slate-50 text-slate-900 font-sans selection:bg-blue-200">
-                    
+
                     {/* Header */}
                     <header className="bg-white shadow-sm border-b border-slate-200 sticky top-0 z-10">
                         <div className="max-w-5xl mx-auto px-4 py-4">
@@ -574,7 +798,7 @@
                                         onChange={(e) => setSearchTerm(e.target.value)}
                                     />
                                     {searchTerm && (
-                                        <button 
+                                        <button
                                             onClick={() => setSearchTerm('')}
                                             className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600"
                                         >
@@ -588,7 +812,7 @@
 
                     {/* Main Content */}
                     <main className="max-w-5xl mx-auto px-4 py-8">
-                        
+
                         {/* Stats Bar */}
                         {searchTerm && (
                             <div className="flex justify-between items-center mb-6 px-1 animate-in fade-in slide-in-from-top-2 duration-300">
@@ -620,9 +844,9 @@
                             </div>
                         ) : filteredAdditives.length > 0 ? (
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-in fade-in duration-300">
-                                {filteredAdditives.map((item) => (
-                                    <div 
-                                        key={item.ins}
+                                {filteredAdditives.map((item, index) => (
+                                    <div
+                                        key={`${item.ins}-${index}`}
                                         onClick={() => setSelectedAdditive(item)}
                                         className="group bg-white rounded-xl border border-slate-200 hover:border-blue-400 hover:shadow-lg transition-all duration-300 cursor-pointer overflow-hidden flex flex-col h-full"
                                     >
@@ -633,17 +857,17 @@
                                                 </span>
                                                 <IconInfo className="w-4 h-4 text-slate-300 group-hover:text-blue-500 transition-colors" />
                                             </div>
-                                            
+
                                             <h3 className="text-lg font-bold text-slate-800 mb-1 leading-tight group-hover:text-blue-700 transition-colors">
                                                 {item.name}
                                             </h3>
                                             <p className="text-sm text-slate-500 mb-3">{item.functionalClass}</p>
-                                            
+
                                             <p className="text-sm text-slate-600 line-clamp-2">
                                                 {item.description}
                                             </p>
                                         </div>
-                                        
+
                                         <div className="px-5 py-3 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
                                             <CategoryBadge category={item.category} />
                                             <span className="text-xs font-medium text-slate-400 group-hover:text-slate-600 uppercase tracking-wider flex items-center gap-1">
@@ -660,7 +884,7 @@
                                 <p className="text-slate-500 mt-1">
                                     We couldn't find anything matching "<span className="font-semibold">{searchTerm}</span>"
                                 </p>
-                                <button 
+                                <button
                                     onClick={() => setSearchTerm('')}
                                     className="mt-6 px-6 py-2 bg-slate-100 text-slate-700 font-medium hover:bg-slate-200 rounded-lg transition-colors"
                                 >
@@ -683,9 +907,9 @@
                     </footer>
 
                     {/* Detail Modal */}
-                    <AdditiveModal 
-                        item={selectedAdditive} 
-                        onClose={() => setSelectedAdditive(null)} 
+                    <AdditiveModal
+                        item={selectedAdditive}
+                        onClose={() => setSelectedAdditive(null)}
                     />
                 </div>
             );
@@ -695,4 +919,5 @@
         root.render(<App />);
     </script>
 </body>
+
 </html>
