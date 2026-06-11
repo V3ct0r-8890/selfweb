@@ -3,10 +3,15 @@
 <!--
 ================================================================================
 NAME: Camera & Megapixel Equivalence Master Calculator (Pro)
-VERSION: 20260105.001
-TIMESTAMP: 2026-01-05 10:24:00
+VERSION: 20260611.001
+TIMESTAMP: 2026-06-11 10:30:00
 AUTHOR: Gemini (Thought Partner)
 SPECIFICATIONS:
+    - FIX: Near Limit DoF formula corrected (H+D-f instead of H+D-2f).
+    - FIX: Crop factors now computed dynamically from sensor W×H dimensions.
+    - FIX: Sensor dropdown uses unique ID to prevent same-factor collisions.
+    - FIX: 6x7 MF crop factor now accurate (0.48 computed vs 0.50 hardcoded).
+    - CLEANUP: Removed dead createVisualBar function.
     - UI UPDATE: Visual DoF labels now use black font in Light Theme.
     - UI UPDATE: Visual DoF track background darkened in Light Theme for visibility.
     - FEATURE: Added Front/Back DoF breakdown to main readout.
@@ -24,31 +29,43 @@ SPECIFICATIONS:
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Camera Equivalence Pro v20260105.001</title>
+    <title>Camera Equivalence Pro v20260611.001</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;700&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = { darkMode: 'class' }
     </script>
     <style>
+        /* === Dark Theme (default) === */
         :root {
-            --bg-main: #0f172a; --bg-card: #1e293b; --border: #334155;
-            --input-bg: #0f172a; --text-main: #f8fafc; --text-muted: #94a3b8;
-            --tab-bg: #1e293b; --tab-text: #94a3b8;
-            --formula-bg: #020617; --formula-text: #10b981;
-            --accent-blue: #3b82f6; --accent-emerald: #10b981;
-            --sync-bg: rgba(30, 41, 59, 0.5); --sync-border: #334155;
+            --bg-main: #0b1220; --bg-card: #111827; --border: #2a3441;
+            --input-bg: #0b1220; --text-main: #e5e7eb; --text-muted: #9ca3af;
+            --tab-bg: #111827; --tab-text: #9ca3af;
+            --formula-bg: #020617; --formula-text: #22c55e;
+            --accent-blue: #60a5fa; --accent-emerald: #22c55e;
+            --accent-secondary: #94a3b8;
+            --success: #22c55e; --warning: #f59e0b; --error: #ef4444; --info: #38bdf8;
+            --code-bg: #020617; --code-text: #f1f5f9;
+            --sync-bg: rgba(17, 24, 39, 0.5); --sync-border: #2a3441;
             color-scheme: dark;
         }
+        /* === Light Theme === */
         .light {
-            --bg-main: #f1f5f9; --bg-card: #ffffff; --border: #cbd5e1;
-            --input-bg: #ffffff; --text-main: #0f172a; --text-muted: #475569;
-            --tab-bg: #e2e8f0; --tab-text: #64748b;
-            --formula-bg: #0f172a; --formula-text: #22c55e;
-            --accent-blue: #2563eb; --accent-emerald: #15803d;
-            --sync-bg: #e2e8f0; --sync-border: #94a3b8;
+            --bg-main: #ffffff; --bg-card: #f7f7f9; --border: #e5e7eb;
+            --input-bg: #ffffff; --text-main: #1f2937; --text-muted: #6b7280;
+            --tab-bg: #f7f7f9; --tab-text: #64748b;
+            --formula-bg: #f3f4f6; --formula-text: #16a34a;
+            --accent-blue: #2563eb; --accent-emerald: #16a34a;
+            --accent-secondary: #64748b;
+            --success: #16a34a; --warning: #d97706; --error: #dc2626; --info: #0284c7;
+            --code-bg: #f3f4f6; --code-text: #111827;
+            --sync-bg: #f7f7f9; --sync-border: #e5e7eb;
             color-scheme: light;
         }
-        body { background-color: var(--bg-main); color: var(--text-main); transition: background-color 0.2s ease; font-size: 13px; }
+
+        body { background-color: var(--bg-main); color: var(--text-main); transition: background-color 0.3s ease, color 0.3s ease; font-family: 'Inter', sans-serif; font-size: 13px; }
         .card { background-color: var(--bg-card); border: 1px solid var(--border); color: var(--text-main); }
         
         .input-field { 
@@ -71,7 +88,7 @@ SPECIFICATIONS:
             margin-bottom: 2px; 
         }
 
-        .result-val { font-family: ui-monospace, monospace; font-weight: 700; line-height: 1.2; color: var(--text-main); }
+        .result-val { font-family: 'Fira Code', ui-monospace, monospace; font-weight: 700; line-height: 1.2; color: var(--text-main); }
         
         /* Light Theme Color Overrides (Global) */
         .light .text-emerald-500 { color: #166534; }
@@ -81,6 +98,7 @@ SPECIFICATIONS:
         .light .text-blue-400 { color: #1d4ed8; }
         .light .text-rose-400 { color: #be123c; }
         .light .text-rose-300 { color: #9f1239; }
+
         
         /* Sync Button Styling */
         .sync-box {
@@ -91,12 +109,13 @@ SPECIFICATIONS:
 
         /* Formula Block */
         .formula-block { 
-            background-color: #020617; 
-            border-left: 4px solid #3b82f6; 
-            color: #10b981 !important; 
+            background-color: var(--code-bg, #020617); 
+            border-left: 4px solid var(--accent-blue); 
+            color: var(--formula-text) !important;
+            font-family: 'Fira Code', ui-monospace, monospace;
         }
-        .formula-block div { color: #10b981 !important; }
-        .formula-label { color: #94a3b8 !important; }
+        .formula-block div { color: var(--formula-text) !important; }
+        .formula-label { color: var(--text-muted) !important; }
 
         .tab-btn { 
             padding: 12px 14px; 
@@ -218,10 +237,10 @@ SPECIFICATIONS:
     <div class="max-w-5xl mx-auto">
         <header class="mb-4 flex justify-between items-center border-b border-slate-700/50 pb-3">
             <div>
-                <h1 class="text-xl font-bold text-blue-400">Optics Comparison <span class="text-xs font-normal text-slate-500 ml-2">v20260105.001</span></h1>
+                <h1 class="text-xl font-bold text-blue-400">Optics Comparison <span class="text-xs font-normal text-slate-500 ml-2">v20260611.001</span></h1>
             </div>
             <div class="flex gap-2">
-                <button id="themeToggle" class="btn-action">🌓 Toggle Theme</button>
+                <button id="themeToggle" class="btn-action" style="min-width:85px; text-align:center;">🌙 Dark</button>
             </div>
         </header>
 
@@ -492,7 +511,7 @@ SPECIFICATIONS:
                     <h4 class="text-emerald-500 font-bold text-sm mb-2 uppercase tracking-wide">Depth of Field & Equivalence Formulas</h4>
                     <div class="formula-block p-4 rounded border border-slate-700 font-mono text-[12px] space-y-2">
                         <div><span class="formula-label">Hyperfocal (H):</span> (f² / (N * c)) + f</div>
-                        <div><span class="formula-label">Near Limit:</span> (D * (H - f)) / (H + D - 2f)</div>
+                        <div><span class="formula-label">Near Limit:</span> (D * (H - f)) / (H + D - f)</div>
                         <div><span class="formula-label">Far Limit:</span> (D * (H - f)) / (H - D)</div>
                         <div class="pt-2 border-t border-slate-800 font-bold"><span class="formula-label">Total DoF:</span> Far Limit - Near Limit</div>
                     </div>
@@ -518,17 +537,26 @@ SPECIFICATIONS:
 
     <script>
         const stockSensors = [
-            { id: "imax", name: "IMAX 15/70", w: 70.0, h: 48.5, factor: 0.51 },
-            { id: "6x7", name: "6x7 MF", w: 70.0, h: 56.0, factor: 0.5 },
-            { id: "gfx", name: "GFX (44x33)", w: 43.8, h: 32.9, factor: 0.79 },
-            { id: "ff", name: "Full Frame", w: 36.0, h: 24.0, factor: 1.0 },
-            { id: "apsc", name: "APS-C (Std)", w: 23.6, h: 15.7, factor: 1.52 },
-            { id: "canon_apsc", name: "APS-C (Can)", w: 22.2, h: 14.8, factor: 1.61 },
-            { id: "mft", name: "MFT", w: 17.3, h: 13.0, factor: 2.0 },
-            { id: "1in", name: "1-inch", w: 13.2, h: 8.8, factor: 2.72 }
+            { id: "imax", name: "IMAX 15/70", w: 70.0, h: 48.5 },
+            { id: "6x7", name: "6x7 MF", w: 70.0, h: 56.0 },
+            { id: "gfx", name: "GFX (44x33)", w: 43.8, h: 32.9 },
+            { id: "ff", name: "Full Frame", w: 36.0, h: 24.0 },
+            { id: "apsc", name: "APS-C (Std)", w: 23.6, h: 15.7 },
+            { id: "canon_apsc", name: "APS-C (Can)", w: 22.2, h: 14.8 },
+            { id: "mft", name: "MFT", w: 17.3, h: 13.0 },
+            { id: "1in", name: "1-inch", w: 13.2, h: 8.8 }
         ];
 
         let sensorData = []; // Populated in init()
+        const FF_DIAG = Math.sqrt(36 * 36 + 24 * 24); // ≈ 43.2666mm
+
+        function computeFactor(w, h) {
+            return parseFloat((FF_DIAG / Math.sqrt(w * w + h * h)).toFixed(2));
+        }
+
+        function getSensorById(id) {
+            return sensorData.find(s => s.id === id) || { id: 'ff', factor: 1.0, w: 36, h: 24 };
+        }
 
         const stockLenses = {
             "Primes": [
@@ -596,11 +624,9 @@ SPECIFICATIONS:
                 alert("Please enter valid name, width, and height.");
                 return;
             }
-            const diag = Math.sqrt(w*w + h*h);
-            const factor = (43.2666153 / diag).toFixed(2);
             const sensors = getCustomSensors();
             const id = "cust_" + Date.now();
-            sensors.push({ id, name, w, h, factor: parseFloat(factor), isCustom: true });
+            sensors.push({ id, name, w, h, isCustom: true });
             localStorage.setItem('customSensors', JSON.stringify(sensors));
             els.custSensName.value = ''; els.custSensW.value = ''; els.custSensH.value = '';
             renderSensors();
@@ -617,8 +643,10 @@ SPECIFICATIONS:
 
         function renderSensors() {
             const custom = getCustomSensors();
-            custom.sort((a,b) => a.factor - b.factor);
-            sensorData = [...stockSensors, ...custom];
+            sensorData = [...stockSensors, ...custom].map(s => ({
+                ...s,
+                factor: computeFactor(s.w, s.h)
+            }));
             sensorData.sort((a, b) => a.factor - b.factor);
 
             const selA = els.sA.value;
@@ -628,16 +656,16 @@ SPECIFICATIONS:
                 sel.innerHTML = ''; 
                 sensorData.forEach(s => {
                     const o = document.createElement('option');
-                    o.value = s.factor; 
+                    o.value = s.id; 
                     o.textContent = `${s.name} (${s.factor}x)`;
                     if(s.isCustom) o.textContent = `* ${s.name} (${s.factor}x)`;
                     sel.appendChild(o);
                 });
             });
 
-            if(selA) els.sA.value = selA; else els.sA.value = "1";
-            if(selB) els.sB.value = selB; else els.sB.value = "1.52";
-            if(!els.sA.value) els.sA.value = "1";
+            if(selA) els.sA.value = selA; else els.sA.value = "ff";
+            if(selB) els.sB.value = selB; else els.sB.value = "apsc";
+            if(!els.sA.value) els.sA.value = "ff";
 
             els.custSensList.innerHTML = custom.map((s, i) => `
                 <div class="flex justify-between items-center bg-slate-800/20 p-2 rounded border border-slate-700/50">
@@ -653,7 +681,7 @@ SPECIFICATIONS:
         }
 
         function renderTables() {
-            const fa = parseFloat(els.sA.value) || 1.0;
+            const fa = getSensorById(els.sA.value).factor;
             const refMP = parseFloat(els.mpA.value || 0);
             
             els.tRes.innerHTML = sensorData.map(s => {
@@ -686,7 +714,7 @@ SPECIFICATIONS:
             const data = {
                 lenses: JSON.parse(localStorage.getItem('customLenses') || '[]'),
                 sensors: JSON.parse(localStorage.getItem('customSensors') || '[]'),
-                version: "20260105.001"
+                version: "20260611.001"
             };
             const blob = new Blob([JSON.stringify(data, null, 2)], {type: "application/json"});
             const url = URL.createObjectURL(blob);
@@ -778,15 +806,16 @@ SPECIFICATIONS:
 
         // --- NEW DOF LOGIC ---
         function getDoFData(f, n, factor, distMm) {
-            if (!f || !n) return null;
-            const d = distMm || 2000; // Use input or fallback to 2m
-            const c = (0.03 / factor);
             const f_mm = parseFloat(f);
             const n_val = parseFloat(n);
+            if (!f_mm || !n_val || f_mm <= 0 || n_val <= 0) return null;
+            const d = distMm || 2000; // Use input or fallback to 2m
+            if (d <= 0) return null;
+            const c = (0.03 / factor);
             
             const h = (f_mm * f_mm) / (n_val * c) + f_mm;
             
-            const near = (d * (h - f_mm)) / (h + d - (2 * f_mm));
+            const near = (d * (h - f_mm)) / (h + d - f_mm);
             let far = (d * (h - f_mm)) / (h - d);
             
             // Handle Infinity
@@ -852,41 +881,10 @@ SPECIFICATIONS:
             return `${start.toFixed(1)}-${end.toFixed(1)}`;
         }
 
-        function createVisualBar(label, colorClass, dofData, maxDist) {
-            if (!dofData) return '';
-            
-            // Map 0-maxDist to 0-100%
-            const nearPct = Math.max(0, (dofData.near / maxDist) * 100);
-            
-            // Calculate width
-            let widthPct = 0;
-            let isInf = false;
-            
-            if (dofData.isInf || dofData.far > maxDist) {
-                widthPct = 100 - nearPct;
-                isInf = true;
-            } else {
-                widthPct = ((dofData.far - dofData.near) / maxDist) * 100;
-            }
-
-            // Styles
-            const bgClass = colorClass === 'A' ? 'bg-blue-500' : 'bg-rose-500';
-            const infClass = isInf ? 'inf' : '';
-            const arrow = isInf ? '<span style="position:absolute; right: -12px; top: 2px;">→</span>' : '';
-
-            return `
-            <div class="visual-track">
-                <div class="visual-subject-line"></div>
-                <div class="visual-label">${label}</div>
-                <div class="visual-bar ${bgClass} ${infClass}" style="left: ${nearPct}%; width: ${widthPct}%">
-                    ${arrow}
-                </div>
-            </div>`;
-        }
 
         function renderVisualTab() {
-            const fa = parseFloat(els.sA.value);
-            const fb = parseFloat(els.sB.value);
+            const fa = getSensorById(els.sA.value).factor;
+            const fb = getSensorById(els.sB.value).factor;
             const daVal = parseFloat(els.distA.value);
             
             // Determine Scale
@@ -982,7 +980,7 @@ SPECIFICATIONS:
                 els.distBContainer.classList.remove('opacity-50', 'pointer-events-none');
             }
 
-            const fa = parseFloat(els.sA.value), fb = parseFloat(els.sB.value);
+            const fa = getSensorById(els.sA.value).factor, fb = getSensorById(els.sB.value).factor;
             const distA_mm = parseFloat(els.distA.value) * 1000;
             const distB_mm = parseFloat(els.distB.value) * 1000;
 
@@ -1041,7 +1039,20 @@ SPECIFICATIONS:
         }
 
         document.querySelectorAll('input, select').forEach(i => i.addEventListener('input', update));
-        document.getElementById('themeToggle').onclick = () => { document.body.classList.toggle('dark'); document.body.classList.toggle('light'); };
+        /* --- Theme System (Dark / Light) --- */
+        const themeList = ['dark', 'light'];
+        const themeIcons = { dark: '🌙 Dark', light: '☀️ Light' };
+        function setTheme(t) {
+            document.body.classList.remove('dark', 'light');
+            document.body.classList.add(t);
+            document.getElementById('themeToggle').textContent = themeIcons[t];
+            try { localStorage.setItem('cameraCalcTheme', t); } catch(e) {}
+        }
+        document.getElementById('themeToggle').onclick = () => {
+            setTheme(document.body.classList.contains('dark') ? 'light' : 'dark');
+        };
+        // Restore saved theme
+        try { const saved = localStorage.getItem('cameraCalcTheme'); if (saved && themeList.includes(saved)) setTheme(saved); } catch(e) {}
         
         const tabs = ['tabVisual', 'tabRes', 'tabMult', 'tabDim', 'tabCustom', 'tabFormula'];
         const views = ['viewVisual', 'viewRes', 'viewMult', 'viewDim', 'viewCustom', 'viewFormula'];
