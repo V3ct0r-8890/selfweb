@@ -928,7 +928,7 @@
             if (filtered.length > 0) {
                 currentFeedItems = filtered;
                 renderSidebar(currentFeedItems);
-                updateSidebarStatus(`Cached: ${sourceName}`, `Items: ${filtered.length}`);
+                updateSidebarStatus(`Cached: ${sourceName}`, `Items: ${filtered.length}`, false);
                 document.getElementById('searchInput').value = '';
                 document.getElementById('content-area').innerHTML = `
                     <div class="msg-box">
@@ -952,7 +952,7 @@
                 </div>`;
         }
 
-        function updateSidebarStatus(msg, submsg="") {
+        function updateSidebarStatus(msg, submsg="", busy=true) {
             const sidebarList = document.getElementById('sidebar-list');
             if (currentFeedItems.length > 0) {
                 let statusBar = document.getElementById('status-bar-overlay');
@@ -966,7 +966,7 @@
                     statusBar.style.fontSize = '0.85em';
                     sidebarList.insertBefore(statusBar, sidebarList.firstChild);
                 }
-                statusBar.innerHTML = `<div class="mini-loader"></div> ${msg} <span style='color:#888'>${submsg}</span>`;
+                statusBar.innerHTML = `${busy ? '<div class="mini-loader"></div> ' : ''}${msg} <span style='color:#888'>${submsg}</span>`;
             } else {
                 sidebarList.innerHTML = `
                     <div class="loader"></div>
