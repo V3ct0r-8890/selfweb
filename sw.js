@@ -1,6 +1,6 @@
 // Bump on every release that changes any APP_SHELL file: this is what makes
 // browsers see a new version and offer the user the update.
-const CACHE_VERSION = 'selfweb-v5';
+const CACHE_VERSION = 'selfweb-v6';
 const APP_SHELL = [
   './',
   './index.html',
@@ -17,6 +17,7 @@ const APP_SHELL = [
   './modules/TimerTool.html',
   './modules/DigitalCamera-Lens-Calculator.html',
   './modules/TimeZoneViewer.html',
+  './modules/fonts/DSEG7Classic-Bold.woff2',
   './icons/icon-192.png',
   './icons/icon-512.png',
   './icons/icon-maskable-512.png',

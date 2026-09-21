@@ -25,6 +25,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Some feeds (e.g. DroidSans) refuse images requested from other sites (hotlink
+         protection keyed on the Referer header). Sending no referrer lets them load. -->
+    <meta name="referrer" content="no-referrer">
     <title>RSS Feed Reader v23 (Help Menu)</title>
     <style>
         :root {
@@ -1137,8 +1140,35 @@
                 title: item.title || "",
                 link: item.link || "",
                 date: rss2jsonDateToISO(item.pubDate || ""),
-                content: item.content || item.description || "No content."
+                content: item.content || item.description || "No content.",
+                image: leadImageOf(item)
             }));
+        }
+
+        // Picture attached to the item (thumbnail or image enclosure) rather than placed in the text.
+        function leadImageOf(item) {
+            if (item.thumbnail) return item.thumbnail;
+            const enc = item.enclosure || {};
+            if (enc.link && (!enc.type || enc.type.startsWith('image/'))) return enc.link;
+            return '';
+        }
+
+        /**
+         * Tidies images after an article's HTML is inserted: hides ones that fail to
+         * load (tracking pixels, dead links) instead of showing a broken-image icon,
+         * and shows the item's attached picture when the text has no image of its own.
+         */
+        function fixArticleImages(container, item) {
+            if (!container.querySelector('img') && item.image) {
+                const lead = document.createElement('img');
+                lead.src = item.image;
+                lead.alt = '';
+                container.prepend(lead);
+            }
+            container.querySelectorAll('img').forEach(img => {
+                img.loading = 'lazy';
+                img.addEventListener('error', () => { img.style.display = 'none'; }, { once: true });
+            });
         }
 
         async function fetchAllPresets(isBackground = false) {
@@ -1324,6 +1354,7 @@
                     </div>
                 </div>
             `;
+            fixArticleImages(contentArea.querySelector('.article-content'), item);
             if (NARROW_SCREEN.matches) openArticlePopup(item);
         }
 
@@ -1333,7 +1364,9 @@
             const dateText = item.date ? new Date(item.date).toLocaleString() : '';
             document.getElementById('articlePopupMeta').textContent = [item.source, dateText].filter(Boolean).join(' · ');
             document.getElementById('articlePopupTitle').textContent = item.title;
-            document.getElementById('articlePopupContent').innerHTML = item.content;
+            const popupContent = document.getElementById('articlePopupContent');
+            popupContent.innerHTML = item.content;
+            fixArticleImages(popupContent, item);
 
             const previewBtn = document.getElementById('articlePopupPreview');
             const tabLink = document.getElementById('articlePopupTab');

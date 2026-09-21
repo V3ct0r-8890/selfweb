@@ -55,49 +55,79 @@
             --primary-hover: #60a5fa;
         }
 
-        /* --- LCD / DIGITAL FONT SETUP --- */
+        /* --- LCD / DIGITAL DISPLAY ---
+           Seven-segment font: DSEG7 Classic by keshikan, SIL OFL 1.1 (fonts/DSEG-LICENSE.txt).
+           Light theme looks like a reflective LCD (olive glass, dark segments);
+           dark theme looks like a backlit one (black glass, glowing green segments). */
         @font-face {
-            font-family: 'DigitalLCD';
-            src: url('digital.ttf') format('truetype');
+            font-family: 'DSEG7';
+            src: url('fonts/DSEG7Classic-Bold.woff2') format('woff2');
             font-weight: normal;
             font-style: normal;
+            font-display: block;
         }
 
         :root.lcd-mode {
-            --lcd-color: #334155; /* Slate-700 */
-            --lcd-glow: rgba(51, 65, 85, 0.15);
+            --lcd-bg: linear-gradient(180deg, #cdd6ae 0%, #b6c194 100%);
+            --lcd-seg: #1c2414;
+            --lcd-off: rgba(28, 36, 20, 0.09);  /* unlit segments */
+            --lcd-glow: none;
+            --lcd-bezel: #4b5238;
         }
         :root.lcd-mode.dark {
-            --lcd-color: #cbd5e1; /* Slate-300 */
-            --lcd-glow: rgba(203, 213, 225, 0.4);
+            --lcd-bg: linear-gradient(180deg, #0a1a10 0%, #04100a 100%);
+            --lcd-seg: #5dffa5;
+            --lcd-off: rgba(93, 255, 165, 0.07);
+            --lcd-glow: 0 0 6px rgba(93, 255, 165, 0.55), 0 0 14px rgba(93, 255, 165, 0.25);
+            --lcd-bezel: #1e293b;
         }
-        
+
+        /* The glass panel */
         .lcd-mode .header-clock,
         .lcd-mode .big-display,
         .lcd-mode .timer-input,
         .lcd-mode .progress-text,
         .lcd-mode .alarm-time-display {
-            font-family: 'DigitalLCD', 'Consolas', 'Monaco', 'Lucida Console', monospace !important;
-            font-weight: 900 !important;
-            letter-spacing: 0.05em !important;
-            color: var(--lcd-color) !important; 
-            background-image: 
-                linear-gradient(transparent 50%, rgba(255,255,255,0.05) 50%),
-                linear-gradient(90deg, var(--lcd-color), var(--lcd-color));
-            -webkit-mask-image: linear-gradient(to bottom, black 40%, transparent 40%, transparent 45%, black 45%);
-            mask-image: linear-gradient(to bottom, black 40%, transparent 40%, transparent 45%, black 45%);
-            background-clip: text;
-            -webkit-background-clip: text;
-            filter: drop-shadow(0 0 3px var(--lcd-glow));
+            font-family: 'DSEG7', 'Consolas', monospace !important;
+            font-weight: normal !important;
+            letter-spacing: 0.04em !important;
+            color: var(--lcd-seg) !important;
+            text-shadow: var(--lcd-glow);
+            background: var(--lcd-bg);
+            border: 3px solid var(--lcd-bezel);
+            border-radius: 0.5rem;
+            box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.35), 0 1px 0 rgba(255, 255, 255, 0.08);
+            line-height: 1.1;
         }
+        .lcd-mode .big-display {
+            font-size: clamp(1.6rem, 9vw, 3rem);
+            padding: 0.9rem 1.1rem 0.7rem;
+        }
+        .lcd-mode .big-display small { font-size: 0.5em; color: inherit; }
+        .lcd-mode .progress-text { font-size: 1.6rem; padding: 0.6rem 0.8rem 0.45rem; } /* fits inside the 16rem ring */
+        .lcd-mode .header-clock {
+            display: inline-block;
+            font-size: 0.95rem;
+            padding: 0.3rem 0.55rem 0.2rem;
+            margin-top: 0.4rem;
+        }
+        .lcd-mode .timer-input { font-size: 1.8rem; border-width: 3px; }
+        .lcd-mode .timer-input:focus { border-color: var(--primary); }
+        .lcd-mode .alarm-time-display { padding: 0.25rem 0.45rem 0.15rem; border-width: 2px; }
 
-        .lcd-mode .timer-input {
-            border-color: var(--lcd-color) !important;
-            font-weight: bold;
+        /* Unlit "88:88:88" segments behind the digits, like a real LCD */
+        .lcd-mode [data-ghost] { position: relative; isolation: isolate; }
+        .lcd-mode [data-ghost]::before {
+            content: attr(data-ghost);
+            position: absolute;
+            left: 0; right: 0; top: 0; bottom: 0;
+            padding: inherit;
+            color: var(--lcd-off);
+            text-shadow: none;
+            z-index: -1;
+            pointer-events: none;
         }
-        .lcd-mode.dark .timer-input {
-            background-color: #0f172a !important;
-        }
+        .lcd-mode .big-display small[data-ghost]::before { padding: 0; }
 
         * {
             box-sizing: border-box;
@@ -516,7 +546,7 @@
             
             <div class="text-center" style="flex: 1;">
                 <div class="header-title">CHRONOS</div>
-                <div id="current-clock" class="header-clock">00:00:00</div>
+                <div id="current-clock" class="header-clock" data-ghost="88:88:88">00:00:00</div>
             </div>
 
             <!-- Right Controls -->
@@ -561,8 +591,7 @@
             <!-- STOPWATCH SECTION -->
             <div id="view-stopwatch">
                 <div class="flex flex-col items-center justify-center centered-view" style="height: 100%;">
-                    <div id="sw-display" class="big-display">
-                        00:00:00<small>.00</small>
+                    <div id="sw-display" class="big-display" data-ghost="88:88:88">00:00:00<small data-ghost=".88">.00</small>
                     </div>
                     
                     <div class="flex gap-4" style="margin-top: 2rem;">
@@ -622,7 +651,7 @@
                                 <circle cx="128" cy="128" r="120" stroke="var(--border-color)" stroke-width="8" fill="transparent" />
                                 <circle id="tm-progress" cx="128" cy="128" r="120" stroke="var(--primary)" stroke-width="8" fill="transparent" stroke-dasharray="753.98" stroke-dashoffset="0" />
                             </svg>
-                            <div id="tm-display" class="progress-text">00:00:00</div>
+                            <div id="tm-display" class="progress-text" data-ghost="88:88:88">00:00:00</div>
                         </div>
 
                         <div class="flex gap-4 w-full">
@@ -763,7 +792,8 @@
         document.querySelector('.theme-toggle').innerHTML = isDarkMode ? SVG.sun : SVG.moon;
 
         // --- LCD FONT LOGIC ---
-        let isLCDMode = localStorage.getItem('timerToolLcdMode') === 'true';
+        // LCD look is the default; the toggle switches to the plain font and remembers it.
+        let isLCDMode = localStorage.getItem('timerToolLcdMode') !== 'false';
         if(isLCDMode) document.documentElement.classList.add('lcd-mode');
 
         function toggleLCD() {
@@ -880,7 +910,7 @@
                 swInterval = setInterval(() => {
                     swElapsedTime = Date.now() - swStartTime;
                     const t = formatTimeDisplay(swElapsedTime);
-                    document.getElementById('sw-display').innerHTML = `${t.formatted}<small>.${t.centi}</small>`;
+                    document.getElementById('sw-display').innerHTML = `${t.formatted}<small data-ghost=".88">.${t.centi}</small>`;
                 }, 10);
                 swRunning = true;
                 btn.innerHTML = `${SVG.pause} PAUSE`;
@@ -892,7 +922,7 @@
             clearInterval(swInterval);
             swRunning = false;
             swElapsedTime = 0;
-            document.getElementById('sw-display').innerHTML = `00:00:00<small>.00</small>`;
+            document.getElementById('sw-display').innerHTML = `00:00:00<small data-ghost=".88">.00</small>`;
             document.getElementById('sw-laps').innerHTML = '<div class="text-center" style="color: var(--text-muted); margin-top: 1rem; font-style: italic;">No laps recorded</div>';
             document.getElementById('sw-btn-start').innerHTML = `${SVG.play} START`;
             document.getElementById('sw-btn-start').className = "btn-circle btn-start";

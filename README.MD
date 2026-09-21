@@ -26,4 +26,7 @@ This site is an installable Progressive Web App. Visit it in a supported browser
 
 When a new version is published, the app shows a "A new version is available" banner; tap **Update** to switch to it, or **Later** to keep using the current version until the next launch.
 
+## Personalize the menu
+In the launcher, the header's **Menu** box places the tools list as a sidebar, or as a dropdown at the top or bottom. The **Group** box (in the tools list, or in the dropdown bar) groups tools by type or by function. Both choices are remembered on each device.
+
 **Exception:** News Feed, INS Offline DB (Wikipedia lookups) and TimeZone Viewer (public holidays) call external APIs for live data and need an internet connection for those specific features; the rest of the app works fully offline.

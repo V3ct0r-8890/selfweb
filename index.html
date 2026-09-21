@@ -70,7 +70,15 @@
 
         <!-- Sidebar Menu -->
         <nav id="tool-menu" class="fixed inset-y-0 left-0 transform -translate-x-full md:relative md:translate-x-0 transition-transform duration-300 ease-in-out w-64 bg-white shadow-lg p-4 pt-24 md:pt-4 overflow-y-auto border-r border-gray-200 md:flex flex-col z-20">
-            <h2 class="text-lg font-semibold text-gray-800 mb-4 border-b pb-2">Tools List</h2>
+            <div id="sidebar-head" class="flex items-center justify-between gap-2 mb-4 border-b pb-2">
+                <h2 class="text-lg font-semibold text-gray-800">Tools List</h2>
+                <!-- Moved into the tool bar by applyMenuLayout() in dropdown layouts -->
+                <select id="group-select" aria-label="Group tools" title="Group tools" class="text-sm border border-gray-300 rounded-md px-1 py-1 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <option value="none">No groups</option>
+                    <option value="type">By type</option>
+                    <option value="fn">By function</option>
+                </select>
+            </div>
             <div id="menu-items" class="flex flex-col space-y-2">
                 <!-- Menu items will be inserted here by JavaScript -->
             </div>
@@ -93,20 +101,20 @@
     </div>
 
     <script>
+        // type = what kind of tool it is; fn = what it is used for. Both drive the "Group" menu option.
         const tools = [
-            { id: 'news', title: 'News Feed', file: 'modules/news-feed.html' },
-            { id: 'datecalc', title: 'Date Calculator', file: 'modules/datecalc.html' },
-            { id: 'passgen', title: 'Password Generator', file: 'modules/pass-gen.html' },
-            { id: 'passcheck', title: 'PasswordChecker', file: 'modules/PassCheck.html' },
-            { id: 'subnetcal', title: 'Subnet Calculator', file: 'modules/subnetcal.html' },
-            { id: 'energy', title: 'Energy Consumption Tracker', file: 'modules/EnergyConsumption-standalone.html' },
-            { id: 'insdb', title: 'INS Offline DB Tool', file: 'modules/INS-offlineDB.html' },
-            { id: 'mealsugg', title: 'Meal Suggestion Tool', file: 'modules/Meal suggest tool-standalone.html' },
-            { id: 'interest', title: 'Interest Calculator Tool', file: 'modules/InterestCalculator.html' },
-            { id: 'timertool', title: 'Timer Tool', file: 'modules/TimerTool.html' },
-            { id: 'lenstool', title: 'Digital Camera Lens Calculator', file: 'modules/DigitalCamera-Lens-Calculator.html' },
-            { id: 'tzviewer', title: 'TimeZone Viewer', file: 'modules/TimeZoneViewer.html' },
-      
+            { id: 'news', title: 'News Feed', file: 'modules/news-feed.html', type: 'Readers & Lookup', fn: 'News & Info' },
+            { id: 'datecalc', title: 'Date Calculator', file: 'modules/datecalc.html', type: 'Calculators', fn: 'Time & Planning' },
+            { id: 'passgen', title: 'Password Generator', file: 'modules/pass-gen.html', type: 'Generators & Checkers', fn: 'Security & Network' },
+            { id: 'passcheck', title: 'PasswordChecker', file: 'modules/PassCheck.html', type: 'Generators & Checkers', fn: 'Security & Network' },
+            { id: 'subnetcal', title: 'Subnet Calculator', file: 'modules/subnetcal.html', type: 'Calculators', fn: 'Security & Network' },
+            { id: 'energy', title: 'Energy Consumption Tracker', file: 'modules/EnergyConsumption-standalone.html', type: 'Trackers & Planners', fn: 'Money & Energy' },
+            { id: 'insdb', title: 'INS Offline DB Tool', file: 'modules/INS-offlineDB.html', type: 'Readers & Lookup', fn: 'Food & Health' },
+            { id: 'mealsugg', title: 'Meal Suggestion Tool', file: 'modules/Meal suggest tool-standalone.html', type: 'Trackers & Planners', fn: 'Food & Health' },
+            { id: 'interest', title: 'Interest Calculator Tool', file: 'modules/InterestCalculator.html', type: 'Calculators', fn: 'Money & Energy' },
+            { id: 'timertool', title: 'Timer Tool', file: 'modules/TimerTool.html', type: 'Clocks & Timers', fn: 'Time & Planning' },
+            { id: 'lenstool', title: 'Digital Camera Lens Calculator', file: 'modules/DigitalCamera-Lens-Calculator.html', type: 'Calculators', fn: 'Photography' },
+            { id: 'tzviewer', title: 'TimeZone Viewer', file: 'modules/TimeZoneViewer.html', type: 'Clocks & Timers', fn: 'Time & Planning' },
         ];
 
         const menuItemsContainer = document.getElementById('menu-items');
@@ -120,6 +128,9 @@
         const menuToggleWrap = document.getElementById('menu-toggle-wrap');
         const appLayout = document.getElementById('app-layout');
         const MENU_LAYOUT_KEY = 'launcherMenuLayout';
+        const groupSelect = document.getElementById('group-select');
+        const sidebarHead = document.getElementById('sidebar-head');
+        const MENU_GROUP_KEY = 'launcherMenuGroup';
 
         let currentActiveToolId = '';
 
@@ -145,10 +156,7 @@
                 document.getElementById(`btn-${currentActiveToolId}`).classList.add('hover:bg-indigo-50', 'text-gray-700');
             }
 
-            const newActiveButton = document.getElementById(`btn-${toolId}`);
-            newActiveButton.classList.remove('hover:bg-indigo-50', 'text-gray-700');
-            // Add the active classes
-            newActiveButton.classList.add('bg-indigo-600', 'text-white', 'shadow-md');
+            markActive(toolId);
             toolSelect.value = toolId;
             currentActiveToolId = toolId;
             
@@ -159,22 +167,70 @@
         }
 
         /**
-         * Populates the menu items in the sidebar.
+         * Builds the sidebar buttons and the dropdown options, optionally grouped.
+         * @param {string} groupBy - 'none' | 'type' | 'fn'
          */
-        function populateMenu() {
-            tools.forEach(tool => {
-                const button = document.createElement('button');
-                button.id = `btn-${tool.id}`;
-                button.className = 'w-full text-left p-3 rounded-lg transition duration-150 ease-in-out font-medium text-gray-700 hover:bg-indigo-50';
-                button.textContent = tool.title;
-                button.onclick = () => loadTool(tool.id);
-                menuItemsContainer.appendChild(button);
+        function populateMenu(groupBy) {
+            menuItemsContainer.replaceChildren();
+            toolSelect.replaceChildren();
 
-                const option = document.createElement('option');
-                option.value = tool.id;
-                option.textContent = tool.title;
-                toolSelect.appendChild(option);
+            // Groups keep the order in which they first appear in `tools`.
+            const groups = new Map();
+            tools.forEach(tool => {
+                const key = groupBy === 'none' ? '' : tool[groupBy];
+                if (!groups.has(key)) groups.set(key, []);
+                groups.get(key).push(tool);
             });
+
+            groups.forEach((groupTools, groupName) => {
+                let buttonParent = menuItemsContainer;
+                let optionParent = toolSelect;
+                if (groupName) {
+                    const section = document.createElement('details');
+                    section.open = true;
+                    section.className = 'group-section';
+                    const summary = document.createElement('summary');
+                    summary.className = 'cursor-pointer select-none px-1 pt-2 pb-1 text-xs font-bold uppercase tracking-wider text-indigo-500';
+                    summary.textContent = groupName;
+                    section.appendChild(summary);
+                    const list = document.createElement('div');
+                    list.className = 'flex flex-col space-y-1';
+                    section.appendChild(list);
+                    menuItemsContainer.appendChild(section);
+                    buttonParent = list;
+
+                    optionParent = document.createElement('optgroup');
+                    optionParent.label = groupName;
+                    toolSelect.appendChild(optionParent);
+                }
+
+                groupTools.forEach(tool => {
+                    const button = document.createElement('button');
+                    button.id = `btn-${tool.id}`;
+                    button.className = 'w-full text-left p-3 rounded-lg transition duration-150 ease-in-out font-medium text-gray-700 hover:bg-indigo-50';
+                    button.textContent = tool.title;
+                    button.onclick = () => loadTool(tool.id);
+                    buttonParent.appendChild(button);
+
+                    const option = document.createElement('option');
+                    option.value = tool.id;
+                    option.textContent = tool.title;
+                    optionParent.appendChild(option);
+                });
+            });
+
+            // Rebuilt buttons lose the highlight; restore it for the open tool.
+            if (currentActiveToolId) {
+                markActive(currentActiveToolId);
+                toolSelect.value = currentActiveToolId;
+            }
+        }
+
+        function markActive(toolId) {
+            const button = document.getElementById(`btn-${toolId}`);
+            if (!button) return;
+            button.classList.remove('hover:bg-indigo-50', 'text-gray-700');
+            button.classList.add('bg-indigo-600', 'text-white', 'shadow-md');
         }
 
         /**
@@ -190,6 +246,8 @@
             toolMenu.style.display = dropdown ? 'none' : '';
             menuToggleWrap.style.display = dropdown ? 'none' : '';
             toolBar.style.display = dropdown ? 'flex' : 'none';
+            // One Group control, shown wherever the tools list currently is.
+            if (dropdown) toolBar.appendChild(groupSelect); else sidebarHead.appendChild(groupSelect);
 
             if (layout === 'top') {
                 appLayout.before(toolBar);
@@ -210,6 +268,11 @@
 
         toolSelect.addEventListener('change', () => loadTool(toolSelect.value));
 
+        groupSelect.addEventListener('change', () => {
+            populateMenu(groupSelect.value);
+            try { localStorage.setItem(MENU_GROUP_KEY, groupSelect.value); } catch (e) { /* storage blocked: grouping just isn't remembered */ }
+        });
+
         // Toggle mobile menu visibility
         menuToggle.addEventListener('click', () => {
             toolMenu.classList.toggle('-translate-x-full');
@@ -217,7 +280,11 @@
 
         // Initialize the app
         document.addEventListener('DOMContentLoaded', () => {
-            populateMenu();
+            let savedGroup = 'none';
+            try { savedGroup = localStorage.getItem(MENU_GROUP_KEY) || 'none'; } catch (e) { /* storage blocked: use default */ }
+            if (!['none', 'type', 'fn'].includes(savedGroup)) savedGroup = 'none';
+            groupSelect.value = savedGroup;
+            populateMenu(savedGroup);
 
             let savedLayout = 'sidebar';
             try { savedLayout = localStorage.getItem(MENU_LAYOUT_KEY) || 'sidebar'; } catch (e) { /* storage blocked: use default */ }
