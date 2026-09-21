@@ -7,9 +7,8 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Use Inter font for a modern look -->
     <style>
-        @import url('https://fonts.fonts.gstatic.com/s/inter/v13/UcCO4Fq0J9f-UCjGeqI1Mz-mluY.woff2') format('woff2');
         body {
-            font-family: 'Inter', sans-serif;
+            font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
             background-color: #f7f7f7;
         }
         /* Custom scrollbar for table container */
@@ -92,8 +91,7 @@
                         <label for="downPaymentValue" class="block text-sm font-medium text-gray-700 mb-1">Down Payment Amount</label>
                         <div class="flex rounded-lg shadow-sm">
                             <input type="number" id="downPaymentValue" value="10" min="0" step="0.5" 
-                                class="block w-full p-3 border border-gray-300 rounded-l-lg focus:ring-blue-500 focus:border-blue-500"
-                                oninput="handleDownPaymentInput(event)">
+                                class="block w-full p-3 border border-gray-300 rounded-l-lg focus:ring-blue-500 focus:border-blue-500">
                             
                             <!-- Unit Selector -->
                             <div class="flex border border-gray-300 border-l-0 rounded-r-lg bg-white divide-x divide-gray-200">
@@ -351,7 +349,7 @@
             } else if (lastEditedDownPayment === 'absolute' && newUnit === 'percent') {
                 // Was absolute, now switch to percent -> Show percentage
                 const currentAbsolute = parseFloat(downPaymentInput.value) || 0;
-                newValue = (currentAbsolute / principal) * 100;
+                newValue = principal > 0 ? (currentAbsolute / principal) * 100 : 0;
             } else if (principal > 0) {
                  // Initial load or consistent unit, use the last edited absolute/percent value
                  const absoluteDisplay = document.getElementById('downPaymentAbsoluteDisplay').textContent;
@@ -387,9 +385,10 @@
             let loanAmountToAmortize = effectivePrincipal;
 
             if (isLeasing) {
+                // A balloon larger than the financed amount is not meaningful; cap it.
+                residualValue = Math.min(Math.max(0, residualValue), effectivePrincipal);
                 // For leasing, the principal reduction is (effectivePrincipal - residualValue)
                 loanAmountToAmortize = effectivePrincipal - residualValue;
-                if (loanAmountToAmortize < 0) loanAmountToAmortize = 0;
             }
 
             let remainingBalance = effectivePrincipal;
@@ -408,7 +407,10 @@
                 if (monthlyRate === 0) {
                     monthlyPayment = totalMonths > 0 ? loanAmountToAmortize / totalMonths : 0;
                 } else {
-                    monthlyPayment = calculateMonthlyPayment(loanAmountToAmortize, monthlyRate, totalMonths);
+                    // The balloon stays outstanding the whole term, so each payment also
+                    // covers a month's interest on it: PMT(PV - FV) + FV * r.
+                    const balloon = isLeasing ? residualValue : 0;
+                    monthlyPayment = calculateMonthlyPayment(loanAmountToAmortize, monthlyRate, totalMonths) + balloon * monthlyRate;
                 }
             } else {
                 // Use Simple Interest formula for FIXED rate loans (Loan/Leasing)
@@ -591,7 +593,7 @@
             const principal = parseFloat(document.getElementById('principal').value) || 0;
             const annualRate = parseFloat(document.getElementById('rate').value) || 0;
             const vatRate = parseFloat(document.getElementById('vatRate').value) || 0; 
-            const duration = parseInt(document.getElementById('duration').value) || 0;
+            const duration = parseFloat(document.getElementById('duration').value) || 0;
             const durationUnit = document.getElementById('durationUnit').value;
             const monthlyContribution = parseFloat(document.getElementById('monthlyPayment').value) || 0;
             const interestType = document.getElementById('interestType').value;
@@ -619,13 +621,13 @@
             updateDownPaymentDisplays(principal, downPaymentInput, lastEditedDownPayment);
 
 
-            // Basic input validation
-            if ((mode === 'loan' && principal <= 0 && !isLeasing) || annualRate < 0 || duration <= 0) {
-                 if (mode === 'loan' && principal > 0) return null; // Allow principal > 0
+            // Basic input validation (an empty schedule shows the "enter valid values" hint)
+            if (principal < 0 || annualRate < 0 || duration <= 0 || monthlyContribution < 0 || vatRate < 0 || residualValue < 0) {
+                return null;
             }
 
 
-            const totalMonths = durationUnit === 'years' ? duration * 12 : duration;
+            const totalMonths = Math.round(durationUnit === 'years' ? duration * 12 : duration);
             const monthlyRate = (annualRate / 100) / 12;
 
             return { 
@@ -805,7 +807,7 @@
                         </p>
                         <p class="text-sm text-gray-600 flex justify-between">
                             <span>Residual/Balloon Value:</span>
-                            <span class="font-semibold text-blue-600">${formatNumber(document.getElementById('residualValue').value, currencyCode)}</span>
+                            <span class="font-semibold text-blue-600">${formatNumber(results.residualValue, currencyCode)}</span>
                         </p>
                         <p class="text-sm text-gray-600 flex justify-between border-y py-2 my-2">
                             <span class="font-bold text-base">Monthly Installment (Base P+I):</span>
@@ -872,32 +874,6 @@
             summaryContent.innerHTML = html;
         }
 
-        function getTableHeaders(mode, isLeasing) {
-            if (mode === 'loan') {
-                return isLeasing
-                    ? [ 'Month', 'Start Balance', 'Total Payment', 'Interest Paid', 'VAT Paid', 'Principal Reduction', 'End Balance' ]
-                    : [ 'Month', 'Start Balance', 'Total Payment', 'Interest Paid', 'VAT Paid', 'Principal Paid', 'End Balance' ];
-            } else {
-                return [ 'Month', 'Start Balance', 'Contribution', 'Interest Earned', 'End Balance' ];
-            }
-        }
-
-        function renderTableHeader(mode, isLeasing) {
-            const tableHead = document.getElementById('tableHead');
-            const headers = getTableHeaders(mode, isLeasing);
-
-            tableHead.innerHTML = `
-                <tr>
-                    ${headers.map((h, index) => `
-                        <th class="px-3 py-3 ${index === 0 ? 'text-left' : 'text-right'} text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            ${h}
-                        </th>
-                    `).join('')}
-                </tr>
-            `;
-            document.getElementById('tableTitle').textContent = isLeasing ? 'Leasing/Financing Schedule' : (mode === 'loan' ? 'Amortization Schedule' : 'Growth Schedule');
-        }
-
         function updateUI() {
             const mode = document.querySelector('input[name="calcMode"]:checked').value;
             const isLeasing = document.getElementById('isLeasing')?.checked || false; 
@@ -930,6 +906,9 @@
 
             // Dynamic Interest Type options
             const interestTypeSelect = document.getElementById('interestType');
+            // Keep the user's choice when only the leasing box changed; default only on a mode switch.
+            const keepType = interestTypeSelect.dataset.mode === mode ? interestTypeSelect.value : '';
+            interestTypeSelect.dataset.mode = mode;
             interestTypeSelect.innerHTML = ''; 
             
             if (mode === 'loan') {
@@ -942,6 +921,7 @@
                 interestTypeSelect.add(new Option('Fixed Rate (Simple Interest)', 'simple'));
                 interestTypeSelect.value = 'compound'; 
             }
+            if (keepType) interestTypeSelect.value = keepType;
 
             // Recalculate and re-render the whole UI
             renderResults();
