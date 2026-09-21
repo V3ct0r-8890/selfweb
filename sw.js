@@ -1,7 +1,7 @@
 // Bump on every release that changes any APP_SHELL file: this is what makes
 // browsers see a new version and offer the user the update.
 // Matches APP_VERSION in index.html (aa.bb.ccc).
-const CACHE_VERSION = 'selfweb-1.01.003';
+const CACHE_VERSION = 'selfweb-1.01.004';
 const APP_SHELL = [
   './',
   './index.html',

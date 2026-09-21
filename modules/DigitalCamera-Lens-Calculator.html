@@ -7,7 +7,10 @@ VERSION: 20260611.001
 TIMESTAMP: 2026-06-11 10:30:00
 AUTHOR: Gemini (Thought Partner)
 SPECIFICATIONS:
-    - FIX: Near Limit DoF formula corrected (H+D-f instead of H+D-2f).
+    - FIX (selfweb 1.01.004): Near Limit reverted to H+D-2f — exact for H = f²/(Nc)+f;
+      H+D-f put the near limit up to ~7mm too close. Detail-equivalence MP now scales by
+      sensor area (MFT vs FF was 4% off). Custom sensor list showed "undefinedx".
+    - FIX: Near Limit DoF formula corrected (H+D-f instead of H+D-2f). [wrong — see above]
     - FIX: Crop factors now computed dynamically from sensor W×H dimensions.
     - FIX: Sensor dropdown uses unique ID to prevent same-factor collisions.
     - FIX: 6x7 MF crop factor now accurate (0.48 computed vs 0.50 hardcoded).
@@ -511,7 +514,7 @@ SPECIFICATIONS:
                     <h4 class="text-emerald-500 font-bold text-sm mb-2 uppercase tracking-wide">Depth of Field & Equivalence Formulas</h4>
                     <div class="formula-block p-4 rounded border border-slate-700 font-mono text-[12px] space-y-2">
                         <div><span class="formula-label">Hyperfocal (H):</span> (f² / (N * c)) + f</div>
-                        <div><span class="formula-label">Near Limit:</span> (D * (H - f)) / (H + D - f)</div>
+                        <div><span class="formula-label">Near Limit:</span> (D * (H - f)) / (H + D - 2f)</div>
                         <div><span class="formula-label">Far Limit:</span> (D * (H - f)) / (H - D)</div>
                         <div class="pt-2 border-t border-slate-800 font-bold"><span class="formula-label">Total DoF:</span> Far Limit - Near Limit</div>
                     </div>
@@ -671,7 +674,7 @@ SPECIFICATIONS:
                 <div class="flex justify-between items-center bg-slate-800/20 p-2 rounded border border-slate-700/50">
                     <div>
                         <div class="text-[10px] font-bold text-slate-300">${s.name}</div>
-                        <div class="text-[9px] text-slate-500">${s.w}x${s.h}mm (${s.factor}x)</div>
+                        <div class="text-[9px] text-slate-500">${s.w}x${s.h}mm (${computeFactor(s.w, s.h)}x)</div>
                     </div>
                     <button onclick="deleteSensor(${i})" class="text-rose-500 font-bold px-2">✕</button>
                 </div>
@@ -681,12 +684,15 @@ SPECIFICATIONS:
         }
 
         function renderTables() {
-            const fa = getSensorById(els.sA.value).factor;
+            const sensA = getSensorById(els.sA.value);
+            const fa = sensA.factor;
             const refMP = parseFloat(els.mpA.value || 0);
-            
+
             els.tRes.innerHTML = sensorData.map(s => {
                 const mult = (s.factor / fa).toFixed(2);
-                const mp = (refMP / (mult * mult)).toFixed(1);
+                // Same pixel pitch scales with sensor AREA; the diagonal crop factor squared
+                // is only right when both formats share an aspect ratio (MFT 4:3 vs FF 3:2 is not).
+                const mp = (refMP * (s.w * s.h) / (sensA.w * sensA.h)).toFixed(1);
                 return `<tr class="border-b border-slate-700/30 hover:bg-slate-800/10"><td class="p-3 font-semibold ${s.isCustom ? 'text-emerald-400':''}">${s.name}</td><td class="p-3 text-center text-blue-400 font-mono">${mult}x</td><td class="p-3 text-right text-amber-500 font-mono">${mp} MP</td></tr>`;
             }).join('');
 
@@ -815,7 +821,8 @@ SPECIFICATIONS:
             
             const h = (f_mm * f_mm) / (n_val * c) + f_mm;
             
-            const near = (d * (h - f_mm)) / (h + d - f_mm);
+            // With H = f²/(Nc) + f the exact thin-lens near limit needs -2f (matches f²·D/(f²+Nc(D-f))).
+            const near = (d * (h - f_mm)) / (h + d - 2 * f_mm);
             let far = (d * (h - f_mm)) / (h - d);
             
             // Handle Infinity
