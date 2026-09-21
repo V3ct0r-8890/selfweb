@@ -499,6 +499,30 @@
         .help-title { color: var(--accent-color); border-bottom: 1px solid #eee; padding-bottom: 5px; margin-top: 20px; }
 
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* --- Article popup (narrow screens) --- */
+        .article-popup { height: auto; max-height: 90%; }
+        .article-popup .popup-body { padding: 16px 20px; min-height: 0; }
+        .article-popup .popup-body h2 { margin-top: 0; font-size: 1.2em; color: #2c3e50; line-height: 1.4; }
+        .article-popup .article-content { font-size: 1em; }
+        .popup-meta { font-size: 0.85em; color: #555; }
+        .popup-actions {
+            display: flex;
+            gap: 10px;
+            padding: 12px 20px;
+            border-top: 1px solid #ddd;
+            background-color: #fcfcfc;
+        }
+        .popup-actions > * { flex: 1; justify-content: center; font-size: 14px; padding: 10px; }
+
+        /* The 380px sidebar leaves no room for the reading pane on phones: the list
+           takes the full width and articles open in the popup instead. */
+        @media (max-width: 768px) {
+            #sidebar { width: 100%; border-right: none; }
+            #content-area { display: none; }
+            .overlay-content { width: 96%; height: 94%; }
+            .article-popup { height: auto; max-height: 94%; }
+        }
     </style>
 </head>
 <body>
@@ -563,6 +587,24 @@
                 <strong>Note:</strong> If the area below is blank, the website blocks embedded frames. Please use "Open in New Tab".
             </div>
             <iframe id="overlayFrame" src="about:blank" class="web-frame" title="Article Preview"></iframe>
+        </div>
+    </div>
+
+    <!-- ARTICLE POPUP (narrow screens) -->
+    <div id="articlePopup" class="overlay-backdrop" onclick="if(event.target===this) closeArticlePopup()">
+        <div class="overlay-content article-popup">
+            <div class="preview-header">
+                <span id="articlePopupMeta" class="popup-meta"></span>
+                <button class="btn-close-overlay" onclick="closeArticlePopup()">Close</button>
+            </div>
+            <div class="article-scroll-area popup-body">
+                <h2 id="articlePopupTitle"></h2>
+                <div id="articlePopupContent" class="article-content"></div>
+            </div>
+            <div class="popup-actions">
+                <button id="articlePopupPreview" class="btn-action-primary"><span>👁️</span> View in overlay</button>
+                <a id="articlePopupTab" class="btn-action-secondary" href="#" target="_blank" rel="noopener"><span>🔗</span> Open in new tab</a>
+            </div>
         </div>
     </div>
 
@@ -1282,6 +1324,30 @@
                     </div>
                 </div>
             `;
+            if (NARROW_SCREEN.matches) openArticlePopup(item);
+        }
+
+        const NARROW_SCREEN = window.matchMedia('(max-width: 768px)');
+
+        function openArticlePopup(item) {
+            const dateText = item.date ? new Date(item.date).toLocaleString() : '';
+            document.getElementById('articlePopupMeta').textContent = [item.source, dateText].filter(Boolean).join(' · ');
+            document.getElementById('articlePopupTitle').textContent = item.title;
+            document.getElementById('articlePopupContent').innerHTML = item.content;
+
+            const previewBtn = document.getElementById('articlePopupPreview');
+            const tabLink = document.getElementById('articlePopupTab');
+            previewBtn.style.display = tabLink.style.display = item.link ? '' : 'none';
+            tabLink.href = item.link || '#';
+            tabLink.onclick = closeArticlePopup;
+            previewBtn.onclick = () => { closeArticlePopup(); openPreview(item.link); };
+
+            document.getElementById('articlePopup').style.display = 'flex';
+        }
+
+        function closeArticlePopup() {
+            document.getElementById('articlePopup').style.display = 'none';
+            document.getElementById('articlePopupContent').innerHTML = '';
         }
 
         function openPreview(url) {
