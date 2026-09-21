@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'selfweb-v1';
+const CACHE_VERSION = 'selfweb-v2';
 const APP_SHELL = [
   './',
   './index.html',
