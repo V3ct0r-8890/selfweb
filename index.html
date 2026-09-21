@@ -182,10 +182,20 @@
         // Ask the browser to treat this origin's storage (cache, localStorage) as
         // "persistent" so it won't be silently evicted under storage pressure,
         // which would otherwise break offline reloads and each tool's saved data.
+        // NOTE: Chromium grants this silently based on engagement heuristics (no
+        // user-facing prompt), and DevTools has no dedicated "Persisted" field, so
+        // the result is logged here for visibility instead.
         if (navigator.storage && navigator.storage.persist) {
             navigator.storage.persisted().then((already) => {
-                if (!already) navigator.storage.persist();
+                console.log('[storage] already persisted:', already);
+                if (!already) {
+                    navigator.storage.persist().then((granted) => {
+                        console.log('[storage] persist() granted:', granted);
+                    });
+                }
             });
+        } else {
+            console.log('[storage] Storage persistence API not supported in this browser.');
         }
     </script>
 
