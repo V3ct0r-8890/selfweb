@@ -18,7 +18,8 @@
         }
         /* Style for the main content frame */
         #main-iframe {
-            height: calc(100vh - 80px); /* Full height minus header height */
+            /* Full height minus header, and minus the tool dropdown bar when shown */
+            height: calc(100vh - 80px - var(--toolbar-h, 0px));
         }
 
         /* Hide the scrollbar for the menu on specific devices */
@@ -38,17 +39,31 @@
         <h1 class="text-2xl font-bold text-indigo-700">
             My Utilities
         </h1>
-        <div class="md:hidden">
-            <button id="menu-toggle" class="p-2 rounded-md hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7" />
-                </svg>
-            </button>
+        <div class="flex items-center gap-2">
+            <label for="layout-select" class="text-sm text-gray-600 hidden sm:inline">Menu</label>
+            <select id="layout-select" aria-label="Tools menu position" class="text-sm border border-gray-300 rounded-md px-2 py-1 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                <option value="sidebar">Sidebar</option>
+                <option value="top">Top dropdown</option>
+                <option value="bottom">Bottom dropdown</option>
+            </select>
+            <div id="menu-toggle-wrap" class="md:hidden">
+                <button id="menu-toggle" class="p-2 rounded-md hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7" />
+                    </svg>
+                </button>
+            </div>
         </div>
     </header>
 
+    <!-- Tool dropdown bar: moved above or below the layout by applyMenuLayout() -->
+    <div id="tool-bar" class="bg-white border-gray-200 px-4 py-2 items-center gap-2" style="display: none;">
+        <label for="tool-select" class="text-sm font-medium text-gray-700 whitespace-nowrap">Tool</label>
+        <select id="tool-select" class="flex-1 min-w-0 border border-gray-300 rounded-md px-2 py-2 bg-white text-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"></select>
+    </div>
+
     <!-- Main Layout (Sidebar + Content) -->
-    <div class="flex flex-1 overflow-hidden">
+    <div id="app-layout" class="flex flex-1 overflow-hidden">
 
         <!-- Sidebar Menu -->
         <nav id="tool-menu" class="fixed inset-y-0 left-0 transform -translate-x-full md:relative md:translate-x-0 transition-transform duration-300 ease-in-out w-64 bg-white shadow-lg p-4 overflow-y-auto border-r border-gray-200 md:flex flex-col z-20">
@@ -96,7 +111,13 @@
         const loadingSpinner = document.getElementById('loading-spinner');
         const menuToggle = document.getElementById('menu-toggle');
         const toolMenu = document.getElementById('tool-menu');
-        
+        const layoutSelect = document.getElementById('layout-select');
+        const toolBar = document.getElementById('tool-bar');
+        const toolSelect = document.getElementById('tool-select');
+        const menuToggleWrap = document.getElementById('menu-toggle-wrap');
+        const appLayout = document.getElementById('app-layout');
+        const MENU_LAYOUT_KEY = 'launcherMenuLayout';
+
         let currentActiveToolId = '';
 
         /**
@@ -125,6 +146,7 @@
             newActiveButton.classList.remove('hover:bg-indigo-50', 'text-gray-700');
             // Add the active classes
             newActiveButton.classList.add('bg-indigo-600', 'text-white', 'shadow-md');
+            toolSelect.value = toolId;
             currentActiveToolId = toolId;
             
             // On mobile, close the menu after selection
@@ -144,8 +166,46 @@
                 button.textContent = tool.title;
                 button.onclick = () => loadTool(tool.id);
                 menuItemsContainer.appendChild(button);
+
+                const option = document.createElement('option');
+                option.value = tool.id;
+                option.textContent = tool.title;
+                toolSelect.appendChild(option);
             });
         }
+
+        /**
+         * Shows the tools list as the sidebar, or as a dropdown bar above/below the tool area.
+         * @param {string} layout - 'sidebar' | 'top' | 'bottom'
+         */
+        function applyMenuLayout(layout) {
+            if (!['sidebar', 'top', 'bottom'].includes(layout)) layout = 'sidebar';
+            layoutSelect.value = layout;
+            const dropdown = layout !== 'sidebar';
+
+            // Inline display beats Tailwind's md:flex / md:hidden on the sidebar and toggle.
+            toolMenu.style.display = dropdown ? 'none' : '';
+            menuToggleWrap.style.display = dropdown ? 'none' : '';
+            toolBar.style.display = dropdown ? 'flex' : 'none';
+
+            if (layout === 'top') {
+                appLayout.before(toolBar);
+                toolBar.classList.replace('border-t', 'border-b') || toolBar.classList.add('border-b');
+                toolBar.style.paddingBottom = '';
+            } else if (layout === 'bottom') {
+                appLayout.after(toolBar);
+                toolBar.classList.replace('border-b', 'border-t') || toolBar.classList.add('border-t');
+                toolBar.style.paddingBottom = 'max(0.5rem, env(safe-area-inset-bottom))';
+            }
+            document.documentElement.style.setProperty('--toolbar-h', dropdown ? `${toolBar.offsetHeight}px` : '0px');
+        }
+
+        layoutSelect.addEventListener('change', () => {
+            applyMenuLayout(layoutSelect.value);
+            try { localStorage.setItem(MENU_LAYOUT_KEY, layoutSelect.value); } catch (e) { /* storage blocked: layout just isn't remembered */ }
+        });
+
+        toolSelect.addEventListener('change', () => loadTool(toolSelect.value));
 
         // Toggle mobile menu visibility
         menuToggle.addEventListener('click', () => {
@@ -155,7 +215,11 @@
         // Initialize the app
         document.addEventListener('DOMContentLoaded', () => {
             populateMenu();
-            
+
+            let savedLayout = 'sidebar';
+            try { savedLayout = localStorage.getItem(MENU_LAYOUT_KEY) || 'sidebar'; } catch (e) { /* storage blocked: use default */ }
+            applyMenuLayout(savedLayout);
+
             // Add listener to hide loading spinner once iframe content loads
             mainIframe.onload = () => {
                 // Hide spinner and fade in iframe

@@ -1,6 +1,6 @@
 // Bump on every release that changes any APP_SHELL file: this is what makes
 // browsers see a new version and offer the user the update.
-const CACHE_VERSION = 'selfweb-v3';
+const CACHE_VERSION = 'selfweb-v4';
 const APP_SHELL = [
   './',
   './index.html',
