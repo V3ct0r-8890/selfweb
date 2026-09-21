@@ -25,8 +25,7 @@ const APP_SHELL = [
 const NETWORK_ONLY_HOSTS = [
   'en.wikipedia.org',
   'date.nager.at',
-  'api.allorigins.win',
-  'corsproxy.io',
+  'api.rss2json.com',
 ];
 
 self.addEventListener('install', (event) => {

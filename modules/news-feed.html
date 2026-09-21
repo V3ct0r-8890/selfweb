@@ -4,8 +4,8 @@
   
   Specifications:
   1. Input: URL field + Presets + Days Selector (1-15).
-  2. Logic: Uses Multi-Proxy Fallback (AllOrigins -> CORSProxy.io).
-  3. Parsing: Handles RSS 2.0, Atom, RDF + Base64 decoding.
+  2. Logic: Fetches feeds via the rss2json.com service (the old CORS proxies are dead).
+  3. Parsing: rss2json parses RSS 2.0 / Atom server-side and returns JSON.
   4. Frame View: Preview website in Overlay Modal.
   5. Search: Filter feed items by title or content in real-time.
   6. Batch Load: "Load All" feature (Defaults + Custom).
@@ -638,7 +638,7 @@
 
                     <h3 class="help-title">Troubleshooting</h3>
                     <ul class="help-list">
-                        <li><strong>"Network Error":</strong> Some sites block access. We use a proxy to bypass this, but occasionally it may fail. Try refreshing.</li>
+                        <li><strong>"Network Error":</strong> Feeds are fetched through the rss2json.com service. Some sites (e.g. Dark Reading) block it behind a bot check and will always fail; others may fail temporarily. Try refreshing.</li>
                         <li><strong>"Storage Full":</strong> Browsers limit storage to ~5MB. If you hit this limit, the oldest articles will be automatically removed.</li>
                     </ul>
                 </div>
@@ -1007,10 +1007,11 @@
             let items = await fetchFeedWithPagination(url, name, deepScan, shortCutoff);
             let filtered = filterItemsByDate(items, shortCutoff);
 
-            if (filtered.length === 0) {
+            if (filtered.length === 0 && items.length > 0) {
                 console.log(`${name}: No items in last ${userDays} days. Fallback 90 days.`);
                 const longCutoff = calculateCutoff(FALLBACK_DAYS);
-                items = await fetchFeedWithPagination(url, name, deepScan, longCutoff);
+                // Only a deep scan can reach further back; a single-page fetch would return the same page.
+                if (deepScan) items = await fetchFeedWithPagination(url, name, deepScan, longCutoff);
                 filtered = filterItemsByDate(items, longCutoff);
             }
             return filtered;
@@ -1042,27 +1043,8 @@
                          const progressDiv = document.querySelector('.loading-progress');
                          if(progressDiv) progressDiv.innerText = `Fetching page ${page}/${pageCount}...`;
                     }
-                    let rawContent = "";
-                    // FIX: fetch() has no default timeout. If a public proxy hangs instead of
-                    // erroring, an unbounded fetch here stalls Promise.allSettled in
-                    // fetchAllPresets forever, leaving "Background updating..." stuck for every
-                    // feed. Bound each attempt with an abort timeout so a hung proxy fails over
-                    // to the backup (or gives up) instead of hanging indefinitely.
-                    const FETCH_TIMEOUT_MS = 15000;
-                    try {
-                        const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(pagedUrl)}&_t=${Date.now()}`;
-                        const response = await fetch(proxyUrl, { signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
-                        if(!response.ok) throw new Error("Proxy error");
-                        const data = await response.json();
-                        rawContent = data.contents;
-                    } catch(e) {
-                        const backupUrl = `https://corsproxy.io/?${encodeURIComponent(pagedUrl)}`;
-                        const response = await fetch(backupUrl, { signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
-                        rawContent = await response.text();
-                    }
-                    rawContent = decodeProxyContent(rawContent);
-                    const newItems = parseXMLToItems(rawContent, sourceName);
-                    if (newItems.length === 0) break; 
+                    const newItems = await fetchFeedPage(pagedUrl, sourceName);
+                    if (newItems.length === 0) break;
                     
                     let newUniqueItemsCount = 0;
                     let oldestItemDateOnPage = null;
@@ -1081,11 +1063,40 @@
                     if (page > 1 && newUniqueItemsCount === 0) break; 
                     if (oldestItemDateOnPage && oldestItemDateOnPage < cutoffDate) break;
                 } catch (err) {
+                    // Page 1 failing means the whole feed failed; surface it so callers count it.
+                    if (page === 1) throw err;
                     console.warn(`Fetch stop ${sourceName} pg ${page}:`, err);
                     break;
                 }
             }
             return allItems;
+        }
+
+        // allorigins.win (522 on every request) and corsproxy.io (API key now required) are
+        // dead; rss2json fetches and parses the feed server-side and sends CORS headers.
+        const FETCH_TIMEOUT_MS = 15000;
+
+        // rss2json reports pubDate as "YYYY-MM-DD HH:MM:SS" in UTC; Safari can't parse that form.
+        function rss2jsonDateToISO(s) {
+            return /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(s) ? s.replace(' ', 'T') + 'Z' : s;
+        }
+
+        async function fetchFeedPage(feedUrl, sourceName) {
+            const apiUrl = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(feedUrl)}`;
+            const response = await fetch(apiUrl, { signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
+            let data;
+            try { data = await response.json(); } catch (e) { data = {}; }
+            if (!response.ok || data.status !== 'ok' || !Array.isArray(data.items)) {
+                throw new Error(data.message || `Feed service returned HTTP ${response.status}`);
+            }
+            return data.items.map(item => ({
+                id: 0,
+                source: sourceName,
+                title: item.title || "",
+                link: item.link || "",
+                date: rss2jsonDateToISO(item.pubDate || ""),
+                content: item.content || item.description || "No content."
+            }));
         }
 
         async function fetchAllPresets(isBackground = false) {
@@ -1119,10 +1130,18 @@
                 const results = await Promise.allSettled(promises);
                 let aggregatedItems = [];
                 let failCount = 0;
-                results.forEach(res => {
+                const failedSources = new Set();
+                results.forEach((res, i) => {
                     if (res.status === 'fulfilled') aggregatedItems = aggregatedItems.concat(res.value);
-                    else failCount++;
+                    else {
+                        failCount++;
+                        failedSources.add(feedsToLoad[i].name);
+                        console.warn(`${feedsToLoad[i].name}: ${res.reason && res.reason.message}`);
+                    }
                 });
+                // Keep cached articles from sources that failed this round, so a failed refresh
+                // never wipes what the user already has available offline.
+                aggregatedItems = aggregatedItems.concat(allCachedItems.filter(item => failedSources.has(item.source)));
 
                 if (aggregatedItems.length === 0) {
                     if (!isBackground) throw new Error("Failed to load any feeds.");
@@ -1145,7 +1164,9 @@
                     msg += `</div>`;
                     document.getElementById('content-area').innerHTML = msg;
                 } else {
-                    showToast("Background update complete.");
+                    showToast(failCount > 0
+                        ? `Background update done (${failCount} of ${feedsToLoad.length} feeds failed).`
+                        : "Background update complete.");
                 }
             } catch (err) {
                 if (!isBackground) renderError(err);
@@ -1197,72 +1218,6 @@
         }
 
         // --- PARSING & UI (UNCHANGED logic from v21, just ensuring consistency) ---
-        function decodeProxyContent(content) {
-            if (!content) return "";
-            const trimmed = content.trim();
-            if (trimmed.startsWith("data:")) {
-                const commaIndex = trimmed.indexOf(",");
-                if (commaIndex !== -1) {
-                    try {
-                        const base64Data = trimmed.substring(commaIndex + 1);
-                        const binaryString = atob(base64Data);
-                        const bytes = new Uint8Array(binaryString.length);
-                        for (let i = 0; i < binaryString.length; i++) bytes[i] = binaryString.charCodeAt(i);
-                        return new TextDecoder('utf-8').decode(bytes);
-                    } catch (e) { return content; }
-                }
-            }
-            return content;
-        }
-
-        function parseXMLToItems(xmlString, sourceName) {
-            const parser = new DOMParser();
-            const xmlDoc = parser.parseFromString(xmlString, "text/xml");
-            if (xmlDoc.querySelector('parsererror')) throw new Error("XML Parse Error");
-            let items = [];
-            const rssItems = xmlDoc.querySelectorAll("item");
-            const atomEntries = xmlDoc.querySelectorAll("entry");
-            if (rssItems.length > 0) items = Array.from(rssItems).map(node => parseRSSItem(node, 0, sourceName));
-            else if (atomEntries.length > 0) items = Array.from(atomEntries).map(node => parseAtomEntry(node, 0, sourceName));
-            return items;
-        }
-
-        function parseRSSItem(node, index, sourceName) {
-            return {
-                id: index,
-                source: sourceName,
-                title: getChildText(node, "title"),
-                link: getChildText(node, "link"),
-                date: getChildText(node, "pubDate") || getChildText(node, "dc:date"),
-                content: getChildText(node, "content:encoded") || getChildText(node, "description") || "No content."
-            };
-        }
-
-        function parseAtomEntry(node, index, sourceName) {
-            const linkNode = node.querySelector("link");
-            const link = linkNode ? linkNode.getAttribute("href") : "";
-            return {
-                id: index,
-                source: sourceName,
-                title: getChildText(node, "title"),
-                link: link,
-                date: getChildText(node, "updated") || getChildText(node, "published"),
-                content: getChildText(node, "content") || getChildText(node, "summary") || "No content."
-            };
-        }
-
-        function getChildText(parent, tagName) {
-            const node = parent.getElementsByTagName(tagName)[0];
-            if (!node && tagName.includes(":")) {
-                const [prefix, localName] = tagName.split(":");
-                const collections = parent.getElementsByTagName("*");
-                for (let i = 0; i < collections.length; i++) {
-                    if (collections[i].nodeName === tagName || collections[i].localName === localName) return collections[i].textContent.trim();
-                }
-            }
-            return node ? node.textContent.trim() : "";
-        }
-
         function renderSidebar(items) {
             const sidebarList = document.getElementById('sidebar-list');
             const overlay = document.getElementById('status-bar-overlay');
@@ -1355,12 +1310,11 @@
             sidebarList.innerHTML = '';
             const errDiv = document.createElement('div');
             errDiv.className = 'error-box';
-            // News Feed fetches RSS through third-party CORS proxies (allorigins.win,
-            // corsproxy.io); unlike the other tools in this app it cannot work fully
-            // offline, so make that dependency explicit rather than showing a bare error.
-            errDiv.innerHTML = `<strong>Unable to load feeds.</strong><br>${error.message}` +
+            // The message can come from the remote feed service, so insert it as text, not HTML.
+            errDiv.innerHTML = `<strong>Unable to load feeds.</strong><br><span class="err-msg"></span>` +
                 `<br><span style="font-size:0.85em;color:#777;">This tool requires an internet connection ` +
-                `(it fetches RSS through third-party proxy services and cannot work fully offline).</span>`;
+                `(it fetches RSS through the rss2json.com service and cannot work fully offline).</span>`;
+            errDiv.querySelector('.err-msg').textContent = error.message;
             sidebarList.appendChild(errDiv);
             document.getElementById('content-area').innerHTML = '';
         }
