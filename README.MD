@@ -20,3 +20,8 @@
 
 --- 
 My web application can be downloaded and run offline on a computer, with no information stored on any website. All data is kept in the browser’s storage, so clearing the browser storage will delete everything.
+
+## Install as an app (PWA)
+This site is an installable Progressive Web App. Visit it in a supported browser (Chrome/Edge on desktop or Android) and use "Install app" / "Add to Home Screen". Once installed, the app shell and all tools are cached by a service worker and load without a network connection.
+
+**Exception:** News Feed, INS Offline DB (Wikipedia lookups) and TimeZone Viewer (public holidays) call external APIs for live data and need an internet connection for those specific features; the rest of the app works fully offline.

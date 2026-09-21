@@ -4,6 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tool Selector Menu</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#4f46e5">
+    <link rel="icon" href="icons/icon-192.png">
+    <link rel="apple-touch-icon" href="icons/icon-192.png">
     <!-- Load Tailwind CSS via CDN for modern styling -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet">
@@ -165,6 +169,24 @@
                 loadTool(tools[0].id);
             }
         });
+
+        // Register service worker for offline/installable support.
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js').catch((err) => {
+                    console.error('Service worker registration failed:', err);
+                });
+            });
+        }
+
+        // Ask the browser to treat this origin's storage (cache, localStorage) as
+        // "persistent" so it won't be silently evicted under storage pressure,
+        // which would otherwise break offline reloads and each tool's saved data.
+        if (navigator.storage && navigator.storage.persist) {
+            navigator.storage.persisted().then((already) => {
+                if (!already) navigator.storage.persist();
+            });
+        }
     </script>
 
 </body>

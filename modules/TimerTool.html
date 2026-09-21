@@ -734,7 +734,15 @@
         };
 
         // --- THEME LOGIC ---
-        let isDarkMode = localStorage.getItem('theme') === 'dark';
+        // One-time migration: these keys used to be the generic 'theme'/'lcdMode',
+        // which risked collisions with other tools sharing the same origin.
+        if (localStorage.getItem('timerToolTheme') === null && localStorage.getItem('theme') !== null) {
+            localStorage.setItem('timerToolTheme', localStorage.getItem('theme'));
+        }
+        if (localStorage.getItem('timerToolLcdMode') === null && localStorage.getItem('lcdMode') !== null) {
+            localStorage.setItem('timerToolLcdMode', localStorage.getItem('lcdMode'));
+        }
+        let isDarkMode = localStorage.getItem('timerToolTheme') === 'dark';
         if(isDarkMode) document.documentElement.classList.add('dark');
         
         function toggleTheme() {
@@ -744,18 +752,18 @@
             
             if (isDarkMode) {
                 html.classList.add('dark');
-                localStorage.setItem('theme', 'dark');
+                localStorage.setItem('timerToolTheme', 'dark');
                 iconContainer.innerHTML = SVG.sun;
             } else {
                 html.classList.remove('dark');
-                localStorage.setItem('theme', 'light');
+                localStorage.setItem('timerToolTheme', 'light');
                 iconContainer.innerHTML = SVG.moon;
             }
         }
         document.querySelector('.theme-toggle').innerHTML = isDarkMode ? SVG.sun : SVG.moon;
 
         // --- LCD FONT LOGIC ---
-        let isLCDMode = localStorage.getItem('lcdMode') === 'true';
+        let isLCDMode = localStorage.getItem('timerToolLcdMode') === 'true';
         if(isLCDMode) document.documentElement.classList.add('lcd-mode');
 
         function toggleLCD() {
@@ -765,11 +773,11 @@
             if (isLCDMode) {
                 document.documentElement.classList.add('lcd-mode');
                 btn.classList.add('active-lcd');
-                localStorage.setItem('lcdMode', 'true');
+                localStorage.setItem('timerToolLcdMode', 'true');
             } else {
                 document.documentElement.classList.remove('lcd-mode');
                 btn.classList.remove('active-lcd');
-                localStorage.setItem('lcdMode', 'false');
+                localStorage.setItem('timerToolLcdMode', 'false');
             }
         }
         if(isLCDMode) document.getElementById('btn-lcd').classList.add('active-lcd');

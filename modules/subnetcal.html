@@ -529,7 +529,10 @@
                 }
             } else {
                 // User wants a prefix < /24. Just calculate the single block they asked for.
-                const networkMask = (0xFFFFFFFF << (32 - prefix)) >>> 0;
+                // NOTE: JS `<<` only honors the low 5 bits of its right operand, so a shift of
+                // exactly 32 (prefix === 0) wraps around to a shift of 0 instead of clearing all
+                // bits. Special-case /0 rather than relying on the shift.
+                const networkMask = (prefix === 0) ? 0 : (0xFFFFFFFF << (32 - prefix)) >>> 0;
                 const networkInt = ipInt & networkMask;
                 const details = getSubnetDetails(networkInt, prefix);
 
@@ -570,7 +573,18 @@
         function getSubnetDetails(networkInt, prefix) {
             const networkIp = intToIp(networkInt);
             const networkCol = `${networkIp}/${prefix}`;
-            const netmaskCol = intToIp((0xFFFFFFFF << (32 - prefix)) >>> 0);
+            // Same shift-wraparound issue as above: prefix === 0 needs 0.0.0.0, not 255.255.255.255.
+            const netmaskCol = intToIp(prefix === 0 ? 0 : (0xFFFFFFFF << (32 - prefix)) >>> 0);
+
+            if (prefix === 0) {
+                return {
+                    networkCol: networkCol,
+                    netmaskCol: netmaskCol,
+                    rangeCol: `${networkIp} - 255.255.255.255`,
+                    broadcastCol: "255.255.255.255",
+                    usableCol: "4294967294"
+                };
+            }
 
             if (prefix === 32) {
                 return {

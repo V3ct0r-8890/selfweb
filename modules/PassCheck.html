@@ -11,8 +11,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Strong Password Checker</title>
-    <!-- Add zxcvbn library (removed 'defer' to fix race condition) -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/zxcvbn/4.4.2/zxcvbn.js"></script>
+    <!-- Add zxcvbn library (removed 'defer' to fix race condition).
+         This is loaded from a CDN, so it will fail to load with no network
+         access; see the onerror handler below for the offline fallback. -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/zxcvbn/4.4.2/zxcvbn.js"
+            onerror="window.zxcvbnLoadFailed = true"></script>
     <style>
         /* --- CSS Styles --- */
 
@@ -271,7 +274,17 @@
                 // --- 2. Estimate Crack Time using zxcvbn ---
 
                 // Ensure zxcvbn has loaded (it's deferred, but this is a good safety check)
-                if (typeof zxcvbn === 'function') {
+                if (typeof zxcvbn !== 'function') {
+                    // Library failed to load (most likely offline with no cached copy).
+                    // Surface this clearly instead of silently leaving a stale/"N/A" value.
+                    if (password.length === 0) {
+                        crackTimeValue.textContent = 'N/A';
+                        crackTimeValue.className = '';
+                    } else if (window.zxcvbnLoadFailed) {
+                        crackTimeValue.textContent = 'Unavailable (offline - crack-time library failed to load)';
+                        crackTimeValue.className = '';
+                    }
+                } else {
                     if (password.length === 0) {
                         // Reset if password is empty
                         crackTimeValue.textContent = 'N/A';

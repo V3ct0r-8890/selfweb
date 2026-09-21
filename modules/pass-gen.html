@@ -1058,7 +1058,9 @@
                 for (let i = 0; i < chars.length; i++) {
                     const charLower = chars[i].toLowerCase();
                     const possibleReplacements = REPLACEMENT_MAP[charLower];
-                    if (possibleReplacements && possibleReplacements.length > 0 && Math.random() < REPLACEMENT_PROBABILITY) {
+                    // Use the CSPRNG (secureRandomInt) here too, not Math.random(), so every
+                    // random decision that shapes the final password is cryptographically secure.
+                    if (possibleReplacements && possibleReplacements.length > 0 && secureRandomInt(1000) < REPLACEMENT_PROBABILITY * 1000) {
                         const replacement = possibleReplacements[secureRandomInt(possibleReplacements.length)];
                         chars[i] = replacement;
                     }

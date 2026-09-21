@@ -263,8 +263,8 @@
             let daysOffset = parseInt(daysOffsetStr, 10);
             const direction = document.querySelector('input[name="offset_direction"]:checked').value;
 
-            if (!startDateStr || isNaN(daysOffset) || daysOffset <= 0) {
-                updateResult('<span class="text-red-500 font-medium">Please enter a Reference Date and a valid positive number of Days.</span>');
+            if (!startDateStr || isNaN(daysOffset) || daysOffset < 0) {
+                updateResult('<span class="text-red-500 font-medium">Please enter a Reference Date and a valid, non-negative number of Days.</span>');
                 return;
             }
             

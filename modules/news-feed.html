@@ -1349,7 +1349,12 @@
             sidebarList.innerHTML = '';
             const errDiv = document.createElement('div');
             errDiv.className = 'error-box';
-            errDiv.innerHTML = `<strong>Error:</strong><br>${error.message}`;
+            // News Feed fetches RSS through third-party CORS proxies (allorigins.win,
+            // corsproxy.io); unlike the other tools in this app it cannot work fully
+            // offline, so make that dependency explicit rather than showing a bare error.
+            errDiv.innerHTML = `<strong>Unable to load feeds.</strong><br>${error.message}` +
+                `<br><span style="font-size:0.85em;color:#777;">This tool requires an internet connection ` +
+                `(it fetches RSS through third-party proxy services and cannot work fully offline).</span>`;
             sidebarList.appendChild(errDiv);
             document.getElementById('content-area').innerHTML = '';
         }
