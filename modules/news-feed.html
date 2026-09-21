@@ -1043,15 +1043,21 @@
                          if(progressDiv) progressDiv.innerText = `Fetching page ${page}/${pageCount}...`;
                     }
                     let rawContent = "";
+                    // FIX: fetch() has no default timeout. If a public proxy hangs instead of
+                    // erroring, an unbounded fetch here stalls Promise.allSettled in
+                    // fetchAllPresets forever, leaving "Background updating..." stuck for every
+                    // feed. Bound each attempt with an abort timeout so a hung proxy fails over
+                    // to the backup (or gives up) instead of hanging indefinitely.
+                    const FETCH_TIMEOUT_MS = 15000;
                     try {
                         const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(pagedUrl)}&_t=${Date.now()}`;
-                        const response = await fetch(proxyUrl);
+                        const response = await fetch(proxyUrl, { signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
                         if(!response.ok) throw new Error("Proxy error");
                         const data = await response.json();
                         rawContent = data.contents;
                     } catch(e) {
                         const backupUrl = `https://corsproxy.io/?${encodeURIComponent(pagedUrl)}`;
-                        const response = await fetch(backupUrl);
+                        const response = await fetch(backupUrl, { signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
                         rawContent = await response.text();
                     }
                     rawContent = decodeProxyContent(rawContent);
