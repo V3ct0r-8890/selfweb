@@ -170,12 +170,58 @@
             }
         });
 
-        // Register service worker for offline/installable support.
+        // Register service worker for offline/installable support, and let the user
+        // decide when a newly published version takes over.
         if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('sw.js').catch((err) => {
+            let updateAccepted = false;
+
+            function showUpdateBanner(waitingWorker) {
+                if (document.getElementById('update-banner')) return;
+                const banner = document.createElement('div');
+                banner.id = 'update-banner';
+                banner.setAttribute('role', 'status');
+                banner.className = 'fixed bottom-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 bg-indigo-700 text-white rounded-xl shadow-xl px-4 py-3 text-sm max-w-[calc(100vw-2rem)]';
+                banner.innerHTML = `
+                    <span>A new version is available.</span>
+                    <button id="update-accept" class="bg-white text-indigo-700 font-semibold rounded-lg px-3 py-1 hover:bg-indigo-50">Update</button>
+                    <button id="update-later" class="text-indigo-100 hover:text-white px-2 py-1">Later</button>`;
+                document.body.appendChild(banner);
+                document.getElementById('update-accept').onclick = () => {
+                    updateAccepted = true;
+                    banner.querySelector('span').textContent = 'Updating...';
+                    waitingWorker.postMessage('SKIP_WAITING');
+                };
+                document.getElementById('update-later').onclick = () => banner.remove();
+            }
+
+            // Reload only after an accepted update; the first-ever install also fires
+            // controllerchange (clients.claim) and must not reload the page.
+            navigator.serviceWorker.addEventListener('controllerchange', () => {
+                if (updateAccepted) window.location.reload();
+            });
+
+            window.addEventListener('load', async () => {
+                try {
+                    const reg = await navigator.serviceWorker.register('sw.js');
+                    // A waiting worker with an existing controller means a new version is ready.
+                    const promptIfWaiting = () => {
+                        if (reg.waiting && navigator.serviceWorker.controller) showUpdateBanner(reg.waiting);
+                    };
+                    promptIfWaiting();
+                    reg.addEventListener('updatefound', () => {
+                        const incoming = reg.installing;
+                        if (!incoming) return;
+                        incoming.addEventListener('statechange', () => {
+                            if (incoming.state === 'installed') promptIfWaiting();
+                        });
+                    });
+                    // An installed app can stay open for days; re-check when it comes back into view.
+                    document.addEventListener('visibilitychange', () => {
+                        if (document.visibilityState === 'visible') reg.update().catch(() => {});
+                    });
+                } catch (err) {
                     console.error('Service worker registration failed:', err);
-                });
+                }
             });
         }
 

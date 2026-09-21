@@ -1,4 +1,6 @@
-const CACHE_VERSION = 'selfweb-v2';
+// Bump on every release that changes any APP_SHELL file: this is what makes
+// browsers see a new version and offer the user the update.
+const CACHE_VERSION = 'selfweb-v3';
 const APP_SHELL = [
   './',
   './index.html',
@@ -29,10 +31,17 @@ const NETWORK_ONLY_HOSTS = [
 ];
 
 self.addEventListener('install', (event) => {
+  // cache: 'reload' bypasses the HTTP cache so a new version never precaches stale files.
   event.waitUntil(
-    caches.open(CACHE_VERSION).then((cache) => cache.addAll(APP_SHELL))
+    caches.open(CACHE_VERSION).then((cache) =>
+      cache.addAll(APP_SHELL.map((url) => new Request(url, { cache: 'reload' })))
+    )
   );
-  self.skipWaiting();
+  // No skipWaiting() here: a new version waits until the user accepts the update.
+});
+
+self.addEventListener('message', (event) => {
+  if (event.data === 'SKIP_WAITING') self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
@@ -58,18 +67,18 @@ self.addEventListener('fetch', (event) => {
 
   if (url.origin !== self.location.origin) return;
 
+  // Cache-first with no background refresh: the app only changes when the user
+  // accepts an update, so every page and tool frame comes from the same version.
   event.respondWith(
     caches.match(event.request).then((cached) => {
-      const fetchPromise = fetch(event.request)
-        .then((response) => {
-          if (response && response.ok) {
-            const clone = response.clone();
-            caches.open(CACHE_VERSION).then((cache) => cache.put(event.request, clone));
-          }
-          return response;
-        })
-        .catch(() => cached);
-      return cached || fetchPromise;
+      if (cached) return cached;
+      return fetch(event.request).then((response) => {
+        if (response && response.ok) {
+          const clone = response.clone();
+          caches.open(CACHE_VERSION).then((cache) => cache.put(event.request, clone));
+        }
+        return response;
+      });
     })
   );
 });
