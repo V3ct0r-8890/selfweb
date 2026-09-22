@@ -648,6 +648,15 @@
         .btn-close:hover {
             background-color: #5a6268;
         }
+
+        /* Phones: two-column option grids could not shrink below their inputs */
+        @media (max-width: 480px) {
+            body { padding-left: 8px; padding-right: 8px; }
+            .container { padding: 14px; }
+            .layout-wrapper > * { min-width: 0; }
+            .form-grid { grid-template-columns: 1fr; }
+            .common-options .form-group:first-child { grid-column: auto; }
+        }
     </style>
 </head>
 <body>

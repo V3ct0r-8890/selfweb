@@ -383,6 +383,22 @@
         #hol-select { width: 100%; height: 120px; border: 1px solid var(--btn-border); border-radius: 4px; margin-bottom: 8px; font-family: monospace; }
         
         #file-input { display: none; }
+
+        #cal-toggle { display: none; } /* shown on phones only, below */
+        /* Phones: header buttons wrap instead of pushing the page sideways */
+        @media (max-width: 640px) {
+            .header-top { flex-wrap: wrap; gap: 8px; }
+            .actions { flex-wrap: wrap; justify-content: flex-end; }
+            /* Calendar sidebar becomes a slide-over panel so the time grid keeps the full width */
+            #cal-toggle { display: inline-block; }
+            #sidebar { display: none; }
+            body.show-cal #sidebar {
+                display: flex; position: absolute; top: 0; bottom: 0; left: 0; z-index: 250;
+                max-width: 85%; box-shadow: 4px 0 16px rgba(0,0,0,0.25);
+            }
+            :root { --date-col-w: 62px; --hol-col-w: 64px; --time-col-w: 52px; }
+            .ref-cell-hol { overflow: hidden; font-size: 0.7rem; }
+        }
     </style>
 </head>
 <body data-theme="light">
@@ -398,6 +414,7 @@
             <label class="header-toggle-label">
                 <input type="checkbox" id="header-show-dates" onchange="toggleShowDates()"> Show Dates
             </label>
+            <button onclick="document.body.classList.toggle('show-cal')" id="cal-toggle" title="Calendar & holidays">📅</button>
             <button onclick="toggleTheme()" id="theme-btn">🌙</button>
             <button onclick="openModal('settings-modal')">Settings</button>
             <button onclick="exportConfig()">Export</button>
@@ -1051,6 +1068,7 @@
         viewStartTime = d.getTime();
         document.getElementById('jump-date').value = isoDate;
         render(); refreshAllHolidays();
+        document.body.classList.remove('show-cal'); // close the phone calendar panel after picking a day
     }
 
     function renderCalendars() {
