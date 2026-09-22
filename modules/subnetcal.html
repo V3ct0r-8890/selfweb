@@ -202,6 +202,28 @@
             border-bottom: 1px solid #eee;
             padding-bottom: 8px;
         }
+
+        /* Phones: the card was pushed 50px right and clipped the results table */
+        @media (max-width: 640px) {
+            body { padding: 0.5rem; }
+            .container { margin: 0; }
+            .tab-content { padding: 1rem; }
+            .tab-button { flex: 1; padding: 10px 8px; font-size: 0.95rem; }
+            #subnetOutput { font-size: 0.8rem; }
+            .bw-grid { grid-template-columns: minmax(0, 1fr) auto; }
+            /* Tables become one card per row: a phone cannot show 5 columns */
+            .simple-table thead { display: none; }
+            .simple-table, .simple-table tbody, .simple-table tr, .simple-table td { display: block; width: 100%; box-sizing: border-box; }
+            .simple-table tr { border: 1px solid var(--row-border, #ddd); border-radius: 8px; margin-bottom: 10px; overflow: hidden; }
+            .simple-table td { display: flex; justify-content: space-between; align-items: center; gap: 12px; text-align: right; border: none; border-bottom: 1px solid #eee; padding: 6px 10px; overflow-wrap: anywhere; }
+            .simple-table td:last-child { border-bottom: none; }
+            .simple-table td::before { font-weight: 600; color: #666; text-align: left; white-space: nowrap; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+            .simple-table td:nth-child(1)::before { content: "Network"; }
+            .simple-table td:nth-child(2)::before { content: "Subnet Mask"; }
+            .simple-table td:nth-child(3)::before { content: "Usable Range"; }
+            .simple-table td:nth-child(4)::before { content: "Broadcast"; }
+            .simple-table td:nth-child(5)::before { content: "Usable IPs"; }
+        }
     </style>
 </head>
 

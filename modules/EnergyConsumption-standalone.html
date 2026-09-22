@@ -111,6 +111,42 @@
             .tabs { overflow-x: auto; }
             .tab-btn { flex: 1 1 auto; padding: 10px 8px; white-space: nowrap; }
         }
+
+        /* Phones: form and list columns stack full width (the form column was fixed at 300px) */
+        @media (max-width: 640px) {
+            .container { padding: 10px; }
+            .navbar { padding: 0.75rem; gap: 8px; }
+            .navbar h1 { font-size: 1.1rem; }
+            .card { padding: 14px; }
+            .row > .col { flex: 1 1 100% !important; min-width: 0; }
+            /* Tables become one card per row: a phone cannot show 8 columns */
+            #logsTable thead { display: none; }
+            #logsTable, #logsTable tbody, #logsTable tr, #logsTable td { display: block; width: 100%; box-sizing: border-box; }
+            #logsTable tr { border: 1px solid var(--row-border, #ddd); border-radius: 8px; margin-bottom: 10px; overflow: hidden; }
+            #logsTable td { display: flex; justify-content: space-between; align-items: center; gap: 12px; text-align: right; border: none; border-bottom: 1px solid #eee; padding: 6px 10px; overflow-wrap: anywhere; }
+            #logsTable td:last-child { border-bottom: none; justify-content: flex-end; }
+            #logsTable td::before { font-weight: 600; color: #666; text-align: left; white-space: nowrap; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+            #logsTable td:nth-child(1)::before { content: "Date"; }
+            #logsTable td:nth-child(2)::before { content: "Car"; }
+            #logsTable td:nth-child(3)::before { content: "Distance (km)"; }
+            #logsTable td:nth-child(4)::before { content: "Used"; }
+            #logsTable td:nth-child(5)::before { content: "Eff. (km/u)"; }
+            #logsTable td:nth-child(6)::before { content: "Rate"; }
+            #logsTable td:nth-child(7)::before { content: "Cost"; }
+            #logsTable td:nth-child(8)::before { content: ""; }
+            /* Tables become one card per row: a phone cannot show 5 columns */
+            #costTable thead { display: none; }
+            #costTable, #costTable tbody, #costTable tr, #costTable td { display: block; width: 100%; box-sizing: border-box; }
+            #costTable tr { border: 1px solid var(--row-border, #ddd); border-radius: 8px; margin-bottom: 10px; overflow: hidden; }
+            #costTable td { display: flex; justify-content: space-between; align-items: center; gap: 12px; text-align: right; border: none; border-bottom: 1px solid #eee; padding: 6px 10px; overflow-wrap: anywhere; }
+            #costTable td:last-child { border-bottom: none; justify-content: flex-end; }
+            #costTable td::before { font-weight: 600; color: #666; text-align: left; white-space: nowrap; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+            #costTable td:nth-child(1)::before { content: "Date"; }
+            #costTable td:nth-child(2)::before { content: "Type"; }
+            #costTable td:nth-child(3)::before { content: "Detail"; }
+            #costTable td:nth-child(4)::before { content: "Eff. Rate"; }
+            #costTable td:nth-child(5)::before { content: ""; }
+        }
     </style>
 </head>
 <body>
