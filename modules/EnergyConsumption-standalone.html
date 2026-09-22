@@ -58,6 +58,12 @@
         label { display: block; margin-bottom: 5px; font-weight: 500; font-size: 0.9rem; }
         input, select { width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: 4px; font-size: 1rem; }
         input:focus, select:focus { outline: 2px solid var(--accent); border-color: transparent; }
+        /* A date only needs ~11 characters; full width looked stretched. */
+        input[type="date"] { max-width: 13rem; min-width: 0; }
+        /* iOS Safari sizes date inputs natively (ignores width, can overflow, odd height). */
+        @supports (-webkit-touch-callout: none) {
+            input[type="date"] { -webkit-appearance: none; appearance: none; min-height: 2.35rem; background: white; text-align: left; }
+        }
         
         /* Buttons */
         .btn { display: inline-block; padding: 8px 16px; border: 1px solid transparent; border-radius: 4px; cursor: pointer; font-size: 0.95rem; text-align: center; text-decoration: none; width: 100%; }
