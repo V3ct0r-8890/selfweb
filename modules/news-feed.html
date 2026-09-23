@@ -518,6 +518,21 @@
         }
         .popup-actions > * { flex: 1; justify-content: center; font-size: 14px; padding: 10px; }
 
+        /* Close bar at the bottom of an overlay: on phones the top-right Close is
+           out of thumb reach, so it moves down here instead. Desktop keeps the header one. */
+        .preview-footer { display: none; }
+        .btn-close-bottom {
+            width: 100%;
+            padding: 14px;
+            font-size: 16px;
+            background-color: #95a5a6;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        .btn-close-bottom:hover { background-color: #7f8c8d; }
+
         /* The 380px sidebar leaves no room for the reading pane on phones: the list
            takes the full width and articles open in the popup instead. */
         @media (max-width: 768px) {
@@ -525,6 +540,18 @@
             #content-area { display: none; }
             .overlay-content { width: 96%; height: 94%; }
             .article-popup { height: auto; max-height: 94%; }
+            .preview-footer {
+                display: block;
+                padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
+                border-top: 1px solid #ddd;
+                background-color: #fcfcfc;
+                flex: none;
+            }
+            /* Header Close would duplicate the bottom one */
+            #webPreviewOverlay .preview-header .btn-close-overlay,
+            #articlePopup .preview-header .btn-close-overlay { display: none; }
+            #articlePopup .popup-actions { flex-wrap: wrap; }
+            #articlePopup .popup-actions .btn-close-bottom { flex: 1 0 100%; }
         }
     </style>
 </head>
@@ -590,6 +617,9 @@
                 <strong>Note:</strong> If the area below is blank, the website blocks embedded frames. Please use "Open in New Tab".
             </div>
             <iframe id="overlayFrame" src="about:blank" class="web-frame" title="Article Preview"></iframe>
+            <div class="preview-footer">
+                <button class="btn-close-bottom" onclick="closeOverlay()">✕ Close Preview</button>
+            </div>
         </div>
     </div>
 
@@ -607,6 +637,7 @@
             <div class="popup-actions">
                 <button id="articlePopupPreview" class="btn-action-primary"><span>👁️</span> View in overlay</button>
                 <a id="articlePopupTab" class="btn-action-secondary" href="#" target="_blank" rel="noopener"><span>🔗</span> Open in new tab</a>
+                <button class="btn-close-bottom" onclick="closeArticlePopup()">✕ Close</button>
             </div>
         </div>
     </div>
