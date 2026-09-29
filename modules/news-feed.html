@@ -533,6 +533,9 @@
         }
         .btn-close-bottom:hover { background-color: #7f8c8d; }
 
+        /* Compact phone header: icon-only buttons; bar position toggle is phone-only */
+        .btn-ico, #barPosBtn, .hdr-break { display: none; }
+
         /* The 380px sidebar leaves no room for the reading pane on phones: the list
            takes the full width and articles open in the popup instead. */
         @media (max-width: 768px) {
@@ -552,6 +555,58 @@
             #articlePopup .preview-header .btn-close-overlay { display: none; }
             #articlePopup .popup-actions { flex-wrap: wrap; }
             #articlePopup .popup-actions .btn-close-bottom { flex: 1 0 100%; }
+
+            /* Compact header in two rows:
+               feed picker + Refresh / Feeds / Help / bar toggle, then URL + Days + Scan + Load. */
+            body { height: 100dvh; }
+            #main-container { height: auto; min-height: 0; }
+            header { padding: 6px 8px; gap: 6px; }
+            header select { order: 1; flex: 1 1 0; min-width: 0; }
+            #loadAllBtn { order: 2; }
+            #feedsBtn { order: 3; }
+            #helpBtn { order: 4; }
+            #barPosBtn { order: 5; display: block; }
+            .hdr-break { order: 6; display: block; flex-basis: 100%; height: 0; }
+            #feedUrl { order: 7; flex: 1 1 0; min-width: 0; }
+            .days-label { order: 8; gap: 3px; }
+            .scan-label { order: 9; }
+            #loadBtn { order: 10; }
+            /* 16px text stops iOS zooming in when a field is tapped */
+            header select, header input[type="text"], header input[type="number"] {
+                font-size: 16px; padding: 4px 6px; height: 34px; box-sizing: border-box;
+            }
+            header input[type="number"] { width: 42px; padding: 4px 2px; }
+            header button { width: 36px; height: 34px; padding: 0; font-size: 16px; flex: none; }
+            .btn-txt { display: none; }
+            .btn-ico { display: inline; }
+            #sidebar-search { padding: 6px 8px; }
+            #searchInput { font-size: 16px; padding: 6px 8px; }
+            .feed-item { padding: 9px 12px; }
+            .item-meta { margin-bottom: 3px; }
+            #sidebar-footer { padding: 4px; }
+
+            /* One-hand mode: toolbar and search sit at the bottom, within thumb reach,
+               and the most-used row (feed picker + Refresh) is the lowest. */
+            body.bar-bottom header {
+                order: 2;
+                padding-bottom: calc(6px + env(safe-area-inset-bottom));
+                box-shadow: 0 -2px 5px rgba(0,0,0,0.1);
+            }
+            body.bar-bottom #main-container { order: 1; }
+            body.bar-bottom #feedUrl { order: 1; }
+            body.bar-bottom .days-label { order: 2; }
+            body.bar-bottom .scan-label { order: 3; }
+            body.bar-bottom #loadBtn { order: 4; }
+            body.bar-bottom .hdr-break { order: 5; }
+            body.bar-bottom header select { order: 6; }
+            body.bar-bottom #loadAllBtn { order: 7; }
+            body.bar-bottom #feedsBtn { order: 8; }
+            body.bar-bottom #helpBtn { order: 9; }
+            body.bar-bottom #barPosBtn { order: 10; background-color: rgba(255,255,255,0.2); }
+            body.bar-bottom #sidebar-list { order: 1; }
+            body.bar-bottom #sidebar-footer { order: 2; border-top: 1px solid #ddd; }
+            body.bar-bottom #sidebar-search { order: 3; border-bottom: none; border-top: 1px solid var(--border-color); }
+            body.bar-bottom .toast { bottom: auto; top: 20px; }
         }
     </style>
 </head>
@@ -563,19 +618,22 @@
         </select>
         <input type="text" id="feedUrl" placeholder="Enter RSS URL here..." value="https://www.blognone.com/atom.xml">
         
-        <label title="Fetch items for how many days back?">
+        <label class="days-label" title="Fetch items for how many days back?">
             Days:
             <input type="number" id="daysFilter" value="3" min="1" max="15">
         </label>
 
-        <label style="font-size:0.8em; color:white; display:flex; align-items:center;">
-            <input type="checkbox" id="deepScanToggle" checked style="width:auto; margin-right:5px;"> Scan Pgs
+        <label class="scan-label" title="Scan older pages of the feed" style="font-size:0.8em; color:white; display:flex; align-items:center;">
+            <input type="checkbox" id="deepScanToggle" checked style="width:auto; margin-right:5px;"> Scan<span class="btn-txt"> Pgs</span>
         </label>
 
-        <button id="loadBtn" onclick="fetchFeed()">Load Single</button>
-        <button id="loadAllBtn" class="secondary" onclick="fetchAllPresets(false)">Refresh All</button>
-        <button onclick="openSettings()" class="icon-btn" title="Manage Feeds">⚙️ Feeds</button>
-        <button onclick="openHelp()" class="icon-btn" title="Help">❓ Help</button>
+        <button id="loadBtn" onclick="fetchFeed()" title="Load this feed URL"><span class="btn-ico">▶</span><span class="btn-txt">Load Single</span></button>
+        <button id="loadAllBtn" class="secondary" onclick="fetchAllPresets(false)" title="Refresh all feeds"><span class="btn-ico">🔄</span><span class="btn-txt">Refresh All</span></button>
+        <button id="feedsBtn" onclick="openSettings()" class="icon-btn" title="Manage Feeds">⚙️<span class="btn-txt"> Feeds</span></button>
+        <button id="helpBtn" onclick="openHelp()" class="icon-btn" title="Help">❓<span class="btn-txt"> Help</span></button>
+        <!-- Phones only: moves this bar to the bottom of the screen for one-hand use -->
+        <button id="barPosBtn" class="icon-btn" onclick="toggleBarPosition()" title="Move toolbar to bottom" aria-pressed="false">⇅</button>
+        <span class="hdr-break"></span>
     </header>
 
     <div id="main-container">
@@ -697,6 +755,7 @@
                         <li><strong>Read:</strong> Click an article title in the left sidebar to read it.</li>
                         <li><strong>Preview:</strong> Click "Preview in App" to see the original website without leaving.</li>
                         <li><strong>Refresh:</strong> Click "Refresh All" to update all feeds in the background.</li>
+                        <li><strong>One-hand use (phones):</strong> Tap <strong>⇅</strong> to move the toolbar and search box to the bottom of the screen. Tap it again to move them back. Your choice is remembered.</li>
                     </ul>
 
                     <h3 class="help-title">Key Features</h3>
@@ -749,6 +808,29 @@
         ];
 
         let customFeeds = [];
+
+        // --- TOOLBAR POSITION (phones: top or bottom, remembered per device) ---
+        const BAR_POS_KEY = 'rss_toolbar_bottom';
+
+        function applyBarPosition(bottom) {
+            document.body.classList.toggle('bar-bottom', bottom);
+            const btn = document.getElementById('barPosBtn');
+            btn.title = bottom ? 'Move toolbar to top' : 'Move toolbar to bottom';
+            btn.setAttribute('aria-pressed', String(bottom));
+        }
+
+        function toggleBarPosition() {
+            const bottom = !document.body.classList.contains('bar-bottom');
+            applyBarPosition(bottom);
+            try { localStorage.setItem(BAR_POS_KEY, bottom ? '1' : '0'); }
+            catch (e) { console.warn('Toolbar position not saved:', e); }
+        }
+
+        // Applied straight away (not on load) so the bar doesn't jump after the page shows.
+        let savedBarBottom = false;
+        try { savedBarBottom = localStorage.getItem(BAR_POS_KEY) === '1'; }
+        catch (e) { console.warn('Toolbar position not read:', e); }
+        applyBarPosition(savedBarBottom);
 
         // --- INITIALIZATION ---
         window.onload = function() {
