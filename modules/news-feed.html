@@ -818,7 +818,7 @@
 
                     <h3 class="help-title">Key Features</h3>
                     <ul class="help-list">
-                        <li><strong>Smart Date Filter:</strong> By default, it shows news from the last 3 days. If a feed has no news in that period, it automatically expands to check the last 90 days.</li>
+                        <li><strong>Smart Date Filter:</strong> By default, it shows news from the last 3 days. Changing Days re-fetches all feeds straight away and is remembered. If a feed has no news in that period, it automatically expands to check the last 90 days.</li>
                         <li><strong>Deep Scan:</strong> When checked, the reader will scan up to 10 pages of a feed to find older articles. Uncheck this for faster loading of just the latest headlines.</li>
                         <li><strong>Cached Mode:</strong> Your feeds are saved in the browser. Next time you open the file, your news loads instantly while fresh data updates in the background.</li>
                     </ul>
@@ -851,6 +851,9 @@
         const CACHE_KEY = "rss_reader_cache_v1";
         const CUSTOM_FEEDS_KEY = "rss_reader_custom_feeds";
         const FALLBACK_DAYS = 90; 
+        const DAYS_KEY = "rss_reader_days";
+        let cachedDays = 0;   // Days setting the cached articles were fetched with
+        let fetchAllGen = 0;  // Newest Refresh All run; an older run finishing later is discarded
 
         // DEFAULT FEEDS
         const defaultFeeds = [
@@ -890,8 +893,37 @@
         catch (e) { console.warn('Toolbar position not read:', e); }
         applyBarPosition(savedBarBottom);
 
+        // --- DAYS SETTING ---
+        function readDays() {
+            const input = document.getElementById('daysFilter');
+            const days = Math.min(15, Math.max(1, parseInt(input.value) || 3));
+            input.value = days;
+            return days;
+        }
+
+        // A new Days value re-fetches straight away (and is remembered), keeping the chosen feed.
+        async function onDaysChange() {
+            const days = readDays();
+            try { localStorage.setItem(DAYS_KEY, String(days)); }
+            catch (e) { console.warn('Days setting not saved:', e); }
+            const select = document.getElementById('presetSelect');
+            const feedUrl = select.value;
+            const feedName = feedUrl ? select.options[select.selectedIndex].text : '';
+            await fetchAllPresets(false);
+            if (feedUrl && cachedDays >= days) {
+                select.value = feedUrl;
+                filterBySource(feedName);
+            }
+        }
+
         // --- INITIALIZATION ---
         window.onload = function() {
+            try {
+                const savedDays = localStorage.getItem(DAYS_KEY);
+                if (savedDays) document.getElementById('daysFilter').value = savedDays;
+            } catch (e) { console.warn('Days setting not read:', e); }
+            readDays();
+            document.getElementById('daysFilter').addEventListener('change', onDaysChange);
             loadCustomFeeds();     // Load custom sources from storage
             initFeedDropdown();    // Build the dropdown UI
             loadFromCache();       // Load articles from storage
@@ -1066,7 +1098,7 @@
         // --- STORAGE LOGIC (ARTICLES) ---
         function saveToCache(items) {
             try {
-                const payload = JSON.stringify({ timestamp: Date.now(), items: items });
+                const payload = JSON.stringify({ timestamp: Date.now(), days: cachedDays, items: items });
                 localStorage.setItem(CACHE_KEY, payload);
                 updateStorageDisplay();
             } catch (e) {
@@ -1074,7 +1106,7 @@
                 if (items.length > 50) {
                      try {
                         const reduced = items.slice(0, 50);
-                        localStorage.setItem(CACHE_KEY, JSON.stringify({ timestamp: Date.now(), items: reduced }));
+                        localStorage.setItem(CACHE_KEY, JSON.stringify({ timestamp: Date.now(), days: cachedDays, items: reduced }));
                         updateStorageDisplay();
                      } catch(retryErr) {}
                 }
@@ -1089,6 +1121,7 @@
                     if (data.items && Array.isArray(data.items)) {
                         allCachedItems = data.items;
                         currentFeedItems = data.items;
+                        cachedDays = data.days || 3; // caches saved before this field held the 3-day default
                         renderSidebar(currentFeedItems);
                         updateStorageDisplay();
                         showToast(`Restored ${currentFeedItems.length} items.`);
@@ -1129,7 +1162,8 @@
 
             if(selectedVal) {
                 input.value = selectedVal;
-                if (filterBySource(selectedName)) return; 
+                // Cached articles only answer if they were fetched for at least this many days.
+                if (cachedDays >= readDays() && filterBySource(selectedName)) return; 
                 fetchFeed();
             } else {
                 resetToAll();
@@ -1387,8 +1421,8 @@
             const loadAllBtn = document.getElementById('loadAllBtn');
             const searchInput = document.getElementById('searchInput');
             const deepScan = document.getElementById('deepScanToggle').checked;
-            const daysInput = document.getElementById('daysFilter');
-            const days = parseInt(daysInput.value) || 3;
+            const days = readDays();
+            const gen = ++fetchAllGen;
 
             // Gather all feeds (Default + Custom)
             const feedsToLoad = [];
@@ -1411,6 +1445,7 @@
             try {
                 const promises = feedsToLoad.map(feed => fetchSmartFeed(feed.url, feed.name, deepScan, days));
                 const results = await Promise.allSettled(promises);
+                if (gen !== fetchAllGen) return; // a newer refresh (e.g. new Days value) replaced this one
                 let aggregatedItems = [];
                 let failCount = 0;
                 const failedSources = new Set();
@@ -1435,6 +1470,7 @@
 
                 allCachedItems = aggregatedItems;
                 currentFeedItems = aggregatedItems;
+                cachedDays = days;
                 saveToCache(allCachedItems);
                 
                 clearSidebarStatus();
@@ -1455,7 +1491,7 @@
                 if (!isBackground) renderError(err);
                 clearSidebarStatus();
             } finally {
-                loadAllBtn.disabled = false;
+                if (gen === fetchAllGen) loadAllBtn.disabled = false;
             }
         }
 
@@ -1464,7 +1500,7 @@
             const btn = document.getElementById('loadBtn');
             const searchInput = document.getElementById('searchInput');
             const deepScan = document.getElementById('deepScanToggle').checked;
-            const days = parseInt(document.getElementById('daysFilter').value) || 3;
+            const days = readDays();
 
             if (!url) return alert("Please enter a URL");
             btn.disabled = true;
