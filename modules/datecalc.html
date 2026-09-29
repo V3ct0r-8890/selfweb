@@ -150,9 +150,12 @@
     </div>
 
     <script>
+        // Local calendar date; toISOString() gives the UTC date, a day early before 07:00 in Thailand.
+        const localISO = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+
         // Set today's date in YYYY-MM-DD format
         const today = new Date();
-        const todayISO = today.toISOString().split('T')[0];
+        const todayISO = localISO(today);
 
         // --- Utility Functions ---
 
@@ -277,7 +280,7 @@
             // Adding/subtracting days. The Date object automatically handles month/year rollovers, including leap years.
             resultDate.setDate(startDate.getDate() + finalOffset);
 
-            const resultDateISO = resultDate.toISOString().split('T')[0];
+            const resultDateISO = localISO(resultDate);
 
             const output = `
                 <p>Reference Date: <span class="font-semibold">${startDateStr}</span></p>

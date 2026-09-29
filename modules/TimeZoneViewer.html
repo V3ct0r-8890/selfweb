@@ -589,6 +589,8 @@
 </div>
 
 <script>
+    // Local calendar date; toISOString() gives the UTC date, a day early before 07:00 in Thailand.
+    const localISO = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
     const STORAGE_KEY = 'tz_viewer_v5_data';
     const ONE_HOUR = 3600000;
     
@@ -768,7 +770,7 @@
         const url = URL.createObjectURL(blob);
         const link = document.createElement("a");
         link.setAttribute("href", url);
-        link.setAttribute("download", `holidays_${new Date().toISOString().slice(0,10)}.csv`);
+        link.setAttribute("download", `holidays_${localISO(new Date())}.csv`);
         link.style.visibility = 'hidden';
         document.body.appendChild(link);
         link.click();
@@ -831,7 +833,7 @@
         const dateEl = document.getElementById('live-date');
         const now = new Date();
         dateEl.innerText = now.toLocaleDateString('en-US', { month: 'long', day: '2-digit', year: 'numeric' });
-        timeEl.innerText = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+        timeEl.innerText = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23' });
     }
 
     function toggleShowDates() {
@@ -1037,9 +1039,9 @@
         const y = calDashboardRefDate.getFullYear();
         const m = calDashboardRefDate.getMonth();
         // start date: 1st of viewed month
-        const startIso = new Date(y, m, 1).toISOString().split('T')[0];
+        const startIso = localISO(new Date(y, m, 1));
         // end date: last day of NEXT month
-        const endIso = new Date(y, m + 2, 0).toISOString().split('T')[0];
+        const endIso = localISO(new Date(y, m + 2, 0));
 
         const upcoming = entries.filter(e => e[0] >= startIso && e[0] <= endIso);
         
@@ -1131,7 +1133,7 @@
 
         for (let i = 0; i < emptySlots; i++) html += '<td></td>';
 
-        const viewIso = new Date(viewStartTime).toISOString().split('T')[0];
+        const viewIso = localISO(new Date(viewStartTime));
 
         for (let d = 1; d <= daysInMonth; d++) {
             const currentDayOfWeek = (emptySlots + d - 1) % 7;
@@ -1145,7 +1147,7 @@
             const iso = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
             let cls = '';
             
-            const todayIso = new Date().toISOString().split('T')[0];
+            const todayIso = localISO(new Date());
             
             if (iso === viewIso) cls = 'cal-day-selected'; 
             else if (iso === todayIso) cls = 'cal-day-today';
@@ -1188,7 +1190,7 @@
         viewStartTime = now.setHours(0,0,0,0);
         calDashboardRefDate = new Date(now); calDashboardRefDate.setDate(1);
 
-        document.getElementById('jump-date').value = new Date().toISOString().split('T')[0];
+        document.getElementById('jump-date').value = localISO(new Date());
         render(); refreshAllHolidays(); renderSidebar();
         setTimeout(() => {
             updateNowLine();
@@ -1202,7 +1204,7 @@
     function getOffset(z) { try { return new Intl.DateTimeFormat('en-US', { timeZone: z, timeZoneName: 'shortOffset' }).format(new Date()).split(', ')[1]; } catch(e) { return 'GMT'; } }
     
     function copyToClipboard(date, zone, label) {
-        const fmt = new Intl.DateTimeFormat('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false, timeZone: zone });
+        const fmt = new Intl.DateTimeFormat('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', hourCycle: 'h23', timeZone: zone });
         const text = `${label}: ${fmt.format(date)} (${getOffset(zone)})`;
         const el = document.createElement("textarea"); el.value = text; el.style.position = "fixed"; el.style.left = "-9999px";
         document.body.appendChild(el); el.select(); document.execCommand('copy'); document.body.removeChild(el);
@@ -1291,7 +1293,7 @@
 
     function exportConfig() {
         const blob = new Blob([JSON.stringify(config, null, 2)], { type: 'application/json' });
-        const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `tzv_config_${new Date().toISOString().slice(0,10)}.json`; a.click();
+        const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `tzv_config_${localISO(new Date())}.json`; a.click();
     }
 
     function initSearch() {
@@ -1358,7 +1360,7 @@
 
     function initDateTimePickers() {
         const jump = document.getElementById('jump-date'); 
-        jump.value = new Date().toISOString().split('T')[0];
+        jump.value = localISO(new Date());
         jump.onchange = (e) => {
             if(!e.target.value) return;
             const selected = new Date(e.target.value); selected.setHours(0,0,0,0);

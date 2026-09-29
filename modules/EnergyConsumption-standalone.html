@@ -449,6 +449,8 @@
 </div>
 
 <script>
+    // Local calendar date; toISOString() gives the UTC date, a day early before 07:00 in Thailand.
+    const localISO = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 // --- SIMPLE CHART ENGINE (v2) ---
 class SimpleChart {
     constructor(canvasId) {
@@ -536,8 +538,8 @@ class EnergyTracker {
 
     init() {
         this.load();
-        document.getElementById('tripDate').valueAsDate = new Date();
-        document.getElementById('costDate').valueAsDate = new Date();
+        document.getElementById('tripDate').value = localISO(new Date());
+        document.getElementById('costDate').value = localISO(new Date());
         this.setupEvents();
         this.renderAll();
         this.updateCurrencyUI();
@@ -824,7 +826,7 @@ class EnergyTracker {
             document.getElementById('editLogId').value = "";
             document.getElementById('tripForm').reset();
             document.getElementById('tripSummary').classList.add('hidden');
-            document.getElementById('tripDate').valueAsDate = new Date();
+            document.getElementById('tripDate').value = localISO(new Date());
             this.updatePriceDisplay();
         }
         if (mode === 'car') {
@@ -842,7 +844,7 @@ class EnergyTracker {
             document.getElementById('costCard').classList.remove('editing-mode');
             document.getElementById('editCostId').value = "";
             document.getElementById('costForm').reset();
-            document.getElementById('costDate').valueAsDate = new Date();
+            document.getElementById('costDate').value = localISO(new Date());
         }
     }
 

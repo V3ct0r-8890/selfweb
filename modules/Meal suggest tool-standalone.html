@@ -369,6 +369,8 @@
     </main>
 
     <script>
+    // Local calendar date; toISOString() gives the UTC date, a day early before 07:00 in Thailand.
+    const localISO = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
         // --- DATA & CONSTANTS ---
         const FOOD_DB = {
             "Chicken Breast": { p: 31, c: 0, f: 3.6, u: 'g' },
@@ -415,7 +417,7 @@
              initUI() {
                  const sel = document.getElementById('trk-food');
                  Object.keys(FOOD_DB).sort().forEach(f => { const opt = document.createElement('option'); opt.value=f; opt.textContent=f; sel.appendChild(opt); });
-                 const today = new Date().toISOString().split('T')[0];
+                 const today = localISO(new Date());
                  document.getElementById('trk-date').value = today;
                  document.getElementById('trk-date').addEventListener('change', () => { this.renderLogList(); this.updateTrackerSummary(); });
                  this.updateUIValues();
@@ -596,7 +598,7 @@
                  const container = document.getElementById('trend-table-container'); if(!dailyData || dailyData.length === 0) { container.innerHTML = ''; return; }
                  let tableData = []; let headers = []; let title = ""; const isDaily = (range === '1d' || range === '1w');
                  if(isDaily) { title = "Daily Breakdown"; headers = ["Date", "Protein", "Carbs", "Fat", "Weight"]; tableData = [...dailyData].reverse().map(d => ({ col1: d.date, p: d.p, c: d.c, f: d.f, w: d.w })); } 
-                 else { title = "Weekly Cumulative Summary"; headers = ["Week Of", "Protein", "Carbs", "Fat", "Avg Weight"]; const weeks = {}; dailyData.forEach(d => { const dateObj = new Date(d.date); const day = dateObj.getDay(); const diff = dateObj.getDate() - day + (day == 0 ? -6 : 1); const monday = new Date(dateObj.setDate(diff)).toISOString().split('T')[0]; if(!weeks[monday]) weeks[monday] = { p:0, c:0, f:0, wSum:0, wCount:0 }; weeks[monday].p += d.p; weeks[monday].c += d.c; weeks[monday].f += d.f; if(d.w > 0) { weeks[monday].wSum += d.w; weeks[monday].wCount++; } }); tableData = Object.keys(weeks).sort().reverse().map(k => { const w = weeks[k]; return { col1: k, p: w.p, c: w.c, f: w.f, w: w.wCount > 0 ? (w.wSum / w.wCount) : 0 }; }); }
+                 else { title = "Weekly Cumulative Summary"; headers = ["Week Of", "Protein", "Carbs", "Fat", "Avg Weight"]; const weeks = {}; dailyData.forEach(d => { const dateObj = new Date(d.date + 'T00:00'); const day = dateObj.getDay(); const diff = dateObj.getDate() - day + (day == 0 ? -6 : 1); const monday = localISO(new Date(dateObj.setDate(diff))); if(!weeks[monday]) weeks[monday] = { p:0, c:0, f:0, wSum:0, wCount:0 }; weeks[monday].p += d.p; weeks[monday].c += d.c; weeks[monday].f += d.f; if(d.w > 0) { weeks[monday].wSum += d.w; weeks[monday].wCount++; } }); tableData = Object.keys(weeks).sort().reverse().map(k => { const w = weeks[k]; return { col1: k, p: w.p, c: w.c, f: w.f, w: w.wCount > 0 ? (w.wSum / w.wCount) : 0 }; }); }
                  let html = `<h4 class="font-bold text-gray-700 text-sm mt-6 mb-2">${title}</h4><div style="overflow-x:auto;"><table class="trend-table"><thead><tr>`;
                  headers.forEach(h => html += `<th>${h}</th>`); html += `</tr></thead><tbody>`;
                  tableData.forEach(row => { html += `<tr><td style="font-weight:500;">${row.col1}</td><td class="text-green-600">${row.p.toFixed(0)}g</td><td class="text-yellow-600">${row.c.toFixed(0)}g</td><td class="text-orange-600">${row.f.toFixed(0)}g</td><td class="text-gray-600 font-bold">${row.w > 0 ? row.w.toFixed(1)+'kg' : '-'}</td></tr>`; });

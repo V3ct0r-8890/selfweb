@@ -561,7 +561,7 @@
         <select id="presetSelect" onchange="usePreset()">
             <!-- Options populated by JS -->
         </select>
-        <input type="text" id="feedUrl" placeholder="Enter RSS URL here..." value="http://www.blognone.com/atom.xml">
+        <input type="text" id="feedUrl" placeholder="Enter RSS URL here..." value="https://www.blognone.com/atom.xml">
         
         <label title="Fetch items for how many days back?">
             Days:
@@ -737,10 +737,10 @@
 
         // DEFAULT FEEDS
         const defaultFeeds = [
-            { name: "IT News: Blognone", url: "http://www.blognone.com/atom.xml" },
+            { name: "IT News: Blognone", url: "https://www.blognone.com/atom.xml" },
             { name: "IT News: DroidSans", url: "https://droidsans.com/feed/" },
-            { name: "IT News: MacRumors", url: "http://www.macrumors.com/macrumors.xml" },
-            { name: "Camera News: DPReview", url: "http://www.dpreview.com/feeds/news.xml" },
+            { name: "IT News: MacRumors", url: "https://www.macrumors.com/macrumors.xml" },
+            { name: "Camera News: DPReview", url: "https://www.dpreview.com/feeds/news.xml" },
             { name: "Security News: BleepingComputer", url: "https://www.bleepingcomputer.com/feed/" },
             { name: "Security News: The Hacker News", url: "https://feeds.feedburner.com/TheHackersNews" },
             { name: "Security News: Dark Reading", url: "https://www.darkreading.com/rss/all.xml" },
@@ -846,8 +846,8 @@
                 li.className = 'custom-feed-item';
                 li.innerHTML = `
                     <div class="custom-feed-info">
-                        <strong>${feed.name}</strong>
-                        <span class="custom-feed-url" title="${feed.url}">${feed.url}</span>
+                        <strong>${escapeHTML(feed.name)}</strong>
+                        <span class="custom-feed-url" title="${escapeHTML(feed.url)}">${escapeHTML(feed.url)}</span>
                     </div>
                     <button class="btn-delete" onclick="deleteCustomFeed(${index})">Delete</button>
                 `;
@@ -1008,7 +1008,7 @@
                 document.getElementById('searchInput').value = '';
                 document.getElementById('content-area').innerHTML = `
                     <div class="msg-box">
-                        <h2>${sourceName}</h2>
+                        <h2>${escapeHTML(sourceName)}</h2>
                         <p>Showing ${filtered.length} cached articles.</p>
                     </div>`;
                 return true;
@@ -1184,6 +1184,46 @@
             return '';
         }
 
+        // Feed text comes from third parties, so nothing from it may run script in this page.
+        const UNSAFE_TAGS = 'script,style,iframe,frame,frameset,object,embed,applet,form,input,button,textarea,select,link,meta,base,svg,math,template';
+        const URL_ATTRS = ['href', 'src', 'action', 'formaction', 'poster', 'background', 'xlink:href'];
+
+        function escapeHTML(s) {
+            return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        }
+
+        // Feed titles may carry entities or stray tags; reduce them to plain text.
+        function plainText(s) {
+            return new DOMParser().parseFromString(String(s ?? ''), 'text/html').body.textContent;
+        }
+
+        function safeURL(url) {
+            try {
+                const u = new URL(String(url ?? '').trim());
+                return (u.protocol === 'http:' || u.protocol === 'https:') ? u.href : '';
+            } catch (e) { return ''; }
+        }
+
+        function sanitizeHTML(html) {
+            // DOMParser documents are inert: nothing runs and no image loads while we clean.
+            const doc = new DOMParser().parseFromString(String(html ?? ''), 'text/html');
+            doc.body.querySelectorAll(UNSAFE_TAGS).forEach(el => el.remove());
+            doc.body.querySelectorAll('*').forEach(el => {
+                for (const attr of [...el.attributes]) {
+                    const name = attr.name.toLowerCase();
+                    if (name.startsWith('on') || name === 'srcdoc' || name === 'srcset') {
+                        el.removeAttribute(attr.name);
+                    } else if (URL_ATTRS.includes(name)) {
+                        const v = attr.value.replace(/[\s\u0000-\u001f]/g, '').toLowerCase();
+                        const imgData = name === 'src' && el.tagName === 'IMG' && v.startsWith('data:image/') && !v.startsWith('data:image/svg');
+                        if (/^(javascript|vbscript|data):/.test(v) && !imgData) el.removeAttribute(attr.name);
+                    }
+                }
+                if (el.tagName === 'A') { el.target = '_blank'; el.rel = 'noopener noreferrer'; }
+            });
+            return doc.body.innerHTML;
+        }
+
         /**
          * Tidies images after an article's HTML is inserted: hides ones that fail to
          * load (tracking pixels, dead links) instead of showing a broken-image icon,
@@ -1346,10 +1386,10 @@
                 try { if (dateStr) dateStr = new Date(dateStr).toLocaleDateString(); } catch(e) {}
                 div.innerHTML = `
                     <div class="item-meta">
-                        <span class="source-badge">${item.source}</span>
-                        <span>${dateStr || ''}</span>
+                        <span class="source-badge">${escapeHTML(item.source)}</span>
+                        <span>${escapeHTML(dateStr)}</span>
                     </div>
-                    <div class="item-title">${item.title}</div>
+                    <div class="item-title">${escapeHTML(plainText(item.title))}</div>
                 `;
                 sidebarList.appendChild(div);
             });
@@ -1360,31 +1400,33 @@
             const item = currentFeedItems.find(i => i.id === originalId);
             if(!item) return;
             const contentArea = document.getElementById('content-area');
-            filterFeed(); 
+            filterFeed();
+            const link = safeURL(item.link);
             contentArea.innerHTML = `
                 <div class="article-view">
                     <div class="article-toolbar">
                         <div class="toolbar-info">
-                            <span style="background:#eee; padding:2px 8px; border-radius:4px; font-size:0.9em; color:#555;">${item.source}</span>
-                            <span>${item.date ? new Date(item.date).toLocaleString() : ''}</span>
+                            <span style="background:#eee; padding:2px 8px; border-radius:4px; font-size:0.9em; color:#555;">${escapeHTML(item.source)}</span>
+                            <span>${item.date ? escapeHTML(new Date(item.date).toLocaleString()) : ''}</span>
                         </div>
                         <div class="toolbar-actions">
-                            <button class="btn-action-primary" onclick="openPreview('${item.link}')">
+                            <button class="btn-action-primary" id="articlePreviewBtn">
                                 <span>👁️</span> Preview
                             </button>
-                            <a href="${item.link}" target="_blank" class="btn-action-secondary">
+                            <a href="${escapeHTML(link || '#')}" target="_blank" rel="noopener noreferrer" class="btn-action-secondary">
                                 <span>🔗</span> Open Tab
                             </a>
                         </div>
                     </div>
                     <div class="article-scroll-area">
-                        <h1>${item.title}</h1>
+                        <h1>${escapeHTML(plainText(item.title))}</h1>
                         <div class="article-content">
-                            ${item.content}
+                            ${sanitizeHTML(item.content)}
                         </div>
                     </div>
                 </div>
             `;
+            contentArea.querySelector('#articlePreviewBtn').onclick = () => openPreview(link);
             fixArticleImages(contentArea.querySelector('.article-content'), item);
             if (NARROW_SCREEN.matches) openArticlePopup(item);
         }
@@ -1394,17 +1436,18 @@
         function openArticlePopup(item) {
             const dateText = item.date ? new Date(item.date).toLocaleString() : '';
             document.getElementById('articlePopupMeta').textContent = [item.source, dateText].filter(Boolean).join(' · ');
-            document.getElementById('articlePopupTitle').textContent = item.title;
+            document.getElementById('articlePopupTitle').textContent = plainText(item.title);
             const popupContent = document.getElementById('articlePopupContent');
-            popupContent.innerHTML = item.content;
+            popupContent.innerHTML = sanitizeHTML(item.content);
             fixArticleImages(popupContent, item);
 
+            const link = safeURL(item.link);
             const previewBtn = document.getElementById('articlePopupPreview');
             const tabLink = document.getElementById('articlePopupTab');
-            previewBtn.style.display = tabLink.style.display = item.link ? '' : 'none';
-            tabLink.href = item.link || '#';
+            previewBtn.style.display = tabLink.style.display = link ? '' : 'none';
+            tabLink.href = link || '#';
             tabLink.onclick = closeArticlePopup;
-            previewBtn.onclick = () => { closeArticlePopup(); openPreview(item.link); };
+            previewBtn.onclick = () => { closeArticlePopup(); openPreview(link); };
 
             document.getElementById('articlePopup').style.display = 'flex';
         }

@@ -746,6 +746,8 @@
 
     <!-- Javascript Logic -->
     <script>
+    // Local calendar date; toISOString() gives the UTC date, a day early before 07:00 in Thailand.
+    const localISO = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
         // --- ICONS (SVG Strings) ---
         const SVG = {
             play: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>',
@@ -880,7 +882,7 @@
         // --- GLOBAL CLOCK ---
         setInterval(() => {
             const now = new Date();
-            const timeStr = now.toLocaleTimeString('en-US', { hour12: false });
+            const timeStr = now.toLocaleTimeString('en-US', { hourCycle: 'h23' });
             document.getElementById('current-clock').innerText = timeStr;
             checkAlarms(now);
         }, 1000);
@@ -1196,8 +1198,8 @@
         }
 
         function checkAlarms(now) {
-            const timeStr = now.toLocaleTimeString('en-US', { hour12: false }); // HH:MM:SS
-            const dateStr = now.toISOString().split('T')[0]; // YYYY-MM-DD
+            const timeStr = now.toLocaleTimeString('en-US', { hourCycle: 'h23' }); // HH:MM:SS; hour12:false gives 24:00:00 at midnight
+            const dateStr = localISO(now); // YYYY-MM-DD
             const dayOfWeek = now.getDay(); // 0-6
 
             alarms.forEach(alarm => {
