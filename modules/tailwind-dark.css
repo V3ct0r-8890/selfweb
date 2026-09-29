@@ -1,0 +1,64 @@
+/*
+ * Dark palette for the Tailwind pages (launcher, Date Calculator, Interest Calculator).
+ * Remaps the light utility classes those pages use when selfweb-theme.js sets
+ * <html data-app-theme="dark">. The extra attribute selector outranks Tailwind's own rules.
+ */
+html[data-app-theme="dark"] body { color: #e5e7eb; }
+/* Tailwind's default border colour (plain .border, .border-b ...); coloured border
+   classes below are more specific and still win. */
+html[data-app-theme="dark"] *,
+html[data-app-theme="dark"] ::before,
+html[data-app-theme="dark"] ::after { border-color: #374151; }
+
+/* Surfaces */
+html[data-app-theme="dark"] .bg-white { background-color: #1f2937; }
+html[data-app-theme="dark"] .bg-gray-50 { background-color: #111827; }
+html[data-app-theme="dark"] .bg-gray-50\/75 { background-color: rgba(17, 24, 39, 0.75); }
+html[data-app-theme="dark"] .bg-gray-100 { background-color: #273244; }
+html[data-app-theme="dark"] .bg-blue-50 { background-color: rgba(59, 130, 246, 0.14); }
+html[data-app-theme="dark"] .bg-blue-100 { background-color: rgba(59, 130, 246, 0.24); }
+html[data-app-theme="dark"] .bg-indigo-50 { background-color: rgba(99, 102, 241, 0.16); }
+
+/* Text */
+html[data-app-theme="dark"] .text-gray-900,
+html[data-app-theme="dark"] .text-gray-800 { color: #f3f4f6; }
+html[data-app-theme="dark"] .text-gray-700 { color: #e5e7eb; }
+html[data-app-theme="dark"] .text-gray-600 { color: #d1d5db; }
+html[data-app-theme="dark"] .text-gray-500,
+html[data-app-theme="dark"] .text-gray-400 { color: #9ca3af; }
+html[data-app-theme="dark"] .text-indigo-700,
+html[data-app-theme="dark"] .text-indigo-600 { color: #a5b4fc; }
+html[data-app-theme="dark"] .text-indigo-500 { color: #818cf8; }
+html[data-app-theme="dark"] .text-blue-700,
+html[data-app-theme="dark"] .text-blue-600 { color: #93c5fd; }
+html[data-app-theme="dark"] .text-green-700,
+html[data-app-theme="dark"] .text-green-600 { color: #4ade80; }
+html[data-app-theme="dark"] .text-red-600,
+html[data-app-theme="dark"] .text-red-500 { color: #f87171; }
+html[data-app-theme="dark"] .text-orange-500 { color: #fb923c; }
+
+/* Borders */
+html[data-app-theme="dark"] .border-gray-100,
+html[data-app-theme="dark"] .border-gray-200 { border-color: #374151; }
+html[data-app-theme="dark"] .border-gray-300 { border-color: #4b5563; }
+html[data-app-theme="dark"] .border-blue-200 { border-color: #1e3a8a; }
+html[data-app-theme="dark"] .border-indigo-300 { border-color: #4f46e5; }
+html[data-app-theme="dark"] .divide-gray-200 > :not([hidden]) ~ :not([hidden]) { border-color: #374151; }
+html[data-app-theme="dark"] .border-indigo-600 { border-color: #6366f1; }
+html[data-app-theme="dark"] .border-blue-400 { border-color: #60a5fa; }
+
+/* Hover states */
+html[data-app-theme="dark"] .hover\:bg-gray-100:hover { background-color: #374151; }
+html[data-app-theme="dark"] .hover\:bg-indigo-50:hover { background-color: rgba(99, 102, 241, 0.18); }
+html[data-app-theme="dark"] .hover\:bg-blue-50:hover { background-color: rgba(59, 130, 246, 0.16); }
+html[data-app-theme="dark"] .hover\:bg-blue-200:hover { background-color: rgba(59, 130, 246, 0.34); }
+html[data-app-theme="dark"] .hover\:text-gray-700:hover { color: #f3f4f6; }
+
+/* Form fields without their own background class */
+html[data-app-theme="dark"] input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]),
+html[data-app-theme="dark"] select,
+html[data-app-theme="dark"] textarea {
+    background-color: #111827;
+    color: #f3f4f6;
+}
+html[data-app-theme="dark"] ::placeholder { color: #6b7280; }

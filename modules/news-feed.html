@@ -29,6 +29,8 @@
          protection keyed on the Referer header). Sending no referrer lets them load. -->
     <meta name="referrer" content="no-referrer">
     <title>RSS Feed Reader v23 (Help Menu)</title>
+    <!-- App-wide Device default / Light / Dark theme; sets <html data-app-theme> -->
+    <script src="selfweb-theme.js"></script>
     <style>
         :root {
             --bg-color: #f4f4f9;
@@ -608,6 +610,62 @@
             body.bar-bottom #sidebar-search { order: 3; border-bottom: none; border-top: 1px solid var(--border-color); }
             body.bar-bottom .toast { bottom: auto; top: 20px; }
         }
+
+        /* --- Dark theme (html[data-app-theme="dark"], set by selfweb-theme.js) --- */
+        html[data-app-theme="dark"] {
+            --bg-color: #111827;
+            --sidebar-bg: #1f2937;
+            --header-bg: #0f172a;
+            --text-color: #e5e7eb;
+            --hover-color: #273244;
+            --border-color: #374151;
+            --badge-bg: #475569;
+        }
+        html[data-app-theme="dark"] header input[type="text"],
+        html[data-app-theme="dark"] #searchInput,
+        html[data-app-theme="dark"] .settings-body input[type="text"] {
+            background: #111827 !important; /* settings fields carry inline light colours */
+            color: #f3f4f6 !important;
+            border: 1px solid #4b5563 !important;
+        }
+        html[data-app-theme="dark"] #sidebar-search,
+        html[data-app-theme="dark"] #sidebar-footer,
+        html[data-app-theme="dark"] .article-toolbar,
+        html[data-app-theme="dark"] .popup-actions,
+        html[data-app-theme="dark"] .preview-footer { background-color: #1a2332; border-color: #374151; }
+        html[data-app-theme="dark"] #sidebar-footer,
+        html[data-app-theme="dark"] .toolbar-info,
+        html[data-app-theme="dark"] .item-meta,
+        html[data-app-theme="dark"] .popup-meta,
+        html[data-app-theme="dark"] .msg-box,
+        html[data-app-theme="dark"] .status-text,
+        html[data-app-theme="dark"] .loading-progress,
+        html[data-app-theme="dark"] .custom-feed-url { color: #9ca3af; }
+        html[data-app-theme="dark"] .feed-item { border-bottom-color: #2d3748; }
+        html[data-app-theme="dark"] .feed-item.active { background-color: rgba(231, 76, 60, 0.16); }
+        html[data-app-theme="dark"] .item-title,
+        html[data-app-theme="dark"] .article-view h1,
+        html[data-app-theme="dark"] .article-popup .popup-body h2,
+        html[data-app-theme="dark"] .settings-section h3 { color: #f3f4f6; }
+        html[data-app-theme="dark"] #content-area,
+        html[data-app-theme="dark"] .overlay-content,
+        html[data-app-theme="dark"] .settings-content { background-color: #1f2937; color: #e5e7eb; }
+        html[data-app-theme="dark"] .toolbar-info span[style] { background: #374151 !important; color: #e5e7eb !important; }
+        html[data-app-theme="dark"] .article-content,
+        html[data-app-theme="dark"] .help-list li { color: #d1d5db; }
+        html[data-app-theme="dark"] .article-content a { color: #93c5fd; }
+        html[data-app-theme="dark"] .btn-action-secondary { background-color: #273244; color: #e5e7eb; border-color: #4b5563; }
+        html[data-app-theme="dark"] .btn-action-secondary:hover { background-color: #374151; }
+        html[data-app-theme="dark"] .preview-header { background-color: #273244; border-bottom-color: #374151; color: #f3f4f6; }
+        html[data-app-theme="dark"] .preview-warning { background-color: rgba(234, 179, 8, 0.14); color: #fcd34d; border-bottom-color: #854d0e; }
+        html[data-app-theme="dark"] .settings-section,
+        html[data-app-theme="dark"] .help-title { border-bottom-color: #374151; }
+        html[data-app-theme="dark"] .custom-feed-item { background: #111827; border-color: #374151; }
+        html[data-app-theme="dark"] .error-box { background-color: rgba(239, 68, 68, 0.12); color: #fca5a5; border-color: #7f1d1d; }
+        html[data-app-theme="dark"] .loader,
+        html[data-app-theme="dark"] .mini-loader { border-color: #374151; border-top-color: var(--accent-color); }
+        html[data-app-theme="dark"] #status-bar-overlay { background: #1e2a4a !important; border-bottom-color: #374151 !important; }
+        html[data-app-theme="dark"] body.bar-bottom #sidebar-footer { border-top-color: #374151; }
     </style>
 </head>
 <body>

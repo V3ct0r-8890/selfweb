@@ -6,6 +6,9 @@
     <title>Tool Selector Menu</title>
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#4f46e5">
+    <!-- Device default / Light / Dark, shared with every tool; loaded first so dark never flashes white -->
+    <script src="modules/selfweb-theme.js"></script>
+    <link rel="stylesheet" href="modules/tailwind-dark.css">
     <link rel="icon" href="icons/icon-192.png">
     <link rel="apple-touch-icon" href="icons/icon-192.png">
     <!-- Load Tailwind CSS via CDN for modern styling -->
@@ -47,7 +50,7 @@
                     </svg>
                 </button>
             </div>
-            <h1 class="text-lg sm:text-2xl font-bold text-indigo-700 truncate">
+            <h1 class="text-lg sm:text-2xl font-bold text-indigo-700 truncate max-[399px]:hidden">
                 My Utilities
             </h1>
         </div>
@@ -55,8 +58,14 @@
             <label for="layout-select" class="text-sm text-gray-600 hidden sm:inline">Menu</label>
             <select id="layout-select" aria-label="Tools menu position" class="text-sm border border-gray-300 rounded-md px-2 py-1 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
                 <option value="sidebar">Sidebar</option>
-                <option value="top">Top dropdown</option>
-                <option value="bottom">Bottom dropdown</option>
+                <option value="top">Top bar</option>
+                <option value="bottom">Bottom bar</option>
+            </select>
+            <label for="theme-select" class="text-sm text-gray-600 hidden sm:inline">Theme</label>
+            <select id="theme-select" aria-label="Colour theme" title="Colour theme" class="text-sm border border-gray-300 rounded-md px-1 sm:px-2 py-1 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                <option value="auto">Device</option>
+                <option value="light">Light</option>
+                <option value="dark">Dark</option>
             </select>
             <button id="about-btn" aria-label="About and help" title="About" class="w-8 h-8 shrink-0 rounded-full border border-indigo-300 text-indigo-600 font-bold hover:bg-indigo-50 focus:outline-none focus:ring-2 focus:ring-indigo-500">?</button>
         </div>
@@ -75,6 +84,7 @@
             <ul class="list-disc pl-5 space-y-1 mb-3">
                 <li><b>Menu</b> (top-right): show the tools list as a sidebar, or as a dropdown at the top or bottom.</li>
                 <li><b>Group</b> (in the tools list): group tools by type or by function.</li>
+                <li><b>Theme</b> (top-right): Device default follows your phone or computer; Light and Dark apply to every tool.</li>
                 <li>Works offline once installed. News Feed, INS DB lookups and public holidays need internet.</li>
                 <li>When a new version is published, tap <b>Update</b> on the banner to get it.</li>
             </ul>
@@ -125,7 +135,7 @@
 
     <script>
         // Shown in About. aa.bb.ccc: ccc moves on every release; keep in step with CACHE_VERSION in sw.js.
-        const APP_VERSION = '1.01.011';
+        const APP_VERSION = '1.01.012';
 
         // type = what kind of tool it is; fn = what it is used for. Both drive the "Group" menu option.
         const tools = [
@@ -300,6 +310,19 @@
         document.getElementById('about-close').addEventListener('click', closeAbout);
         aboutDialog.addEventListener('click', (e) => { if (e.target === aboutDialog) closeAbout(); });
         document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeAbout(); });
+
+        // Colour theme: the choice is shared with every tool through selfweb-theme.js.
+        const themeSelect = document.getElementById('theme-select');
+        const themeColorMeta = document.querySelector('meta[name="theme-color"]');
+        const syncThemeUi = () => {
+            themeSelect.value = selfwebTheme.choice();
+            themeColorMeta.content = selfwebTheme.isDark() ? '#111827' : '#4f46e5';
+        };
+        themeSelect.addEventListener('change', () => selfwebTheme.set(themeSelect.value));
+        window.addEventListener('selfweb-theme', syncThemeUi);
+        // A tool's own theme button saves the same setting; keep this selector in step.
+        window.addEventListener('storage', (e) => { if (e.key === 'selfweb-theme' || e.key === null) syncThemeUi(); });
+        syncThemeUi();
 
         groupSelect.addEventListener('change', () => {
             populateMenu(groupSelect.value);

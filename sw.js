@@ -1,10 +1,12 @@
 // Bump on every release that changes any APP_SHELL file: this is what makes
 // browsers see a new version and offer the user the update.
 // Matches APP_VERSION in index.html (aa.bb.ccc).
-const CACHE_VERSION = 'selfweb-1.01.011';
+const CACHE_VERSION = 'selfweb-1.01.012';
 const APP_SHELL = [
   './',
   './index.html',
+  './modules/selfweb-theme.js',
+  './modules/tailwind-dark.css',
   './manifest.json',
   './modules/news-feed.html',
   './modules/datecalc.html',
