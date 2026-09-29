@@ -5,6 +5,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Network & Bandwidth Calculator</title>
+    <!-- App-wide Device default / Light / Dark theme; sets <html data-app-theme> -->
+    <script src="selfweb-theme.js"></script>
     <!--
         SPECIFICATIONS:
         - This is a single-page HTML/CSS/JS application.
@@ -224,6 +226,20 @@
             .simple-table td:nth-child(4)::before { content: "Broadcast"; }
             .simple-table td:nth-child(5)::before { content: "Usable IPs"; }
         }
+        /* Dark theme (selfweb-theme.js) */
+        html[data-app-theme="dark"] body { background-color: #111827; color: #e5e7eb; }
+        html[data-app-theme="dark"] .container { background-color: #1f2937; border-color: #374151; }
+        html[data-app-theme="dark"] .tabs { background-color: #273244; }
+        html[data-app-theme="dark"] .tab-button { color: #9ca3af; }
+        html[data-app-theme="dark"] .tab-button.active { background-color: #1f2937; color: #93c5fd; }
+        html[data-app-theme="dark"] input, html[data-app-theme="dark"] select { background-color: #111827; color: #f3f4f6; border-color: #4b5563; }
+        html[data-app-theme="dark"] #subnetOutput { background-color: #111827; border-color: #374151; }
+        html[data-app-theme="dark"] .simple-table td, html[data-app-theme="dark"] .simple-table th { border-color: #4b5563; }
+        html[data-app-theme="dark"] .simple-table th { background-color: #273244; }
+        html[data-app-theme="dark"] #calcVolumeForm { background-color: #1a2332; }
+        html[data-app-theme="dark"] h3 { border-color: #374151; }
+        html[data-app-theme="dark"] { --row-border: #374151; }
+        html[data-app-theme="dark"] .simple-table td::before { color: #9ca3af; }
     </style>
 </head>
 

@@ -11,6 +11,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Strong Password Checker</title>
+    <!-- App-wide Device default / Light / Dark theme; sets <html data-app-theme> -->
+    <script src="selfweb-theme.js"></script>
     <!-- Add zxcvbn library (removed 'defer' to fix race condition).
          This is loaded from a CDN, so it will fail to load with no network
          access; see the onerror handler below for the offline fallback. -->
@@ -170,6 +172,14 @@
             body { place-items: start stretch; padding: 0.75rem; }
             .container { padding: 1.25rem 1rem; }
         }
+        /* Dark theme (selfweb-theme.js) */
+        html[data-app-theme="dark"] body { background-color: #111827; color: #e5e7eb; }
+        html[data-app-theme="dark"] .container { background-color: #1f2937; box-shadow: 0 4px 12px rgba(0,0,0,0.4); }
+        html[data-app-theme="dark"] h2 { color: #f3f4f6; }
+        html[data-app-theme="dark"] #password-input { background-color: #111827; color: #f3f4f6; border-color: #4b5563; }
+        html[data-app-theme="dark"] #crack-time-result { border-color: #374151; }
+        html[data-app-theme="dark"] #calculation-note { color: #9ca3af; }
+        html[data-app-theme="dark"] #strength-criteria .count, html[data-app-theme="dark"] #crack-time-result .label { color: #9ca3af; }
     </style>
 </head>
 <body>

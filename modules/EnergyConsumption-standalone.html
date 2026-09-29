@@ -18,6 +18,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Car Energy Tracker v14</title>
+    <!-- App-wide Device default / Light / Dark theme; sets <html data-app-theme> -->
+    <script src="selfweb-theme.js"></script>
     <style>
         :root {
             --primary: #1e3c72;
@@ -153,6 +155,20 @@
             #costTable td:nth-child(4)::before { content: "Eff. Rate"; }
             #costTable td:nth-child(5)::before { content: ""; }
         }
+        /* Dark theme (selfweb-theme.js) */
+        html[data-app-theme="dark"] { --light: #273244; --dark: #e5e7eb; --border: #4b5563; --shadow: 0 4px 6px rgba(0,0,0,0.4); --row-border: #374151; }
+        html[data-app-theme="dark"] body { background-color: #111827; color: #e5e7eb; }
+        html[data-app-theme="dark"] .card, html[data-app-theme="dark"] .modal, html[data-app-theme="dark"] .chart-container { background: #1f2937; }
+        html[data-app-theme="dark"] .small, html[data-app-theme="dark"] .tab-btn { color: #9ca3af; }
+        html[data-app-theme="dark"] .tab-btn.active { color: #93c5fd; border-bottom-color: #93c5fd; }
+        html[data-app-theme="dark"] .trip-summary { background: #273244; border-left-color: #60a5fa; }
+        html[data-app-theme="dark"] input, html[data-app-theme="dark"] select, html[data-app-theme="dark"] textarea { background-color: #111827; color: #f3f4f6; border-color: #4b5563; }
+        html[data-app-theme="dark"] #logsTable td::before, html[data-app-theme="dark"] #costTable td::before { color: #9ca3af; }
+        html[data-app-theme="dark"] .close-modal { color: #e5e7eb; }
+        html[data-app-theme="dark"] #tripFormTitle { color: #93c5fd !important; }
+        html[data-app-theme="dark"] #bevFields { background: rgba(34,197,94,0.1) !important; border-color: #166534 !important; }
+        html[data-app-theme="dark"] #iceFields { background: rgba(239,68,68,0.1) !important; border-color: #7f1d1d !important; }
+        html[data-app-theme="dark"] hr, html[data-app-theme="dark"] .col { border-color: #4b5563 !important; }
     </style>
 </head>
 <body>
@@ -457,6 +473,7 @@ class SimpleChart {
         this.canvas = document.getElementById(canvasId);
         this.ctx = this.canvas.getContext('2d');
         window.addEventListener('resize', () => { this.resize(); this.draw(); });
+        window.addEventListener('selfweb-theme', () => this.draw()); // axis colours follow the theme
         setTimeout(() => this.resize(), 100);
     }
     resize() {
@@ -469,9 +486,11 @@ class SimpleChart {
     setData(data) { this.data = data; this.draw(); }
     draw() {
         const ctx = this.ctx; const w = this.canvas.width; const h = this.canvas.height; const pad = 40;
+        const dark = window.selfwebTheme && selfwebTheme.isDark();
+        const axis = dark ? '#4b5563' : '#ccc'; const ink = dark ? '#9ca3af' : '#666';
         ctx.clearRect(0, 0, w, h);
         if(!this.data || this.data.length === 0) {
-            ctx.fillStyle = "#666"; ctx.fillText("No data to display", w/2 - 30, h/2); return;
+            ctx.fillStyle = ink; ctx.fillText("No data to display", w/2 - 30, h/2); return;
         }
         let allDates = []; let maxVal = 0;
         this.data.forEach(ds => ds.points.forEach(p => { allDates.push(new Date(p.x)); if(p.y > maxVal) maxVal = p.y; }));
@@ -482,7 +501,7 @@ class SimpleChart {
         maxVal = maxVal * 1.1 || 10;
 
         // Grid & Axes
-        ctx.beginPath(); ctx.strokeStyle = '#ccc'; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.strokeStyle = axis; ctx.lineWidth = 1;
         ctx.moveTo(pad, pad); ctx.lineTo(pad, h - pad); ctx.lineTo(w - pad, h - pad);
         ctx.stroke();
 
@@ -507,7 +526,7 @@ class SimpleChart {
             ctx.fillStyle = colors[idx % colors.length]; ctx.fillText(`● ${ds.label}`, w - 100, pad + (idx * 15));
         });
         
-        ctx.fillStyle = '#666'; ctx.font = '10px sans-serif';
+        ctx.fillStyle = ink; ctx.font = '10px sans-serif';
         ctx.fillText(maxVal.toFixed(1), 5, pad); 
         ctx.fillText("0", 20, h - pad);
         ctx.fillText(allDates[0].toLocaleDateString(), pad, h - 5);

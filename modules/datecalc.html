@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Compact Calendar Calculator</title>
+    <!-- App-wide Device default / Light / Dark theme; sets <html data-app-theme> -->
+    <script src="selfweb-theme.js"></script>
+    <link rel="stylesheet" href="tailwind-dark.css">
     <!-- Load Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com/3.4.17"></script>
     <!-- Configure Tailwind for Inter font -->
@@ -51,6 +54,12 @@
         .tab-content.active {
             display: block;
         }
+
+        /* Dark theme */
+        html[data-app-theme="dark"] body { background-color: #111827; }
+        html[data-app-theme="dark"] .tab-button.active { background-color: #1f2937; color: #93c5fd; border-bottom-color: #60a5fa; }
+        html[data-app-theme="dark"] .tab-button:not(.active) { background-color: #273244; color: #9ca3af; }
+        html[data-app-theme="dark"] .tab-content { background-color: #1f2937; box-shadow: none; }
     </style>
 </head>
 <body class="p-4 flex items-start justify-center min-h-screen">

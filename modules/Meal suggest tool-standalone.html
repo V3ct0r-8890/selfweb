@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Meal Planner & Tracker Pro (Offline)</title>
+    <!-- App-wide Device default / Light / Dark theme; sets <html data-app-theme> -->
+    <script src="selfweb-theme.js"></script>
     <!-- 
       App: Meal Planner & Tracker Pro (Standalone Offline Edition)
       Developer: Gemini
@@ -122,6 +124,16 @@
         @media (max-width: 640px) {
             .log-input-grid { grid-template-columns: 1fr; }
         }
+        /* Dark theme (selfweb-theme.js): the page is built on these variables */
+        html[data-app-theme="dark"] {
+            --primary: #60a5fa; --primary-light: rgba(59,130,246,0.18);
+            --gray-50: #111827; --gray-100: #273244; --gray-200: #374151; --gray-300: #4b5563;
+            --gray-500: #9ca3af; --gray-700: #d1d5db; --gray-800: #e5e7eb; --white: #1f2937;
+            --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.4);
+        }
+        html[data-app-theme="dark"] input, html[data-app-theme="dark"] select { background-color: #111827; color: #f3f4f6; }
+        html[data-app-theme="dark"] .btn-primary, html[data-app-theme="dark"] .btn-success { color: #fff; }
+        html[data-app-theme="dark"] .btn-primary { background: #2563EB; }
     </style>
 </head>
 <body>
@@ -413,7 +425,7 @@
 
         const app = {
              state: { profile: { weight: 72, height: 170, gender: 'male', ageMult: 1.1 }, logs: [], chartRange: '1m' },
-             init() { this.loadData(); this.initUI(); this.updateAll(); window.addEventListener('resize', () => { if(document.getElementById('view-trend').style.display==='block') this.renderCustomChart(); }); },
+             init() { this.loadData(); this.initUI(); this.updateAll(); window.addEventListener('selfweb-theme', () => { if(document.getElementById('view-trend').style.display==='block') this.renderCustomChart(); }); window.addEventListener('resize', () => { if(document.getElementById('view-trend').style.display==='block') this.renderCustomChart(); }); },
              initUI() {
                  const sel = document.getElementById('trk-food');
                  Object.keys(FOOD_DB).sort().forEach(f => { const opt = document.createElement('option'); opt.value=f; opt.textContent=f; sel.appendChild(opt); });
@@ -583,7 +595,7 @@
                  let lastW = this.state.profile.weight; const data = dates.map(d => { const obj = dayMap[d]; if(obj.w > 0) lastW = obj.w; return { date: d, p: obj.p, c: obj.c, f: obj.f, w: lastW }; });
                  const maxNutrient = Math.max(200, ...data.map(d => d.p + d.c + d.f)) * 1.1; const wVals = data.map(d => d.w); const minW = Math.min(...wVals) - 2; const maxW = Math.max(...wVals) + 2;
                  const graphH = H - pad.top - pad.bottom; const graphW = W - pad.left - pad.right; const barWidth = (graphW / data.length) * 0.6; const stepX = graphW / data.length;
-                 ctx.lineWidth = 1; ctx.strokeStyle = "#e5e7eb"; ctx.beginPath(); for(let i=0; i<=5; i++) { const y = pad.top + (graphH * i / 5); ctx.moveTo(pad.left, y); ctx.lineTo(W-pad.right, y); ctx.fillStyle = "#9ca3af"; ctx.font = "10px sans-serif"; ctx.textAlign = "right"; const val = Math.round(maxNutrient - (maxNutrient * i / 5)); ctx.fillText(val, pad.left - 5, y + 3); } ctx.stroke();
+                 ctx.lineWidth = 1; ctx.strokeStyle = (window.selfwebTheme && selfwebTheme.isDark()) ? "#374151" : "#e5e7eb"; ctx.beginPath(); for(let i=0; i<=5; i++) { const y = pad.top + (graphH * i / 5); ctx.moveTo(pad.left, y); ctx.lineTo(W-pad.right, y); ctx.fillStyle = "#9ca3af"; ctx.font = "10px sans-serif"; ctx.textAlign = "right"; const val = Math.round(maxNutrient - (maxNutrient * i / 5)); ctx.fillText(val, pad.left - 5, y + 3); } ctx.stroke();
                  data.forEach((d, i) => { const x = pad.left + (i * stepX) + (stepX - barWidth)/2; const scale = graphH / maxNutrient; const hP = d.p * scale; const hC = d.c * scale; const hF = d.f * scale;
                      ctx.fillStyle = "#F97316"; ctx.fillRect(x, H - pad.bottom - hF, barWidth, hF);
                      ctx.fillStyle = "#EAB308"; ctx.fillRect(x, H - pad.bottom - hF - hC, barWidth, hC);
