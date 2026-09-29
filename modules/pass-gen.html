@@ -18,6 +18,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Secure Password & Passphrase Generator</title>
+    <!-- App-wide Device default / Light / Dark theme; sets <html data-app-theme> -->
+    <script src="selfweb-theme.js"></script>
     
     <!-- 
         ===================================================================
@@ -657,6 +659,31 @@
             .form-grid { grid-template-columns: 1fr; }
             .common-options .form-group:first-child { grid-column: auto; }
         }
+        /* Dark theme (selfweb-theme.js) */
+        html[data-app-theme="dark"] body { background-color: #111827; color: #e5e7eb; }
+        html[data-app-theme="dark"] .container, html[data-app-theme="dark"] .modal-content { background-color: #1f2937; }
+        html[data-app-theme="dark"] .modal-content { border-color: #4b5563; }
+        html[data-app-theme="dark"] h1, html[data-app-theme="dark"] h2 { color: #93c5fd; }
+        html[data-app-theme="dark"] h2, html[data-app-theme="dark"] .modal-header, html[data-app-theme="dark"] .modal-footer, html[data-app-theme="dark"] .history-container,
+        html[data-app-theme="dark"] .history-table th, html[data-app-theme="dark"] .history-table td { border-color: #374151; }
+        html[data-app-theme="dark"] .mode-selection label { border-color: #4b5563; }
+        html[data-app-theme="dark"] .mode-selection input[type="radio"]:checked + label { border-color: #007bff; }
+        html[data-app-theme="dark"] .input-section { background-color: #1a2332; border-color: #374151; }
+        html[data-app-theme="dark"] .form-group label, html[data-app-theme="dark"] .file-name, html[data-app-theme="dark"] .crack-time { color: #9ca3af; }
+        html[data-app-theme="dark"] .cache-notice { color: #6b7280; }
+        html[data-app-theme="dark"] input, html[data-app-theme="dark"] select, html[data-app-theme="dark"] textarea { background-color: #111827; color: #f3f4f6; border-color: #4b5563; }
+        html[data-app-theme="dark"] .form-group input, html[data-app-theme="dark"] #checkInput { border-color: #4b5563; }
+        html[data-app-theme="dark"] #outputArea { background-color: #111827; border-color: #374151; color: #f3f4f6; }
+        html[data-app-theme="dark"] .error-message { background-color: rgba(220,53,69,0.15); border-color: #7f1d1d; color: #f87171; }
+        html[data-app-theme="dark"] .strength { border-top-color: #374151; }
+        html[data-app-theme="dark"] .strength-bar-bg { background-color: #374151; }
+        html[data-app-theme="dark"] .lib-warning { background-color: rgba(255,193,7,0.12); border-color: #854d0e; color: #fcd34d; }
+        html[data-app-theme="dark"] .lib-warning a { color: #fcd34d; }
+        html[data-app-theme="dark"] .modal-header h2 { color: #f3f4f6; }
+        html[data-app-theme="dark"] .history-table th { background-color: #273244; color: #d1d5db; }
+        html[data-app-theme="dark"] .history-table .col-time { color: #93c5fd; }
+        html[data-app-theme="dark"] .history-table .col-pass { background-color: #111827; }
+        html[data-app-theme="dark"] #historyEmptyMsg { color: #9ca3af !important; }
     </style>
 </head>
 <body>

@@ -14,6 +14,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Timekeeper Suite</title>
+    <!-- App-wide Device default / Light / Dark theme; sets <html data-app-theme> -->
+    <script src="selfweb-theme.js"></script>
     
     <style>
         :root {
@@ -773,24 +775,18 @@
         if (localStorage.getItem('timerToolLcdMode') === null && localStorage.getItem('lcdMode') !== null) {
             localStorage.setItem('timerToolLcdMode', localStorage.getItem('lcdMode'));
         }
-        let isDarkMode = localStorage.getItem('timerToolTheme') === 'dark';
+        // Light / Dark follow the app-wide setting (selfweb-theme.js); the toggle changes it for every tool.
+        let isDarkMode = selfwebTheme.isDark();
         if(isDarkMode) document.documentElement.classList.add('dark');
         
-        function toggleTheme() {
-            isDarkMode = !isDarkMode;
-            const html = document.documentElement;
-            const iconContainer = document.querySelector('.theme-toggle');
-            
-            if (isDarkMode) {
-                html.classList.add('dark');
-                localStorage.setItem('timerToolTheme', 'dark');
-                iconContainer.innerHTML = SVG.sun;
-            } else {
-                html.classList.remove('dark');
-                localStorage.setItem('timerToolTheme', 'light');
-                iconContainer.innerHTML = SVG.moon;
-            }
+        function applyTheme(dark) {
+            isDarkMode = dark;
+            document.documentElement.classList.toggle('dark', dark);
+            localStorage.setItem('timerToolTheme', dark ? 'dark' : 'light');
+            document.querySelector('.theme-toggle').innerHTML = dark ? SVG.sun : SVG.moon;
         }
+        function toggleTheme() { selfwebTheme.set(isDarkMode ? 'light' : 'dark'); }
+        window.addEventListener('selfweb-theme', (e) => applyTheme(e.detail.theme === 'dark'));
         document.querySelector('.theme-toggle').innerHTML = isDarkMode ? SVG.sun : SVG.moon;
 
         // --- LCD FONT LOGIC ---

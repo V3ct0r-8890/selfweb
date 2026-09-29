@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Time Zone Viewer | Pro Team Planner</title>
+    <!-- App-wide Device default / Light / Dark theme; sets <html data-app-theme> -->
+    <script src="selfweb-theme.js"></script>
     <style>
         :root {
             /* Light Theme */
@@ -639,6 +641,7 @@
     window.onload = () => {
         loadConfig(); 
         initTheme(); 
+        window.addEventListener('selfweb-theme', () => { initTheme(); render(); });
         initSearch(); 
         initDateTimePickers(); 
         
@@ -1211,8 +1214,9 @@
         const toast = document.getElementById('toast'); toast.style.display = 'block'; setTimeout(() => toast.style.display = 'none', 1500);
     }
 
-    function toggleTheme() { config.theme = config.theme === 'light' ? 'dark' : 'light'; initTheme(); saveConfig(); render(); }
-    function initTheme() { document.body.setAttribute('data-theme', config.theme); document.getElementById('theme-btn').innerText = config.theme === 'light' ? '🌙' : '☀️'; }
+    function toggleTheme() { selfwebTheme.set(config.theme === 'light' ? 'dark' : 'light'); }
+    // Light / Dark follow the app-wide setting (selfweb-theme.js); the toggle changes it for every tool.
+    function initTheme() { config.theme = selfwebTheme.resolved(); document.body.setAttribute('data-theme', config.theme); document.getElementById('theme-btn').innerText = config.theme === 'light' ? '🌙' : '☀️'; }
     
     function openModal(id) { 
         if(id==='settings-modal') {

@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>INS Food Additive Search</title>
+    <!-- App-wide Device default / Light / Dark theme; sets <html data-app-theme> -->
+    <script src="selfweb-theme.js"></script>
     <style>
 :root {
             --bg: #ffffff;
@@ -975,16 +977,23 @@
         
         const themeSelector = document.getElementById('themeSelector');
         
-        // Theme init
-        const savedTheme = localStorage.getItem('ins-theme') || 'light';
-        document.documentElement.setAttribute('data-theme', savedTheme);
-        if(themeSelector) themeSelector.value = savedTheme;
+        // Theme init: Light / Dark follow the app-wide setting (selfweb-theme.js);
+        // Sepia is this tool's own extra and is replaced by the next app-wide change.
+        function applyTheme(theme) {
+            document.documentElement.setAttribute('data-theme', theme);
+            if(themeSelector) themeSelector.value = theme;
+            localStorage.setItem('ins-theme', theme);
+        }
+        applyTheme(localStorage.getItem('ins-theme') === 'sepia' ? 'sepia' : selfwebTheme.resolved());
         
         themeSelector.addEventListener('change', (e) => {
             const theme = e.target.value;
-            document.documentElement.setAttribute('data-theme', theme);
-            localStorage.setItem('ins-theme', theme);
+            applyTheme(theme);
+            if (theme !== 'sepia') selfwebTheme.set(theme); // changes the whole app
         });
+        window.addEventListener('selfweb-theme', (e) => applyTheme(e.detail.theme));
+        // A choice made elsewhere that keeps the same light/dark still ends Sepia.
+        window.addEventListener('storage', (e) => { if (e.key === 'selfweb-theme') applyTheme(selfwebTheme.resolved()); });
         
         const categoryFilter = document.getElementById('categoryFilter');
         const btnListAll = document.getElementById('btnListAll');

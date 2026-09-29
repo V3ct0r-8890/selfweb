@@ -33,6 +33,8 @@ SPECIFICATIONS:
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Camera Equivalence Pro v20260611.001</title>
+    <!-- App-wide Device default / Light / Dark theme; sets <html data-app-theme> -->
+    <script src="selfweb-theme.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;700&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
@@ -1055,11 +1057,12 @@ SPECIFICATIONS:
             document.getElementById('themeToggle').textContent = themeIcons[t];
             try { localStorage.setItem('cameraCalcTheme', t); } catch(e) {}
         }
+        // Light / Dark follow the app-wide setting (selfweb-theme.js); the toggle changes it for every tool.
         document.getElementById('themeToggle').onclick = () => {
-            setTheme(document.body.classList.contains('dark') ? 'light' : 'dark');
+            selfwebTheme.set(document.body.classList.contains('dark') ? 'light' : 'dark');
         };
-        // Restore saved theme
-        try { const saved = localStorage.getItem('cameraCalcTheme'); if (saved && themeList.includes(saved)) setTheme(saved); } catch(e) {}
+        window.addEventListener('selfweb-theme', (e) => setTheme(e.detail.theme));
+        setTheme(selfwebTheme.resolved());
         
         const tabs = ['tabVisual', 'tabRes', 'tabMult', 'tabDim', 'tabCustom', 'tabFormula'];
         const views = ['viewVisual', 'viewRes', 'viewMult', 'viewDim', 'viewCustom', 'viewFormula'];
