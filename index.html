@@ -135,7 +135,7 @@
 
     <script>
         // Shown in About. aa.bb.ccc: ccc moves on every release; keep in step with CACHE_VERSION in sw.js.
-        const APP_VERSION = '1.01.016';
+        const APP_VERSION = '1.01.017';
 
         // type = what kind of tool it is; fn = what it is used for. Both drive the "Group" menu option.
         const tools = [
@@ -151,8 +151,6 @@
             { id: 'timertool', title: 'Timer Tool', file: 'modules/TimerTool.html', type: 'Clocks & Timers', fn: 'Time & Planning' },
             { id: 'lenstool', title: 'Digital Camera Lens Calculator', file: 'modules/DigitalCamera-Lens-Calculator.html', type: 'Calculators', fn: 'Photography' },
             { id: 'tzviewer', title: 'TimeZone Viewer', file: 'modules/TimeZoneViewer.html', type: 'Clocks & Timers', fn: 'Time & Planning' },
-            // Extra: prototypes, kept last so they never push the regular tools around.
-            { id: 'webfeed', title: 'Web Feed (Prototype)', file: 'modules/web-feed.html', type: 'Extra', fn: 'Extra' },
         ];
 
         const menuItemsContainer = document.getElementById('menu-items');

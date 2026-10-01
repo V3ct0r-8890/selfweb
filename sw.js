@@ -1,7 +1,7 @@
 // Bump on every release that changes any APP_SHELL file: this is what makes
 // browsers see a new version and offer the user the update.
 // Matches APP_VERSION in index.html (aa.bb.ccc).
-const CACHE_VERSION = 'selfweb-1.01.016';
+const CACHE_VERSION = 'selfweb-1.01.017';
 const APP_SHELL = [
   './',
   './index.html',
@@ -20,7 +20,6 @@ const APP_SHELL = [
   './modules/TimerTool.html',
   './modules/DigitalCamera-Lens-Calculator.html',
   './modules/TimeZoneViewer.html',
-  './modules/web-feed.html',
   './modules/fonts/DSEG7Classic-Bold.woff2',
   './icons/icon-192.png',
   './icons/icon-512.png',
@@ -110,20 +109,6 @@ self.addEventListener('fetch', (event) => {
   }
 
   if (url.origin !== self.location.origin) return;
-
-  // Web Feed data is rebuilt every few hours: network first, last copy when offline.
-  if (url.pathname.includes('/feeds/web/')) {
-    event.respondWith(
-      fetch(event.request).then((response) => {
-        if (response.ok) {
-          const clone = response.clone();
-          caches.open(CACHE_VERSION).then((cache) => cache.put(event.request, clone));
-        }
-        return response;
-      }).catch(() => caches.match(event.request).then((cached) => cached || Response.error()))
-    );
-    return;
-  }
 
   // Cache-first with no background refresh: the app only changes when the user
   // accepts an update, so every page and tool frame comes from the same version.
