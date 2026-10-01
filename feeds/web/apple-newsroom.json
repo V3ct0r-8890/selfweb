@@ -1,0 +1,149 @@
+{
+ "id": "apple-newsroom",
+ "name": "Apple Newsroom",
+ "url": "https://www.apple.com/newsroom/",
+ "method": "rss (found https://www.apple.com/newsroom/rss-feed.rss)",
+ "generated": "2026-10-01T13:28:33.939Z",
+ "items": [
+  {
+   "title": "Final Cut Camera now supports variable aperture on iPhone 18 Pro",
+   "link": "https://www.apple.com/newsroom/2026/09/final-cut-camera-now-supports-variable-aperture-on-iphone-18-pro/",
+   "date": "2026-09-29T17:00:57.163Z",
+   "summary": "Final Cut Camera gets a major update with a new design, support for variable aperture on iPhone 18 Pro, and more pro options with iOS 27.",
+   "image": "https://www.apple.com/newsroom/images/2026/09/final-cut-camera-now-supports-variable-aperture-on-iphone-18-pro/tile/Apple-Final-Cut-Camera-hero-lp.jpg.og.jpg"
+  },
+  {
+   "title": "New updates coming to Apple Creator Studio",
+   "link": "https://www.apple.com/newsroom/2026/09/new-updates-coming-to-apple-creator-studio/",
+   "date": "2026-09-29T17:00:02.643Z",
+   "summary": "Apple today introduced updates to Apple Creator Studio, its groundbreaking collection of creative and productivity apps.",
+   "image": "https://www.apple.com/newsroom/images/2026/09/new-updates-coming-to-apple-creator-studio/tile/Apple-Creator-Studio-hero.jpg.og.jpg"
+  },
+  {
+   "title": "Apple releases new guide to help families build healthy digital habits",
+   "link": "https://www.apple.com/newsroom/2026/09/apple-releases-new-guide-to-help-families-build-healthy-digital-habits/",
+   "date": "2026-09-29T16:59:08.275Z",
+   "summary": "Today, in partnership with the American Academy of Pediatrics, Apple released a new guide to help families create healthy digital habits.",
+   "image": "https://www.apple.com/newsroom/images/2026/09/apple-releases-new-guide-to-help-families-build-healthy-digital-habits/tile/Apple-guide-for-families-lp.jpg.og.jpg"
+  },
+  {
+   "title": "The new Mac mini and Mac Studio are available today",
+   "link": "https://www.apple.com/newsroom/2026/09/the-new-mac-mini-and-mac-studio-are-available-today/",
+   "date": "2026-09-22T12:59:21.039Z",
+   "summary": "Customers can now shop for Mac mini with M6 and M5 Pro, and Mac Studio with M5 Max and M5 Ultra, at Apple Store locations, online, and in the Apple Store app.",
+   "image": "https://www.apple.com/newsroom/images/2026/09/the-new-mac-mini-and-mac-studio-are-available-today/tile/Apple-Mac-mini-and-Mac-Studio-available-hero-lp.jpg.og.jpg"
+  },
+  {
+   "title": "Apple opens Apple Music Hall, a state-of-the-art live music venue in London",
+   "link": "https://www.apple.com/newsroom/2026/09/apple-opens-apple-music-hall-a-state-of-the-art-live-music-venue-in-london/",
+   "date": "2026-09-22T05:59:58.127Z",
+   "summary": "Apple Music Hall, a state-of-the-art live music venue in London’s storied Battersea Power Station, is now open.",
+   "image": "https://www.apple.com/newsroom/images/2026/09/apple-opens-apple-music-hall-a-state-of-the-art-live-music-venue-in-london/tile/Apple-Music-Hall-event-space-01-lp.jpg.og.jpg"
+  },
+  {
+   "title": "The latest iPhone, Apple Watch, and AirPods lineups arrive in stores worldwide",
+   "link": "https://www.apple.com/newsroom/2026/09/the-latest-iphone-apple-watch-and-airpods-lineups-arrive-in-stores-worldwide/",
+   "date": "2026-09-18T05:02:14.780Z",
+   "summary": "On Friday, September 18, Apple Store locations around the world introduced customers to the iPhone 18 Pro lineup, Apple Watch Series 12, Apple Watch Ultra 4, and AirPods 5.",
+   "image": "https://www.apple.com/newsroom/images/2026/09/the-latest-iphone-apple-watch-and-airpods-lineups-arrive-in-stores-worldwide/tile/Apple-Fifth-Avenue-New-York-Deirdre-O-Brien-and-John-Ternus-welcome-customers-260918-lp.jpg.og.jpg"
+  },
+  {
+   "title": "Celebrating “What Holds Us” on iPhone 18 Pro",
+   "link": "https://www.apple.com/newsroom/2026/09/celebrating-what-holds-us-on-iphone-18-pro/",
+   "date": "2026-09-16T13:59:28.902Z",
+   "summary": "A new photography exhibition, curated by Kathy Ryan, celebrates the evolving language of visual storytelling and showcases the advanced pro camera system on iPhone 18 Pro.",
+   "image": "https://www.apple.com/newsroom/images/2026/09/celebrating-what-holds-us-on-iphone-18-pro/tile/Apple-photography-exhibition-hero-lp.jpg.og.jpg"
+  },
+  {
+   "title": "Widow’s Bay triumphs as most decorated freshman comedy in Emmy history",
+   "link": "https://www.apple.com/newsroom/2026/09/widows-bay-triumphs-as-most-decorated-freshman-comedy-in-emmy-history/",
+   "date": "2026-09-15T10:02:42.356Z",
+   "summary": "This evening at the 78th Primetime Emmy Awards, Apple TV shatters records to become the most-awarded network of the year, landing 29 wins overall.",
+   "image": "https://www.apple.com/newsroom/images/2026/09/widows-bay-triumphs-as-most-decorated-freshman-comedy-in-emmy-history/tile/Apple-TV-Emmy-winners-Widows-Bay-lp.jpg.og.jpg"
+  },
+  {
+   "title": "Major updates for Apple’s software platforms are now available",
+   "link": "https://www.apple.com/newsroom/2026/09/major-updates-for-apples-software-platforms-are-now-available/",
+   "date": "2026-09-14T17:10:12.527Z",
+   "summary": "Apple’s latest software updates introduce Siri AI and deliver helpful new Apple Intelligence features.",
+   "image": "https://www.apple.com/newsroom/images/2026/09/major-updates-for-apples-software-platforms-are-now-available/tile/Apple-OS-availability-hero-lp.jpg.og.jpg"
+  },
+  {
+   "title": "Siri AI, a profoundly more capable and personal assistant, is here",
+   "link": "https://www.apple.com/newsroom/2026/09/siri-ai-a-profoundly-more-capable-and-personal-assistant-is-here/",
+   "date": "2026-09-14T17:09:41.324Z",
+   "summary": "Apple today released the next generation of Apple Intelligence.",
+   "image": "https://www.apple.com/newsroom/images/2026/09/siri-ai-a-profoundly-more-capable-and-personal-assistant-is-here/tile/Apple-Siri-AI-hero-video-lp.jpg.og.jpg"
+  },
+  {
+   "title": "Apple’s new child safety features now available",
+   "link": "https://www.apple.com/newsroom/2026/09/apples-new-child-safety-features-now-available/",
+   "date": "2026-09-14T17:08:48.789Z",
+   "summary": "Apple’s new suite of tools that help parents create safer digital experiences for their kids is now available across iPhone, iPad, Mac, and more.",
+   "image": "https://www.apple.com/newsroom/images/2026/09/apples-new-child-safety-features-now-available/tile/Apple-child-safety-lp.jpg.og.jpg"
+  },
+  {
+   "title": "Get ready to experience iPhone 18 Pro, the new Apple Watch lineup, and AirPods 5",
+   "link": "https://www.apple.com/newsroom/2026/09/get-ready-to-experience-iphone-18-pro-the-new-apple-watch-lineup-and-airpods-5/",
+   "date": "2026-09-11T16:00:08.631Z",
+   "summary": "Starting Saturday, September 12, customers can pre-order iPhone 18 Pro and iPhone 18 Pro Max.",
+   "image": "https://www.apple.com/newsroom/images/2026/09/get-ready-to-experience-iphone-18-pro-the-new-apple-watch-lineup-and-airpods-5/tile/Apple-iPhone-18-Pro-lineup-Apple-Watch-Series-12-Apple-Watch-Ultra-4-Airpods-5-lp.jpg.og.jpg"
+  },
+  {
+   "title": "Apple unveils iPhone Duo",
+   "link": "https://www.apple.com/newsroom/2026/09/apple-unveils-iphone-duo/",
+   "date": "2026-09-09T18:15:40.996Z",
+   "summary": "Apple today introduced iPhone Duo, the first foldable iPhone.",
+   "image": "https://www.apple.com/newsroom/images/2026/09/apple-unveils-iphone-duo/tile/Apple-iPhone-Duo-opening-iPhone-Duo-260909-lp.jpg.og.jpg"
+  },
+  {
+   "title": "Apple advances health and fitness capabilities using Apple Intelligence",
+   "link": "https://www.apple.com/newsroom/2026/09/apple-advances-health-and-fitness-capabilities-using-apple-intelligence/",
+   "date": "2026-09-09T17:52:05.481Z",
+   "summary": "Apple today announced its most advanced health and fitness experience yet, deepening the capabilities of Apple Watch and iPhone as intelligent, science-based tools for personal health.",
+   "image": "https://www.apple.com/newsroom/images/2026/09/apple-advances-health-and-fitness-capabilities-using-apple-intelligence/tile/Apple-iPhone-18-Pro-Apple-Watch-Series-12-redesigned-Health-app-260909-lp.jpg.og.jpg"
+  },
+  {
+   "title": "Apple unveils Apple Watch Ultra 4",
+   "link": "https://www.apple.com/newsroom/2026/09/apple-unveils-apple-watch-ultra-4/",
+   "date": "2026-09-09T17:51:18.631Z",
+   "summary": "Apple today introduced Apple Watch Ultra 4, the ultimate sports and adventure watch, now with new health, fitness, and audio intelligence capabilities.",
+   "image": "https://www.apple.com/newsroom/images/2026/09/apple-unveils-apple-watch-ultra-4/tile/Apple-Watch-Ultra-4-hero-260909-lp.jpg.og.jpg"
+  },
+  {
+   "title": "Introducing Apple Watch Series 12, with the all-new Health Sensing System",
+   "link": "https://www.apple.com/newsroom/2026/09/introducing-apple-watch-series-12-with-the-all-new-health-sensing-system/",
+   "date": "2026-09-09T17:50:47.609Z",
+   "summary": "Apple today introduced Apple Watch Series 12, engineered to deliver the most accurate heart rate sensing in a wearable.",
+   "image": "https://www.apple.com/newsroom/images/2026/09/introducing-apple-watch-series-12-with-the-all-new-health-sensing-system/tile/Apple-Watch-Series-12-2up-260909-lp.jpg.og.jpg"
+  },
+  {
+   "title": "Apple introduces AirPods 5 with best-in-class open-ear Active Noise Cancellation",
+   "link": "https://www.apple.com/newsroom/2026/09/apple-introduces-airpods-5-with-best-in-class-open-ear-active-noise-cancellation/",
+   "date": "2026-09-09T17:34:55.485Z",
+   "summary": "Apple today announced AirPods 5, delivering the industry’s best Active Noise Cancellation in an open-ear design and even better sound quality.",
+   "image": "https://www.apple.com/newsroom/images/2026/09/apple-introduces-airpods-5-with-best-in-class-open-ear-active-noise-cancellation/tile/Apple-AirPods-5-hero-260909-lp.jpg.og.jpg"
+  },
+  {
+   "title": "Apple debuts iPhone 18 Pro and iPhone 18 Pro Max",
+   "link": "https://www.apple.com/newsroom/2026/09/apple-debuts-iphone-18-pro-and-iphone-18-pro-max/",
+   "date": "2026-09-09T17:30:06.059Z",
+   "summary": "Apple announced iPhone 18 Pro and iPhone 18 Pro Max, delivering an advanced pro camera system and improved battery life and performance.",
+   "image": "https://www.apple.com/newsroom/images/2026/09/apple-debuts-iphone-18-pro-and-iphone-18-pro-max/tile/Apple-iPhone-18-Pro-2up-260909-lp.jpg.og.jpg"
+  },
+  {
+   "title": "The internet’s favorite cat comes to Apple Arcade with Pusheen’s Place",
+   "link": "https://www.apple.com/newsroom/2026/09/the-internets-favorite-cat-comes-to-apple-arcade-with-pusheens-place/",
+   "date": "2026-09-08T13:59:40.685Z",
+   "summary": "On October 1, Apple Arcade is rolling out a lineup of fun new games, from cozy cat collecting to zombie-blasting mayhem to beloved App Store hits.",
+   "image": "https://www.apple.com/newsroom/images/2026/09/the-internets-favorite-cat-comes-to-apple-arcade-with-pusheens-place/tile/Apple-Arcade-Pusheens-Place-key-art-lp.jpg.og.jpg"
+  },
+  {
+   "title": "Exciting updates for Sneaky Sasquatch come to Apple Arcade",
+   "link": "https://www.apple.com/newsroom/2026/08/exciting-updates-for-sneaky-sasquatch-come-to-apple-arcade/",
+   "date": "2026-08-27T13:59:18.486Z",
+   "summary": "Through October 7, Sneaky Sasquatch transforms Subway Surfers+ with the charm and aesthetic of the hit open-world Apple Arcade game.",
+   "image": "https://www.apple.com/newsroom/images/2026/08/exciting-updates-for-sneaky-sasquatch-come-to-apple-arcade/tile/Apple-Arcade-Sneaky-Sasquatch-lp.jpg.og.jpg"
+  }
+ ]
+}

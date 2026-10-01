@@ -1,0 +1,29 @@
+{
+ "generated": "2026-10-01T13:28:33.939Z",
+ "sites": [
+  {
+   "id": "thairath-tech",
+   "name": "Thairath Tech",
+   "url": "https://www.thairath.co.th/news/tech",
+   "method": "page links",
+   "generated": "2026-10-01T13:28:33.939Z",
+   "count": 23
+  },
+  {
+   "id": "apple-newsroom",
+   "name": "Apple Newsroom",
+   "url": "https://www.apple.com/newsroom/",
+   "method": "rss (found https://www.apple.com/newsroom/rss-feed.rss)",
+   "generated": "2026-10-01T13:28:33.939Z",
+   "count": 20
+  },
+  {
+   "id": "bbc-tech",
+   "name": "BBC Technology",
+   "url": "https://www.bbc.com/news/technology",
+   "method": "page links",
+   "generated": "2026-10-01T13:28:33.939Z",
+   "count": 27
+  }
+ ]
+}

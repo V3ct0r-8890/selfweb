@@ -1,0 +1,17 @@
+[
+  {
+    "id": "thairath-tech",
+    "name": "Thairath Tech",
+    "url": "https://www.thairath.co.th/news/tech"
+  },
+  {
+    "id": "apple-newsroom",
+    "name": "Apple Newsroom",
+    "url": "https://www.apple.com/newsroom/"
+  },
+  {
+    "id": "bbc-tech",
+    "name": "BBC Technology",
+    "url": "https://www.bbc.com/news/technology"
+  }
+]

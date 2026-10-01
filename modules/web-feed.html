@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web Feed (Prototype)</title>
+    <!-- App-wide Device default / Light / Dark theme; sets <html data-app-theme> -->
+    <script src="selfweb-theme.js"></script>
+    <!--
+      Web Feed (prototype): reads feeds/web/*.json, which our own TypeScript job
+      (webfeed/build.ts, run by GitHub Actions every 3 hours) builds from normal web pages.
+      Everything is shown as plain text; nothing from the sites is rendered as HTML.
+    -->
+    <style>
+        :root {
+            --bg: #f3f4f6; --surface: #ffffff; --border: #e5e7eb; --text: #1f2937;
+            --muted: #6b7280; --link: #1d4ed8; --accent: #4f46e5; --warn-bg: #fef3c7; --warn: #92400e;
+        }
+        html[data-app-theme="dark"] {
+            --bg: #111827; --surface: #1f2937; --border: #374151; --text: #e5e7eb;
+            --muted: #9ca3af; --link: #93c5fd; --accent: #818cf8; --warn-bg: rgba(245,158,11,0.14); --warn: #fcd34d;
+        }
+        * { box-sizing: border-box; }
+        body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans Thai", sans-serif; background: var(--bg); color: var(--text); }
+        header { position: sticky; top: 0; z-index: 2; background: var(--surface); border-bottom: 1px solid var(--border); padding: 10px 16px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+        header h1 { font-size: 1.05rem; margin: 0 auto 0 0; }
+        .badge { font-size: 0.7rem; font-weight: 600; color: var(--accent); border: 1px solid var(--accent); border-radius: 999px; padding: 1px 7px; margin-left: 6px; vertical-align: middle; }
+        select, input, button { font: inherit; font-size: 0.9rem; color: var(--text); background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 5px 8px; }
+        input[type="number"] { width: 4.2em; }
+        button { cursor: pointer; }
+        label { font-size: 0.85rem; color: var(--muted); display: inline-flex; align-items: center; gap: 4px; }
+        main { max-width: 860px; margin: 0 auto; padding: 12px 16px 40px; }
+        #status { font-size: 0.8rem; color: var(--muted); margin: 4px 0 12px; }
+        .warn { background: var(--warn-bg); color: var(--warn); border-radius: 6px; padding: 8px 10px; font-size: 0.85rem; margin-bottom: 10px; }
+        .item { display: flex; gap: 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; }
+        .item img { width: 96px; height: 64px; object-fit: cover; border-radius: 4px; flex-shrink: 0; background: var(--border); }
+        .item a { color: var(--link); text-decoration: none; font-weight: 600; line-height: 1.35; }
+        .item a:hover { text-decoration: underline; }
+        .meta { font-size: 0.75rem; color: var(--muted); margin-top: 3px; }
+        .summary { font-size: 0.85rem; margin-top: 4px; line-height: 1.4; }
+        .empty { text-align: center; color: var(--muted); padding: 40px 0; }
+        footer { font-size: 0.75rem; color: var(--muted); margin-top: 20px; line-height: 1.5; }
+        footer code { font-size: 0.75rem; }
+        @media (max-width: 480px) {
+            header h1 { flex-basis: 100%; }
+            .item img { width: 72px; height: 54px; }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Web Feed<span class="badge">Prototype</span></h1>
+        <select id="siteSelect" aria-label="Site"><option value="">All sites</option></select>
+        <label>Days <input type="number" id="daysInput" min="1" max="15" value="3"></label>
+        <button id="reloadBtn" title="Load the latest build">🔄</button>
+    </header>
+    <main>
+        <div id="status">Loading…</div>
+        <div id="warnings"></div>
+        <div id="list"></div>
+        <footer>
+            Prototype: pages are read by our own TypeScript job (<code>webfeed/build.ts</code>) in GitHub Actions
+            every 3 hours. Sites are listed in <code>webfeed/sites.json</code>. Pages that build their content with
+            JavaScript, or that block automated readers, cannot be read this way yet. Items without a date on the
+            site show the time the job first found them.
+        </footer>
+    </main>
+
+    <script>
+        const DATA_URL = '../feeds/web/';
+        const DAYS_KEY = 'webfeed_days';
+        const SITE_KEY = 'webfeed_site';
+        let sites = [];      // index.json entries
+        let items = [];      // all items, with .source added
+
+        const $ = (id) => document.getElementById(id);
+
+        function safeURL(url) {
+            try {
+                const u = new URL(String(url || ''));
+                return (u.protocol === 'http:' || u.protocol === 'https:') ? u.href : '';
+            } catch (e) { return ''; }
+        }
+
+        function ago(iso) {
+            const ms = Date.now() - new Date(iso).getTime();
+            if (!isFinite(ms)) return '';
+            const m = Math.round(ms / 60000);
+            if (m < 60) return `${Math.max(m, 0)} min ago`;
+            const h = Math.round(m / 60);
+            if (h < 48) return `${h} h ago`;
+            return new Date(iso).toLocaleDateString();
+        }
+
+        function readDays() {
+            const d = Math.min(15, Math.max(1, parseInt($('daysInput').value) || 3));
+            $('daysInput').value = d;
+            return d;
+        }
+
+        async function getJSON(path) {
+            // no-store: the build changes every few hours; the service worker keeps an offline copy.
+            const res = await fetch(DATA_URL + path, { cache: 'no-store' });
+            if (!res.ok) throw new Error(`HTTP ${res.status} for ${path}`);
+            return res.json();
+        }
+
+        async function load() {
+            $('status').textContent = 'Loading…';
+            $('warnings').replaceChildren();
+            try {
+                const index = await getJSON('index.json');
+                sites = index.sites || [];
+                const feeds = await Promise.allSettled(sites.map((s) => getJSON(`${encodeURIComponent(s.id)}.json`)));
+                items = [];
+                feeds.forEach((r, i) => {
+                    if (r.status !== 'fulfilled') { console.warn(`[webfeed] ${sites[i].id}:`, r.reason); return; }
+                    for (const it of r.value.items || []) items.push({ ...it, source: sites[i].name, siteId: sites[i].id });
+                });
+                items.sort((a, b) => new Date(b.date) - new Date(a.date));
+                fillSites();
+                $('status').textContent = `Built ${ago(index.generated)} · ${sites.length} sites · ${items.length} items`;
+                for (const s of sites.filter((s) => s.error)) {
+                    const w = document.createElement('div');
+                    w.className = 'warn';
+                    w.textContent = `${s.name}: last build failed (${s.error})${s.count ? ', showing earlier items' : ''}.`;
+                    $('warnings').append(w);
+                }
+                render();
+            } catch (e) {
+                console.error('[webfeed] load failed:', e);
+                $('status').textContent = `Could not load the feed data: ${e.message}`;
+                $('list').replaceChildren();
+            }
+        }
+
+        function fillSites() {
+            const sel = $('siteSelect');
+            const keep = sel.value || (() => { try { return localStorage.getItem(SITE_KEY) || ''; } catch (e) { return ''; } })();
+            sel.replaceChildren(new Option('All sites', ''));
+            for (const s of sites) sel.add(new Option(`${s.name} (${s.count})`, s.id));
+            sel.value = sites.some((s) => s.id === keep) ? keep : '';
+        }
+
+        function render() {
+            const site = $('siteSelect').value;
+            const days = readDays();
+            const now = new Date();
+            const cutoff = new Date(now.getFullYear(), now.getMonth(), now.getDate() - days);
+            const shown = items.filter((it) => (!site || it.siteId === site) && new Date(it.date) >= cutoff);
+            const list = $('list');
+            list.replaceChildren();
+            if (!shown.length) {
+                const e = document.createElement('div');
+                e.className = 'empty';
+                e.textContent = `No items in the last ${days} days.`;
+                list.append(e);
+                return;
+            }
+            for (const it of shown) {
+                const href = safeURL(it.link);
+                if (!href) continue;
+                const row = document.createElement('div');
+                row.className = 'item';
+                const img = safeURL(it.image);
+                if (img) {
+                    const pic = document.createElement('img');
+                    pic.src = img; pic.alt = ''; pic.loading = 'lazy'; pic.referrerPolicy = 'no-referrer';
+                    pic.addEventListener('error', () => pic.remove(), { once: true });
+                    row.append(pic);
+                }
+                const body = document.createElement('div');
+                const a = document.createElement('a');
+                a.href = href; a.target = '_blank'; a.rel = 'noopener noreferrer';
+                a.textContent = it.title;
+                const meta = document.createElement('div');
+                meta.className = 'meta';
+                meta.textContent = `${it.source} · ${ago(it.date)}`;
+                body.append(a, meta);
+                if (it.summary) {
+                    const p = document.createElement('div');
+                    p.className = 'summary';
+                    p.textContent = it.summary;
+                    body.append(p);
+                }
+                row.append(body);
+                list.append(row);
+            }
+        }
+
+        try { const d = localStorage.getItem(DAYS_KEY); if (d) $('daysInput').value = d; }
+        catch (e) { console.warn('[webfeed] days not read:', e); }
+        $('daysInput').addEventListener('change', () => {
+            try { localStorage.setItem(DAYS_KEY, String(readDays())); } catch (e) { console.warn('[webfeed] days not saved:', e); }
+            render();
+        });
+        $('siteSelect').addEventListener('change', () => {
+            try { localStorage.setItem(SITE_KEY, $('siteSelect').value); } catch (e) { console.warn('[webfeed] site not saved:', e); }
+            render();
+        });
+        $('reloadBtn').addEventListener('click', load);
+        load();
+    </script>
+</body>
+</html>

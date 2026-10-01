@@ -1,0 +1,37 @@
+# Web Feed (prototype): turns the pages in webfeed/sites.json into feeds/web/*.json with
+# our own TypeScript (webfeed/build.ts), then commits them so GitHub Pages serves them.
+# Free for a public repo. GitHub pauses schedules after 60 days without repo activity.
+name: Web Feed build
+
+on:
+  schedule:
+    - cron: '17 */3 * * *'   # every 3 hours (UTC), off the hour to avoid the busy :00 slot
+  workflow_dispatch:          # "Run workflow" button in the Actions tab
+
+permissions:
+  contents: write             # needed only to commit feeds/web/
+
+concurrency:
+  group: webfeed
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'   # runs .ts directly; no npm install, no dependencies
+      - name: Build feeds
+        run: node webfeed/build.ts
+      - name: Commit changed feeds
+        run: |
+          git add feeds/web
+          if git diff --cached --quiet; then echo "No changes"; exit 0; fi
+          git config user.name "webfeed-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "webfeed: refresh $(date -u +%Y-%m-%dT%H:%MZ)"
+          git pull --rebase origin main
+          git push
