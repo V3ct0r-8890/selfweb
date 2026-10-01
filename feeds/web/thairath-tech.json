@@ -2,8 +2,8 @@
  "id": "thairath-tech",
  "name": "Thairath Tech",
  "url": "https://www.thairath.co.th/news/tech",
- "method": "page links",
- "generated": "2026-10-01T13:28:33.939Z",
+ "method": "failed",
+ "generated": "2026-10-01T13:40:36.731Z",
  "items": [
   {
    "title": "Apple แจงรอย iPhone 17 Pro มาจากแท่น MagSafe เช็ดออกได้-ขอบฐานกล้องอาจสึกหรอตามการใช้งาน",
@@ -166,5 +166,6 @@
    "summary": "",
    "image": ""
   }
- ]
+ ],
+ "error": "HTTP 403 for https://www.thairath.co.th/news/tech"
 }

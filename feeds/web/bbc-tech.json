@@ -3,7 +3,7 @@
  "name": "BBC Technology",
  "url": "https://www.bbc.com/news/technology",
  "method": "page links",
- "generated": "2026-10-01T13:28:33.939Z",
+ "generated": "2026-10-01T13:40:36.731Z",
  "items": [
   {
    "title": "Trump's AI rebrand causes 'unprecedented' demand for Slovenian website names",
@@ -90,6 +90,55 @@
    "image": "https://ichef.bbci.co.uk/news/240/cpsprodpb/f2b6/live/889402c0-b036-11f1-9ae0-e316eeb4632d.jpg.webp"
   },
   {
+   "title": "The Mystery of Dark Energy",
+   "link": "https://www.bbc.com/video/docs/series/10331965",
+   "date": "2026-10-01T13:40:36.731Z",
+   "summary": "",
+   "image": "https://ichef.bbci.co.uk/images/ic/160x90/p0p3yz4w.jpg.webp"
+  },
+  {
+   "title": "The Secret Life of Rockpools",
+   "link": "https://www.bbc.com/video/docs/series/10331962",
+   "date": "2026-10-01T13:40:36.731Z",
+   "summary": "",
+   "image": "https://ichef.bbci.co.uk/images/ic/160x90/p0p3xcqf.jpg.webp"
+  },
+  {
+   "title": "Will Robots Take My Job?",
+   "link": "https://www.bbc.com/video/docs/series/10300318",
+   "date": "2026-10-01T13:40:36.731Z",
+   "summary": "",
+   "image": "https://ichef.bbci.co.uk/images/ic/160x90/p0p0pcp6.jpg.webp"
+  },
+  {
+   "title": "The Tech Billionaire Takeover",
+   "link": "https://www.bbc.com/video/docs/series/10329365",
+   "date": "2026-10-01T13:40:36.731Z",
+   "summary": "",
+   "image": "https://ichef.bbci.co.uk/images/ic/160x90/p0p2f9s9.jpg.webp"
+  },
+  {
+   "title": "Inside the Rage Machine",
+   "link": "https://www.bbc.com/video/docs/series/10294077",
+   "date": "2026-10-01T13:40:36.731Z",
+   "summary": "",
+   "image": "https://ichef.bbci.co.uk/images/ic/160x90/p0nb4r9x.jpg.webp"
+  },
+  {
+   "title": "Secrets of the Human Body",
+   "link": "https://www.bbc.com/video/docs/series/10325422",
+   "date": "2026-10-01T13:40:36.731Z",
+   "summary": "",
+   "image": "https://ichef.bbci.co.uk/images/ic/160x90/p0nthqbq.jpg.webp"
+  },
+  {
+   "title": "Deep Down and Dirty: The Science of Soil",
+   "link": "https://www.bbc.com/video/docs/series/10325421",
+   "date": "2026-10-01T13:40:36.731Z",
+   "summary": "",
+   "image": "https://ichef.bbci.co.uk/images/ic/160x90/p0nsvp52.jpg.webp"
+  },
+  {
    "title": "'We were without internet for weeks'",
    "link": "https://www.bbc.com/news/articles/cqkgvmgx54r6o",
    "date": "2026-10-01T13:05:50.105Z",
@@ -149,7 +198,7 @@
    "title": "Regulating AI 'not the right place to start' says Bailey",
    "link": "https://www.bbc.com/news/articles/cvzez7k0pn40o",
    "date": "2026-10-01T13:05:50.105Z",
-   "summary": "23 hrs ago AI needs \"rigorous\" testing and safeguards to contain risk, Andrew Bailey says. 23 hrs ago",
+   "summary": "24 hrs ago AI needs \"rigorous\" testing and safeguards to contain risk, Andrew Bailey says. 24 hrs ago",
    "image": "https://ichef.bbci.co.uk/news/240/cpsprodpb/e249/live/7e528b30-bcb4-11f1-a3e9-bbda6f9b9e25.jpg.webp"
   },
   {
