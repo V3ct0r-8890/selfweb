@@ -1016,14 +1016,18 @@
         function sizeOptions(id, target, s) {
             const L = LEVELS[id];
             const need = Math.ceil(target / s - 1e-9); // data disks' worth
-            if (id === 'raid10') return [[Math.max(4, 2 * need), 1]];
-            if (id === 'raid1') return need <= 1 ? [[2, 1]] : [];
-            if (id === 'zmirror') return [[2, Math.max(1, need)]];
+            if (id === 'raid10') { // split into equal arrays of at most 24 disks (even counts)
+                const disks = Math.max(4, 2 * need);
+                const g = Math.ceil(disks / 24);
+                const n = Math.max(4, 2 * Math.ceil(disks / g / 2));
+                return [[n, g]];
+            }
+            if (id === 'raid1' || id === 'zmirror') return [[2, Math.max(1, need)]];
             const [lo, hi] = SIZE_RANGE[id];
             const list = [];
             for (let n = lo; n <= hi; n++) {
+                // RAID 5/6: g separate arrays; RAID 50/60 and ZFS: g groups/vdevs in one volume.
                 const g = Math.max(L.minGroups || 1, Math.ceil(target / (L.data(n) * s) - 1e-9));
-                if (!L.nested && !L.zfs && g > 1) continue; // one RAID 5/6 array; bigger needs RAID 50/60
                 list.push([n, g]);
             }
             return list;
@@ -1032,11 +1036,13 @@
         function geoText(r) {
             const k = r.L.kind;
             const sp = r.spares ? ` + ${r.spares} spare${r.spares > 1 ? 's' : ''}` : '';
-            if (k === 'mirror') return `${r.g > 1 ? `${r.g} × ` : ''}${r.n}-way mirror${r.L.zfs ? ' vdev' : ''}${r.g > 1 ? 's' : ''}${sp}`;
-            if (k === 'mirror10') return `1 array of ${r.n} disks (${r.n / 2} pairs)${sp}`;
+            if (k === 'mirror' && r.L.zfs) return `${r.g > 1 ? `${r.g} × ` : ''}${r.n}-way mirror vdev${r.g > 1 ? 's' : ''}${sp}`;
             if (r.L.zfs) return `${r.g} vdev${r.g > 1 ? 's' : ''} × ${r.n} disks${sp}`;
             if (r.L.nested) return `${r.g} groups × ${r.n} disks${sp}`;
-            return `1 array of ${r.n} disks${sp}`;
+            const arrays = r.g > 1 ? `${r.g} separate arrays × ` : '1 array of ';
+            if (k === 'mirror') return `${arrays}${r.n}-way mirror${sp}`;
+            if (k === 'mirror10') return `${arrays}${r.n} disks (${r.n / 2} pairs${r.g > 1 ? ' each' : ''})${sp}`;
+            return `${arrays}${r.n} disks${sp}`;
         }
 
         function survText(r) {
@@ -1108,6 +1114,9 @@
                 byType.push([id, opts]);
             }
 
+            // On a tie, prefer one volume (RAID 50/60, ZFS) over the same disks as separate arrays.
+            const separate = (r) => (r.g > 1 && !r.L.nested && !r.L.zfs ? 1 : 0);
+            all.sort((a, b) => separate(a) - separate(b));
             let pool = all.filter((r) => r.tol >= 1 && r.risk !== null && r.risk < 0.05);
             const riskyOnly = !pool.length;
             if (riskyOnly) pool = all.filter((r) => r.tol >= 1);
@@ -1134,6 +1143,9 @@
             if (riskyOnly) advice.push(['bad', 'Every protected layout has a rebuild risk of 5% or more with these disks. Use smaller disks or ones with a better read-error rate.']);
             else advice.push(['info', 'Suggestions only use layouts that survive a disk failure, with group sizes in the recommended range. Balanced and capacity keep rebuild risk under 5%; performance also allows mirrors up to 10%, because their rebuild copies only one disk.']);
             if (!ssd && pickPerf.mixed < 2000) advice.push(['info', `Even the fastest HDD setup gives about ${fmtIops(pickPerf.mixed)} mixed IOPS. For VMs or databases, add an SSD cache or tier, or use SSDs.`]);
+            if ([pickPerf, pickBal, pickCap].some((r) => r.g > 1 && !r.L.nested && !r.L.zfs)) {
+                advice.push(['info', 'Separate arrays are separate volumes (one LUN or drive each): spread data across them, or join them with LVM / Storage Spaces. RAID 50/60 or a ZFS pool give one volume instead.']);
+            }
             if (autoSpare) advice.push(['info', 'Disk counts include hot spares: 1 per 24 disks for arrays of 8 disks or more.']);
             advice.push(['info', 'Scale-out storage (erasure coding, replication) is sized per node: use "From disks" to check it.']);
             html += adviceList(advice);
@@ -1153,9 +1165,7 @@
             };
             for (const [id, opts] of byType) {
                 if (!opts.length) {
-                    const why = id === 'raid1' ? 'Holds one disk of data: use RAID 10 for more.'
-                        : `Too big for one array in the recommended size: use ${id === 'raid5' ? 'RAID 50' : 'RAID 60'}.`;
-                    t += `<tr><td>${esc(LEVELS[id].name)}</td><td class="wrap" colspan="10">${esc(why)}</td></tr>`;
+                    t += `<tr><td>${esc(LEVELS[id].name)}</td><td class="wrap" colspan="10">No setup fits these inputs.</td></tr>`;
                     continue;
                 }
                 const small = opts.reduce(fewer);
