@@ -4,57 +4,48 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Network & Bandwidth Calculator</title>
+    <title>Server/Network Calculator</title>
     <!-- App-wide Device default / Light / Dark theme; sets <html data-app-theme> -->
     <script src="selfweb-theme.js"></script>
     <!--
-        SPECIFICATIONS:
-        - This is a single-page HTML/CSS/JS application.
-        - It provides two tools in a tabbed interface:
-          1. Subnet Calculator
-          2. Bandwidth Calculator
-        - No external libraries or frameworks are used.
-        
-        SUBNET CALCULATOR:
-        - Accepts a single input in CIDR format (e.g., 192.168.1.0/24).
-        - If the prefix (CIDR value) is 24 or higher (e.g., /25, /26), it calculates
-          all subnets of that size that fit within the parent /24 block.
-        - If the prefix is less than 24 (e.g., /23), it calculates only the
-          single block specified.
-        - Added a dropdown to select the output format:
-          1. Markdown Table (for copying to documents)
-          2. HTML Table (for copying to web pages)
-          3. Simple Table (on-page) (renders directly in the UI)
-        - Output is a table showing:
-          Network, Usable IP Range (Start-End), Broadcast, and Usable IPs.
-          
-        BANDWIDTH CALCULATOR:
-        - Provides two modes, selectable via a dropdown:
-          1. Calculate required bandwidth from data volume and time.
-          2. Calculate transferable data volume from bandwidth and time.
-        - Supports data units from Bytes to Petabytes (PB).
-        - Supports bandwidth units from bps to Gbps (using decimal 1000-based prefixes).
-        - Supports time units from Seconds to Days.
-        - Calculations update in real-time on input (oninput/onchange) AND
-          via an explicit "Calculate" button for each mode.
-        - Both calculators now run on page load.
-        
-        *** FIX UPDATE ***
-        - Renamed id="bandwidth" to id="bandwidthInput" and
-          id="bandwidthUnit" to id="bandwidthUnitInput" to resolve
-          a strange browser bug where the element's value was
-          returning 'undefined'.
-        - Removed debugging console.log statements.
+        Server/Network Calculator: three tools in tabs. Plain HTML/CSS/JS, no libraries.
 
-        STYLING:
-        - Uses simple, "compact" CSS for layout.
-        - Does not use Tailwind CSS or any frameworks.
+        1. Bandwidth: solves any one of line rate, data size or transfer time from the other two.
+           - Data units: decimal (kB = 1000 B ... PB) and binary (KiB = 1024 B ... PiB).
+           - Rates: decimal bits (1 Mbps = 10^6 bit/s) or bytes per second. 1 byte = 8 bits.
+           - Link efficiency % allows for protocol overhead.
+           - Also shows data moved per period and the transfer on common link speeds.
+        2. Storage: raw / usable capacity, failures survived, estimated IOPS and throughput,
+           rebuild time and rebuild risk for JBOD, RAID 0/1/5/6/10/50/60, ZFS mirror and
+           RAIDZ1-3, erasure coding and replication; best-practice advice; and a comparison
+           of the RAID/ZFS layouts possible with the same disks.
+           - Per-disk IOPS / MB/s / URE figures are typical for each disk class and editable.
+        3. Subnet: CIDR -> subnet table (on-page, Markdown or HTML).
+           - Prefix /24 or longer lists every subnet of that size in the parent /24.
     -->
     <style>
+        :root {
+            --bg: #f4f4f4; --card: #fff; --border: #ccc; --soft: #eee; --panel: #fafafa;
+            --text: #333; --muted: #666; --tab: #eee; --tab-text: #555;
+            --accent: #007bff; --accent-h: #0056b3; --accent-bg: #e7f1ff;
+            --ok: #166534; --ok-bg: #dcfce7; --warn: #92400e; --warn-bg: #fef3c7;
+            --bad: #991b1b; --bad-bg: #fee2e2; --info: #1e40af; --info-bg: #dbeafe;
+            --row-border: #ddd;
+        }
+        html[data-app-theme="dark"] {
+            --bg: #111827; --card: #1f2937; --border: #4b5563; --soft: #374151; --panel: #111827;
+            --text: #e5e7eb; --muted: #9ca3af; --tab: #273244; --tab-text: #9ca3af;
+            --accent: #93c5fd; --accent-h: #bfdbfe; --accent-bg: rgba(59, 130, 246, 0.16);
+            --ok: #86efac; --ok-bg: rgba(34, 197, 94, 0.14); --warn: #fcd34d; --warn-bg: rgba(245, 158, 11, 0.14);
+            --bad: #fca5a5; --bad-bg: rgba(239, 68, 68, 0.15); --info: #93c5fd; --info-bg: rgba(59, 130, 246, 0.14);
+            --row-border: #374151;
+        }
+        [hidden] { display: none !important; }
+
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            background-color: #f4f4f4;
-            color: #333;
+            background-color: var(--bg);
+            color: var(--text);
             margin: 0;
             padding: 1rem;
         }
@@ -62,8 +53,8 @@
         .container {
             max-width: 1200px;
             margin: 1rem 0 1rem 50px;
-            background-color: #fff;
-            border: 1px solid #ccc;
+            background-color: var(--card);
+            border: 1px solid var(--border);
             border-radius: 8px;
             box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
             overflow: hidden;
@@ -71,8 +62,8 @@
 
         .tabs {
             display: flex;
-            background-color: #eee;
-            border-bottom: 1px solid #ccc;
+            background-color: var(--tab);
+            border-bottom: 1px solid var(--border);
         }
 
         .tab-button {
@@ -82,36 +73,26 @@
             cursor: pointer;
             font-size: 1rem;
             font-weight: 500;
-            color: #555;
+            color: var(--tab-text);
         }
 
         .tab-button.active {
-            background-color: #fff;
-            color: #007bff;
-            border-bottom: 2px solid #007bff;
+            background-color: var(--card);
+            color: var(--accent);
+            border-bottom: 2px solid var(--accent);
             margin-bottom: -1px;
-            /* Align with border */
         }
 
-        .tab-content {
-            display: none;
-            padding: 1.5rem;
-        }
+        .tab-content { display: none; padding: 1.5rem; }
+        .tab-content.active { display: block; }
 
-        .tab-content.active {
-            display: block;
-        }
+        h2 { margin-top: 0; }
+        h3 { margin: 1.5rem 0 0.5rem; border-bottom: 1px solid var(--soft); padding-bottom: 8px; }
+        h4 { margin: 1.2rem 0 0.4rem; font-size: 0.95rem; }
 
-        /* General Form Styles */
-        .form-group {
-            margin-bottom: 1rem;
-        }
-
-        .form-group label {
-            display: block;
-            margin-bottom: 0.5rem;
-            font-weight: 500;
-        }
+        /* General form styles */
+        .form-group { margin-bottom: 1rem; }
+        .form-group > label, .form-group > .label { display: block; margin-bottom: 0.4rem; font-weight: 500; }
 
         input[type="text"],
         input[type="number"],
@@ -119,11 +100,15 @@
             width: 100%;
             padding: 8px;
             box-sizing: border-box;
-            /* Important for 100% width */
-            border: 1px solid #ccc;
+            border: 1px solid var(--border);
             border-radius: 4px;
             font-size: 1rem;
+            background-color: var(--card);
+            color: var(--text);
         }
+        input[readonly] { background-color: var(--accent-bg); border-color: var(--accent); font-weight: 600; }
+
+        .hint { display: block; font-size: 0.8rem; color: var(--muted); margin-top: 4px; }
 
         button.calc-button {
             background-color: #007bff;
@@ -134,18 +119,75 @@
             cursor: pointer;
             font-size: 1rem;
         }
+        button.calc-button:hover { background-color: #0056b3; }
 
-        button.calc-button:hover {
-            background-color: #0056b3;
-        }
+        /* Number + unit side by side */
+        .pair { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 9.5em); gap: 8px; }
+        .pair.ec { grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; }
+
+        /* Segmented choice */
+        .seg { display: inline-flex; flex-wrap: wrap; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+        .seg label { display: flex; align-items: center; gap: 6px; padding: 7px 14px; cursor: pointer; font-weight: 500; border-right: 1px solid var(--border); }
+        .seg label:last-child { border-right: none; }
+        .seg input { margin: 0; }
+        .seg label:has(input:checked) { background: var(--accent-bg); color: var(--accent); }
+
+        .grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 0 1.25rem; }
+
+        /* Results */
+        .answer { background: var(--accent-bg); border: 1px solid var(--accent); border-radius: 8px; padding: 12px 14px; margin: 0.5rem 0 0.5rem; }
+        .answer-label { display: block; font-size: 0.85rem; color: var(--muted); }
+        .answer-value { display: block; font-size: 1.5rem; font-weight: 700; color: var(--accent); overflow-wrap: anywhere; }
+        .answer-sub { display: block; font-size: 0.85rem; margin-top: 2px; }
+        .error { background: var(--bad-bg); color: var(--bad); border-radius: 6px; padding: 10px 12px; margin: 0.5rem 0; }
+
+        .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+        .chip { border: 1px solid var(--soft); background: var(--panel); border-radius: 999px; padding: 3px 10px; font-size: 0.85rem; font-family: "Courier New", Courier, monospace; }
+
+        .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 8px; margin: 0.5rem 0; }
+        .card { border: 1px solid var(--soft); background: var(--panel); border-radius: 8px; padding: 8px 10px; }
+        .card .k { display: block; font-size: 0.75rem; color: var(--muted); }
+        .card .v { display: block; font-size: 1.05rem; font-weight: 600; overflow-wrap: anywhere; }
+        .card .s { display: block; font-size: 0.75rem; color: var(--muted); }
+        .card.main { border-color: var(--accent); background: var(--accent-bg); }
+        .card.main .v { color: var(--accent); }
+
+        .advice { list-style: none; padding: 0; margin: 0.5rem 0; }
+        .advice li { border-radius: 6px; padding: 8px 10px 8px 34px; margin-bottom: 6px; position: relative; font-size: 0.9rem; line-height: 1.4; }
+        .advice li::before { position: absolute; left: 11px; top: 8px; font-weight: 700; }
+        .advice .bad { background: var(--bad-bg); color: var(--bad); }
+        .advice .bad::before { content: "✕"; }
+        .advice .warn { background: var(--warn-bg); color: var(--warn); }
+        .advice .warn::before { content: "!"; }
+        .advice .ok { background: var(--ok-bg); color: var(--ok); }
+        .advice .ok::before { content: "✓"; }
+        .advice .info { background: var(--info-bg); color: var(--info); }
+        .advice .info::before { content: "i"; }
+
+        .table-wrap { overflow-x: auto; }
+        .data-table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+        .data-table th, .data-table td { border: 1px solid var(--soft); padding: 6px 8px; text-align: right; white-space: nowrap; }
+        .data-table th { background: var(--tab); font-weight: 600; }
+        .data-table th:first-child, .data-table td:first-child { text-align: left; }
+        .data-table tr.current td { background: var(--accent-bg); }
+        .data-table .no { color: var(--bad); }
+        .data-table .yes { color: var(--ok); }
+        .badge { display: inline-block; font-size: 0.7rem; font-weight: 600; border-radius: 999px; padding: 1px 7px; margin-left: 6px; border: 1px solid currentColor; }
+        .badge.perf { color: var(--info); }
+        .badge.cap { color: var(--ok); }
+
+        details { border: 1px solid var(--soft); border-radius: 6px; padding: 8px 12px; margin-bottom: 1rem; }
+        details summary { cursor: pointer; font-weight: 500; }
+        details .grid2 { margin-top: 10px; }
 
         /* Subnet Calculator */
         #subnetOutput {
             width: 100%;
             height: 300px;
             font-family: "Courier New", Courier, monospace;
-            background-color: #fafafa;
-            border: 1px solid #eee;
+            background-color: var(--panel);
+            color: var(--text);
+            border: 1px solid var(--soft);
             border-radius: 4px;
             padding: 1rem;
             box-sizing: border-box;
@@ -153,56 +195,18 @@
             overflow-x: auto;
         }
 
-        /* Styles for on-page table */
-        .simple-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 1rem;
-        }
-
+        .simple-table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
         .simple-table th,
         .simple-table td {
-            border: 1px solid #ccc;
+            border: 1px solid var(--border);
             padding: 8px;
             text-align: left;
             font-family: "Courier New", Courier, monospace;
         }
-
         .simple-table th {
-            background-color: #f4f4f4;
+            background-color: var(--tab);
             font-weight: 600;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-        }
-
-        /* Bandwidth Calculator */
-        .bw-grid {
-            display: grid;
-            grid-template-columns: 1fr auto;
-            gap: 10px;
-            align-items: center;
-        }
-
-        .bw-grid label {
-            font-weight: 500;
-            margin-bottom: 0;
-        }
-
-        .bw-grid .span-2 {
-            grid-column: 1 / -1;
-        }
-
-        #calcBandwidthForm,
-        #calcVolumeForm {
-            border: 1px solid #eee;
-            padding: 1rem;
-            border-radius: 4px;
-            background-color: #fcfcfc;
-        }
-
-        h3 {
-            margin-top: 0;
-            border-bottom: 1px solid #eee;
-            padding-bottom: 8px;
         }
 
         /* Phones: the card was pushed 50px right and clipped the results table */
@@ -212,34 +216,22 @@
             .tab-content { padding: 1rem; }
             .tab-button { flex: 1; padding: 10px 8px; font-size: 0.95rem; }
             #subnetOutput { font-size: 0.8rem; }
-            .bw-grid { grid-template-columns: minmax(0, 1fr) auto; }
-            /* Tables become one card per row: a phone cannot show 5 columns */
+            .seg { display: flex; }
+            .seg label { flex: 1; justify-content: center; padding: 7px 6px; white-space: nowrap; }
+            .answer-value { font-size: 1.3rem; }
+            /* Subnet tables become one card per row: a phone cannot show 5 columns */
             .simple-table thead { display: none; }
             .simple-table, .simple-table tbody, .simple-table tr, .simple-table td { display: block; width: 100%; box-sizing: border-box; }
-            .simple-table tr { border: 1px solid var(--row-border, #ddd); border-radius: 8px; margin-bottom: 10px; overflow: hidden; }
-            .simple-table td { display: flex; justify-content: space-between; align-items: center; gap: 12px; text-align: right; border: none; border-bottom: 1px solid #eee; padding: 6px 10px; overflow-wrap: anywhere; }
+            .simple-table tr { border: 1px solid var(--row-border); border-radius: 8px; margin-bottom: 10px; overflow: hidden; }
+            .simple-table td { display: flex; justify-content: space-between; align-items: center; gap: 12px; text-align: right; border: none; border-bottom: 1px solid var(--soft); padding: 6px 10px; overflow-wrap: anywhere; }
             .simple-table td:last-child { border-bottom: none; }
-            .simple-table td::before { font-weight: 600; color: #666; text-align: left; white-space: nowrap; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+            .simple-table td::before { font-weight: 600; color: var(--muted); text-align: left; white-space: nowrap; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
             .simple-table td:nth-child(1)::before { content: "Network"; }
             .simple-table td:nth-child(2)::before { content: "Subnet Mask"; }
             .simple-table td:nth-child(3)::before { content: "Usable Range"; }
             .simple-table td:nth-child(4)::before { content: "Broadcast"; }
             .simple-table td:nth-child(5)::before { content: "Usable IPs"; }
         }
-        /* Dark theme (selfweb-theme.js) */
-        html[data-app-theme="dark"] body { background-color: #111827; color: #e5e7eb; }
-        html[data-app-theme="dark"] .container { background-color: #1f2937; border-color: #374151; }
-        html[data-app-theme="dark"] .tabs { background-color: #273244; }
-        html[data-app-theme="dark"] .tab-button { color: #9ca3af; }
-        html[data-app-theme="dark"] .tab-button.active { background-color: #1f2937; color: #93c5fd; }
-        html[data-app-theme="dark"] input, html[data-app-theme="dark"] select { background-color: #111827; color: #f3f4f6; border-color: #4b5563; }
-        html[data-app-theme="dark"] #subnetOutput { background-color: #111827; border-color: #374151; }
-        html[data-app-theme="dark"] .simple-table td, html[data-app-theme="dark"] .simple-table th { border-color: #4b5563; }
-        html[data-app-theme="dark"] .simple-table th { background-color: #273244; }
-        html[data-app-theme="dark"] #calcVolumeForm { background-color: #1a2332; }
-        html[data-app-theme="dark"] h3 { border-color: #374151; }
-        html[data-app-theme="dark"] { --row-border: #374151; }
-        html[data-app-theme="dark"] .simple-table td::before { color: #9ca3af; }
     </style>
 </head>
 
@@ -247,14 +239,177 @@
 
     <div class="container">
         <nav class="tabs">
-            <button class="tab-button active" onclick="openTab(event, 'subnet')">Subnet Calculator</button>
-            <button class="tab-button" onclick="openTab(event, 'bandwidth')">Bandwidth Calculator</button>
+            <button class="tab-button" data-tab="bandwidth">Bandwidth</button>
+            <button class="tab-button" data-tab="storage">Storage</button>
+            <button class="tab-button" data-tab="subnet">Subnet</button>
         </nav>
 
         <!-- ==================== -->
-        <!-- Subnet Calculator Tab -->
+        <!-- Bandwidth tab        -->
         <!-- ==================== -->
-        <div id="subnet" class="tab-content active">
+        <section id="bandwidth" class="tab-content">
+            <h2>Bandwidth Calculator</h2>
+            <div class="form-group">
+                <span class="label">Solve for</span>
+                <div class="seg" role="radiogroup" aria-label="Solve for">
+                    <label><input type="radio" name="bwSolve" value="rate" checked> Bandwidth</label>
+                    <label><input type="radio" name="bwSolve" value="size"> Data size</label>
+                    <label><input type="radio" name="bwSolve" value="time"> Time</label>
+                </div>
+            </div>
+            <div class="grid2">
+                <div class="form-group" data-field="size">
+                    <label for="bwSize">Data size</label>
+                    <div class="pair">
+                        <input type="number" id="bwSize" value="1" min="0" step="any">
+                        <select id="bwSizeUnit" aria-label="Data size unit"></select>
+                    </div>
+                </div>
+                <div class="form-group" data-field="time">
+                    <label for="bwTime">Time</label>
+                    <div class="pair">
+                        <input type="number" id="bwTime" value="1" min="0" step="any">
+                        <select id="bwTimeUnit" aria-label="Time unit"></select>
+                    </div>
+                </div>
+                <div class="form-group" data-field="rate">
+                    <label for="bwRate">Bandwidth (line rate)</label>
+                    <div class="pair">
+                        <input type="number" id="bwRate" value="1" min="0" step="any">
+                        <select id="bwRateUnit" aria-label="Bandwidth unit"></select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="bwEff">Link efficiency (%)</label>
+                    <input type="number" id="bwEff" value="100" min="1" max="100" step="any">
+                    <span class="hint">TCP/IP over Ethernet carries about 94–97% of the line rate as data.</span>
+                </div>
+            </div>
+            <div id="bwResult"></div>
+            <p class="hint">kB, MB, GB, TB, PB are decimal (1 kB = 1,000 bytes) as used by disk makers and networks;
+                KiB, MiB, GiB, TiB, PiB are binary (1 KiB = 1,024 bytes) as shown by Windows and many OS tools.
+                Bit rates are decimal (1 Mbps = 1,000,000 bit/s). A month is 30 days.</p>
+        </section>
+
+        <!-- ==================== -->
+        <!-- Storage tab          -->
+        <!-- ==================== -->
+        <section id="storage" class="tab-content">
+            <h2>Storage Calculator</h2>
+            <div class="grid2">
+                <div class="form-group">
+                    <label for="stLevel">RAID / protection</label>
+                    <select id="stLevel">
+                        <optgroup label="Hardware / software RAID">
+                            <option value="jbod">JBOD / span (no protection)</option>
+                            <option value="raid0">RAID 0 – stripe</option>
+                            <option value="raid1">RAID 1 – mirror</option>
+                            <option value="raid10">RAID 10 – striped mirrors</option>
+                            <option value="raid5">RAID 5 – single parity</option>
+                            <option value="raid6" selected>RAID 6 – double parity</option>
+                            <option value="raid50">RAID 50 – striped RAID 5 groups</option>
+                            <option value="raid60">RAID 60 – striped RAID 6 groups</option>
+                        </optgroup>
+                        <optgroup label="ZFS (TrueNAS, Proxmox, OpenZFS)">
+                            <option value="zmirror">ZFS mirror vdevs</option>
+                            <option value="raidz1">ZFS RAIDZ1 – single parity</option>
+                            <option value="raidz2">ZFS RAIDZ2 – double parity</option>
+                            <option value="raidz3">ZFS RAIDZ3 – triple parity</option>
+                        </optgroup>
+                        <optgroup label="Scale-out (Ceph, vSAN, MinIO, HDFS)">
+                            <option value="ec">Erasure coding k + m</option>
+                            <option value="rep">Replication (copies)</option>
+                        </optgroup>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="stDiskSize">Disk size</label>
+                    <div class="pair">
+                        <input type="number" id="stDiskSize" value="8" min="0" step="any" list="stSizeList">
+                        <select id="stDiskUnit" aria-label="Disk size unit">
+                            <option value="1e9">GB</option>
+                            <option value="1e12" selected>TB</option>
+                        </select>
+                    </div>
+                    <datalist id="stSizeList">
+                        <option value="0.48"></option><option value="0.96"></option><option value="1.92"></option>
+                        <option value="3.84"></option><option value="7.68"></option><option value="15.36"></option>
+                        <option value="30.72"></option><option value="61.44"></option><option value="122.88"></option>
+                        <option value="1"></option><option value="2"></option><option value="4"></option>
+                        <option value="8"></option><option value="12"></option><option value="16"></option>
+                        <option value="20"></option><option value="24"></option><option value="28"></option>
+                        <option value="32"></option>
+                    </datalist>
+                    <span class="hint">As sold (decimal): a 1.92 TB SSD, an 8 TB HDD.</span>
+                </div>
+                <div class="form-group">
+                    <label for="stPer" id="stPerLabel">Disks per array</label>
+                    <input type="number" id="stPer" value="8" min="1" step="1">
+                </div>
+                <div class="form-group">
+                    <label for="stGroups" id="stGroupsLabel">Arrays</label>
+                    <input type="number" id="stGroups" value="1" min="1" step="1">
+                    <span class="hint" id="stGroupsHint"></span>
+                </div>
+                <div class="form-group" id="stEcBox" hidden>
+                    <label for="stK">Erasure code: data (k) + parity (m)</label>
+                    <div class="pair ec">
+                        <input type="number" id="stK" value="4" min="1" step="1" aria-label="Data chunks k">
+                        <span>+</span>
+                        <input type="number" id="stM" value="2" min="1" step="1" aria-label="Parity chunks m">
+                    </div>
+                </div>
+                <div class="form-group" id="stRepBox" hidden>
+                    <label for="stRep">Copies of each object</label>
+                    <input type="number" id="stRep" value="3" min="2" step="1">
+                </div>
+                <div class="form-group">
+                    <label for="stSpares">Hot spares (total)</label>
+                    <input type="number" id="stSpares" value="0" min="0" step="1">
+                </div>
+                <div class="form-group">
+                    <label for="stType">Disk type</label>
+                    <select id="stType"></select>
+                </div>
+                <div class="form-group">
+                    <label for="stReadPct">Workload: reads (%)</label>
+                    <input type="number" id="stReadPct" value="70" min="0" max="100" step="1">
+                    <span class="hint">Databases/VMs ≈ 60–70, file/web ≈ 80–90, backup target ≈ 10–30.</span>
+                </div>
+            </div>
+            <details>
+                <summary>Per-disk performance (typical values; edit to match your disks)</summary>
+                <div class="grid2">
+                    <div class="form-group"><label for="stR">Random read IOPS (4K)</label><input type="number" id="stR" min="1" step="any"></div>
+                    <div class="form-group"><label for="stW">Random write IOPS (4K)</label><input type="number" id="stW" min="1" step="any"></div>
+                    <div class="form-group"><label for="stSeq">Sequential MB/s</label><input type="number" id="stSeq" min="1" step="any"></div>
+                    <div class="form-group">
+                        <label for="stUre">Unrecoverable read error rate</label>
+                        <select id="stUre">
+                            <option value="14">1 per 10^14 bits (desktop / NAS HDD)</option>
+                            <option value="15">1 per 10^15 bits (enterprise HDD)</option>
+                            <option value="16">1 per 10^16 bits (10k/15k SAS HDD)</option>
+                            <option value="17">1 per 10^17 bits (SSD)</option>
+                        </select>
+                    </div>
+                </div>
+                <span class="hint">Values come from the disk's data sheet. SSD write IOPS are steady-state, not the burst figure.</span>
+            </details>
+
+            <div id="stResult"></div>
+
+            <h3>Compare layouts for these disks</h3>
+            <p class="hint" id="stCompareNote"></p>
+            <div class="table-wrap"><table class="data-table" id="stCompare"></table></div>
+            <p class="hint">Estimates before controller, cache, network and file-system limits. IOPS assume small random I/O;
+                rebuild risk is the chance of an unreadable sector while the group has no redundancy left.
+                Real systems vary — check against the vendor's sizing tool before buying.</p>
+        </section>
+
+        <!-- ==================== -->
+        <!-- Subnet tab           -->
+        <!-- ==================== -->
+        <section id="subnet" class="tab-content">
             <h2>Subnet Calculator</h2>
             <div class="form-group">
                 <label for="cidrInput">Enter CIDR (e.g., 192.168.10.0/26):</label>
@@ -277,149 +432,483 @@
                 <textarea id="subnetOutput" readonly></textarea>
             </div>
 
-            <!-- This new div is for the rendered on-page table -->
+            <!-- This div is for the rendered on-page table -->
             <div id="subnetTableOutput" style="margin-top: 1rem;">
                 <!-- Table will be injected here by JS -->
             </div>
-        </div>
-
-        <!-- ====================== -->
-        <!-- Bandwidth Calculator Tab -->
-        <!-- ====================== -->
-        <div id="bandwidth" class="tab-content">
-            <h2>Bandwidth Calculator</h2>
-            <div class="form-group">
-                <label for="bwModeSelect">Calculation Mode:</label>
-                <select id="bwModeSelect" onchange="toggleBwMode()">
-                    <option value="calcBandwidth">Calculate Bandwidth Required</option>
-                    <option value="calcVolume">Calculate Data Volume</option>
-                </select>
-            </div>
-
-            <!-- Mode 1: Calculate Bandwidth -->
-            <div id="calcBandwidthForm">
-                <h3>Calculate Required Bandwidth</h3>
-                <div class="bw-grid">
-                    <label for="dataVolume">Data Volume:</label>
-                    <label for="volumeUnit">Unit:</label>
-
-                    <input type="number" id="dataVolume" value="100" oninput="calculateBandwidth()">
-                    <select id="volumeUnit" onchange="calculateBandwidth()">
-                        <option value="Bytes">Bytes</option>
-                        <option value="KB">KB</option>
-                        <option value="MB">MB</option>
-                        <option value="GB" selected>GB</option>
-                        <option value="TB">TB</option>
-                        <option value="PB">PB</option>
-                    </select>
-
-                    <label for="transferTime">Transfer Time:</label>
-                    <label for="timeUnit">Unit:</label>
-
-                    <input type="number" id="transferTime" value="1" oninput="calculateBandwidth()">
-                    <select id="timeUnit" onchange="calculateBandwidth()">
-                        <option value="Seconds">Seconds</option>
-                        <option value="Minutes">Minutes</option>
-                        <option value="Hours" selected>Hours</option>
-                        <option value="Days">Days</option>
-                    </select>
-
-                    <hr class="span-2">
-
-                    <label for="resultBandwidth">Required Bandwidth:</label>
-                    <label for="bandwidthUnitResult">Unit:</label>
-
-                    <input type="text" id="resultBandwidth" readonly>
-                    <select id="bandwidthUnitResult" onchange="calculateBandwidth()">
-                        <option value="bps">bps</option>
-                        <option value="kbps">kbps</option>
-                        <option value="Mbps" selected>Mbps</option>
-                        <option value="Gbps">Gbps</option>
-                    </select>
-
-                    <div class="span-2" style="margin-top: 1rem;">
-                        <button type="button" class="calc-button" onclick="calculateBandwidth()">Calculate</button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Mode 2: Calculate Volume -->
-            <div id="calcVolumeForm" style="display: none;">
-                <h3>Calculate Data Volume</h3>
-                <div class="bw-grid">
-                    <!-- *** ID RENAMED HERE *** -->
-                    <label for="bandwidthInput">Bandwidth:</label>
-                    <label for="bandwidthUnitInput">Unit:</label>
-
-                    <!-- *** ID RENAMED HERE *** -->
-                    <input type="number" id="bandwidthInput" value="100" oninput="calculateVolume()">
-                    <!-- *** ID RENAMED HERE *** -->
-                    <select id="bandwidthUnitInput" onchange="calculateVolume()">
-                        <option value="bps">bps</option>
-                        <option value="kbps">kbps</option>
-                        <option value="Mbps" selected>Mbps</option>
-                        <option value="Gbps">Gbps</option>
-                    </select>
-
-                    <label for="transferTimeVol">Transfer Time:</label>
-                    <label for="timeUnitVol">Unit:</label>
-
-                    <input type="number" id="transferTimeVol" value="1" oninput="calculateVolume()">
-                    <select id="timeUnitVol" onchange="calculateVolume()">
-                        <option value="Seconds">Seconds</option>
-                        <option value="Minutes">Minutes</option>
-                        <option value="Hours" selected>Hours</option>
-                        <option value="Days">Days</option>
-                    </select>
-
-                    <hr class="span-2">
-
-                    <label for="resultVolume">Data Volume:</label>
-                    <label for="volumeUnitResult">Unit:</label>
-
-                    <input type="text" id="resultVolume" readonly>
-                    <select id="volumeUnitResult" onchange="calculateVolume()">
-                        <option value="Bytes">Bytes</option>
-                        <option value="KB">KB</option>
-                        <option value="MB">MB</option>
-                        <option value="GB" selected>GB</option>
-                        <option value="TB">TB</option>
-                        <option value="PB">PB</option>
-                    </select>
-
-                    <div class="span-2" style="margin-top: 1rem;">
-                        <button type="button" class="calc-button" onclick="calculateVolume()">Calculate</button>
-                    </div>
-                </div>
-            </div>
-
-        </div>
+        </section>
     </div>
 
     <script>
-        // ========================================================================
-        // SPECIFICATIONS (JavaScript)
-        // This script handles:
-        // 1. Tabbed interface logic (openTab function).
-        // 2. Subnet calculator logic (calculateSubnet and helpers).
-        // 3. Bandwidth calculator logic (toggleBwMode, calculateBandwidth, calculateVolume).
-        // ========================================================================
+        const $ = (id) => document.getElementById(id);
+        const TAB_KEY = 'svrnet_tab';
 
         // ------------------------
-        // Tab Interface Logic
+        // Tabs
         // ------------------------
-        function openTab(evt, tabName) {
-            let i, tabcontent, tabbuttons;
-            tabcontent = document.getElementsByClassName("tab-content");
-            for (i = 0; i < tabcontent.length; i++) {
-                tabcontent[i].style.display = "none";
+        function showTab(name) {
+            if (!$(name)) name = 'bandwidth';
+            for (const sec of document.querySelectorAll('.tab-content')) sec.classList.toggle('active', sec.id === name);
+            for (const btn of document.querySelectorAll('.tab-button')) btn.classList.toggle('active', btn.dataset.tab === name);
+            try { localStorage.setItem(TAB_KEY, name); } catch (e) { console.warn('[svrnet] tab not saved:', e); }
+        }
+
+        // ------------------------
+        // Shared formatting
+        // ------------------------
+        const NUM = new Intl.NumberFormat('en-US', { maximumSignificantDigits: 6 });
+        const NUM3 = new Intl.NumberFormat('en-US', { maximumSignificantDigits: 3 });
+        const COMPACT = new Intl.NumberFormat('en-US', { notation: 'compact', maximumSignificantDigits: 3 });
+
+        function fmtNum(v) { return Number.isFinite(v) ? NUM.format(v) : '—'; }
+
+        function esc(s) {
+            return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        }
+
+        /** Value in the largest unit it reaches at least 1 of; units are [name, factor], ascending. */
+        function inBest(value, units) {
+            let pick = units[0];
+            for (const u of units) if (Math.abs(value) >= u[1]) pick = u;
+            return `${fmtNum(value / pick[1])} ${pick[0]}`;
+        }
+
+        /** Human duration such as "2 d 3 h 4 min"; most significant three parts. */
+        function fmtDuration(sec) {
+            if (!Number.isFinite(sec)) return '—';
+            if (sec < 1) return `${fmtNum(sec * 1000)} ms`;
+            if (sec >= 3650 * 86400) return `${fmtNum(sec / (365.25 * 86400))} years`;
+            const parts = [];
+            let rest = Math.round(sec);
+            for (const [unit, size] of [['d', 86400], ['h', 3600], ['min', 60], ['s', 1]]) {
+                const n = Math.floor(rest / size);
+                rest -= n * size;
+                if (n || parts.length) parts.push([n, unit]);
             }
-            tabbuttons = document.getElementsByClassName("tab-button");
-            for (i = 0; i < tabbuttons.length; i++) {
-                tabbuttons[i].className = tabbuttons[i].className.replace(" active", "");
+            return parts.slice(0, 3).filter(([n], i) => n || i === 0).map(([n, u]) => `${n} ${u}`).join(' ');
+        }
+
+        function readNum(id) { const v = parseFloat($(id).value); return Number.isFinite(v) ? v : NaN; }
+
+        function fillSelect(sel, units, selected) {
+            sel.replaceChildren(...units.map(([name]) => new Option(name, name, false, name === selected)));
+        }
+
+        const factorOf = (units, name) => (units.find((u) => u[0] === name) || units[0])[1];
+
+        // ---------------------------
+        // Bandwidth
+        // ---------------------------
+        // Sizes in bytes; rates in bits per second; times in seconds.
+        const SIZE_UNITS = [
+            ['Bytes', 1], ['kB', 1e3], ['MB', 1e6], ['GB', 1e9], ['TB', 1e12], ['PB', 1e15],
+            ['KiB', 2 ** 10], ['MiB', 2 ** 20], ['GiB', 2 ** 30], ['TiB', 2 ** 40], ['PiB', 2 ** 50],
+        ];
+        const DEC_SIZE = SIZE_UNITS.slice(0, 6);
+        const BIN_SIZE = [SIZE_UNITS[0], ...SIZE_UNITS.slice(6)];
+        const RATE_UNITS = [
+            ['bps', 1], ['kbps', 1e3], ['Mbps', 1e6], ['Gbps', 1e9], ['Tbps', 1e12],
+            ['B/s', 8], ['kB/s', 8e3], ['MB/s', 8e6], ['GB/s', 8e9], ['MiB/s', 8 * 2 ** 20], ['GiB/s', 8 * 2 ** 30],
+        ];
+        const BIT_RATE = RATE_UNITS.slice(0, 5);
+        const BYTE_RATE = [['B/s', 8], ['kB/s', 8e3], ['MB/s', 8e6], ['GB/s', 8e9]];
+        const TIME_UNITS = [
+            ['seconds', 1], ['minutes', 60], ['hours', 3600], ['days', 86400], ['weeks', 604800], ['months (30 d)', 2592000],
+        ];
+        const LINKS = [
+            ['100 Mbps', 1e8], ['1 Gbps', 1e9], ['2.5 Gbps', 2.5e9], ['10 Gbps', 1e10],
+            ['25 Gbps', 2.5e10], ['40 Gbps', 4e10], ['100 Gbps', 1e11], ['400 Gbps', 4e11],
+        ];
+        const BW_FIELDS = {
+            size: { input: 'bwSize', unit: 'bwSizeUnit', units: SIZE_UNITS, label: 'data size' },
+            time: { input: 'bwTime', unit: 'bwTimeUnit', units: TIME_UNITS, label: 'time' },
+            rate: { input: 'bwRate', unit: 'bwRateUnit', units: RATE_UNITS, label: 'bandwidth' },
+        };
+
+        function calcBandwidth() {
+            const solve = document.querySelector('input[name="bwSolve"]:checked').value;
+            for (const box of document.querySelectorAll('#bandwidth [data-field]')) {
+                box.querySelector('input').readOnly = box.dataset.field === solve;
             }
-            document.getElementById(tabName).style.display = "block";
-            evt.currentTarget.className += " active";
+            const out = $('bwResult');
+            const fail = (msg) => { out.innerHTML = `<div class="error">${esc(msg)}</div>`; };
+
+            const value = {};
+            for (const [key, f] of Object.entries(BW_FIELDS)) {
+                value[key] = readNum(f.input) * factorOf(f.units, $(f.unit).value);
+            }
+            const eff = readNum('bwEff');
+            if (!(eff > 0 && eff <= 100)) return fail('Link efficiency must be more than 0 and at most 100%.');
+            const e = eff / 100;
+            for (const key of Object.keys(BW_FIELDS)) {
+                if (key !== solve && !(value[key] > 0)) return fail(`Enter a ${BW_FIELDS[key].label} greater than 0.`);
+            }
+
+            let bytes = value.size, secs = value.time, bps = value.rate;
+            if (solve === 'rate') bps = bytes * 8 / secs / e;
+            else if (solve === 'size') bytes = bps * e * secs / 8;
+            else secs = bytes * 8 / (bps * e);
+
+            // Show the answer in the solved field, in the unit chosen there.
+            const f = BW_FIELDS[solve];
+            const solved = { size: bytes, time: secs, rate: bps }[solve] / factorOf(f.units, $(f.unit).value);
+            $(f.input).value = String(Number(solved.toPrecision(6)));
+
+            const dataRate = bps * e; // bits/s that are actually data
+            let html = '';
+            if (solve === 'rate') {
+                html += answer('Bandwidth needed (line rate)', inBest(bps, BIT_RATE),
+                    `${eff < 100 ? `${fmtNum(eff)}% efficiency → ` : ''}${inBest(dataRate, BYTE_RATE)} of data`);
+                html += `<h4>In other units</h4>${chips(RATE_UNITS.map(([n, k]) => `${fmtNum(bps / k)} ${n}`))}`;
+            } else if (solve === 'size') {
+                html += answer('Data that can be transferred', inBest(bytes, DEC_SIZE), `= ${inBest(bytes, BIN_SIZE)}`);
+                html += `<h4>In other units</h4>${chips(SIZE_UNITS.map(([n, k]) => `${fmtNum(bytes / k)} ${n}`))}`;
+            } else {
+                html += answer('Transfer time', fmtDuration(secs), `${fmtNum(secs)} seconds`);
+                html += `<h4>In other units</h4>${chips(TIME_UNITS.map(([n, k]) => `${fmtNum(secs / k)} ${n}`))}`;
+            }
+
+            html += `<h4>Data moved at ${esc(inBest(bps, BIT_RATE))}${eff < 100 ? ` (${esc(fmtNum(eff))}% efficiency)` : ''}</h4>`;
+            html += '<div class="table-wrap"><table class="data-table"><thead><tr><th>Per</th><th>Decimal</th><th>Binary</th></tr></thead><tbody>';
+            for (const [name, s] of [['second', 1], ['minute', 60], ['hour', 3600], ['day', 86400], ['week', 604800], ['30 days', 2592000]]) {
+                const b = dataRate * s / 8;
+                html += `<tr><td>${name}</td><td>${esc(inBest(b, DEC_SIZE))}</td><td>${esc(inBest(b, BIN_SIZE))}</td></tr>`;
+            }
+            html += '</tbody></table></div>';
+
+            const need = bytes * 8 / secs / e; // line rate needed to move this data in this time
+            html += `<h4>${esc(inBest(bytes, DEC_SIZE))} on common links</h4>`;
+            html += `<div class="table-wrap"><table class="data-table"><thead><tr><th>Link</th><th>Transfer time</th><th>Done within ${esc(fmtDuration(secs))}?</th></tr></thead><tbody>`;
+            for (const [name, link] of LINKS) {
+                const util = need / link;
+                const fits = util <= 1
+                    ? `<span class="yes">Yes – link ${esc(NUM3.format(util * 100))}% busy</span>`
+                    : `<span class="no">No – needs ${esc(NUM3.format(util))}× this link</span>`;
+                html += `<tr><td>${name}</td><td>${esc(fmtDuration(bytes * 8 / (link * e)))}</td><td>${fits}</td></tr>`;
+            }
+            html += '</tbody></table></div>';
+            out.innerHTML = html;
+        }
+
+        function answer(label, value, sub) {
+            return `<div class="answer"><span class="answer-label">${esc(label)}</span>`
+                + `<span class="answer-value">${esc(value)}</span><span class="answer-sub">${esc(sub)}</span></div>`;
+        }
+
+        function chips(list) { return `<div class="chips">${list.map((t) => `<span class="chip">${esc(t)}</span>`).join('')}</div>`; }
+
+        // ---------------------------
+        // Storage
+        // ---------------------------
+        // Typical per-disk figures (4K random IOPS, sequential MB/s, URE exponent).
+        const DISKS = [
+            { id: 'hdd54', name: 'HDD 5,400 rpm (NAS / archive)', r: 60, w: 60, seq: 180, ure: 14 },
+            { id: 'hdd72', name: 'HDD 7,200 rpm (SATA / NL-SAS)', r: 80, w: 80, seq: 250, ure: 15 },
+            { id: 'hdd10', name: 'HDD 10,000 rpm SAS', r: 140, w: 140, seq: 220, ure: 16 },
+            { id: 'hdd15', name: 'HDD 15,000 rpm SAS', r: 180, w: 180, seq: 250, ure: 16 },
+            { id: 'sata', name: 'SSD SATA 6 Gb/s', r: 90000, w: 30000, seq: 530, ure: 17, ssd: true },
+            { id: 'sas12', name: 'SSD SAS 12 Gb/s', r: 200000, w: 60000, seq: 1100, ure: 17, ssd: true },
+            { id: 'sas24', name: 'SSD SAS 24 Gb/s', r: 300000, w: 90000, seq: 2000, ure: 17, ssd: true },
+            { id: 'nvme3', name: 'NVMe SSD PCIe 3.0', r: 500000, w: 100000, seq: 3200, ure: 17, ssd: true, nvme: true },
+            { id: 'nvme4', name: 'NVMe SSD PCIe 4.0', r: 1000000, w: 200000, seq: 6500, ure: 17, ssd: true, nvme: true },
+            { id: 'nvme5', name: 'NVMe SSD PCIe 5.0', r: 2000000, w: 300000, seq: 12000, ure: 17, ssd: true, nvme: true },
+            { id: 'custom', name: 'Custom (edit per-disk values)' },
+        ];
+
+        // kind decides how performance scales; data(n) = data disks per group; tol(n) = failures one group survives.
+        const LEVELS = {
+            jbod: { name: 'JBOD', kind: 'stripe', min: 1, data: (n) => n, tol: () => 0 },
+            raid0: { name: 'RAID 0', kind: 'stripe', min: 2, data: (n) => n, tol: () => 0 },
+            raid1: { name: 'RAID 1', kind: 'mirror', min: 2, data: () => 1, tol: (n) => n - 1 },
+            raid10: { name: 'RAID 10', kind: 'mirror10', min: 4, even: true, data: (n) => n / 2, tol: () => 1 },
+            raid5: { name: 'RAID 5', kind: 'parity', min: 3, data: (n) => n - 1, tol: () => 1, pen: 4 },
+            raid6: { name: 'RAID 6', kind: 'parity', min: 4, data: (n) => n - 2, tol: () => 2, pen: 6 },
+            raid50: { name: 'RAID 50', kind: 'parity', min: 3, minGroups: 2, nested: true, data: (n) => n - 1, tol: () => 1, pen: 4 },
+            raid60: { name: 'RAID 60', kind: 'parity', min: 4, minGroups: 2, nested: true, data: (n) => n - 2, tol: () => 2, pen: 6 },
+            zmirror: { name: 'ZFS mirror', kind: 'mirror', min: 2, zfs: true, data: () => 1, tol: (n) => n - 1 },
+            raidz1: { name: 'RAIDZ1', kind: 'raidz', min: 3, zfs: true, data: (n) => n - 1, tol: () => 1 },
+            raidz2: { name: 'RAIDZ2', kind: 'raidz', min: 4, zfs: true, data: (n) => n - 2, tol: () => 2 },
+            raidz3: { name: 'RAIDZ3', kind: 'raidz', min: 5, zfs: true, data: (n) => n - 3, tol: () => 3 },
+            ec: { name: 'Erasure coding', kind: 'ec', scale: true },
+            rep: { name: 'Replication', kind: 'rep', scale: true },
+        };
+        const TB = 1e12, TIB = 2 ** 40;
+        const CAP_DEC = [['GB', 1e9], ['TB', 1e12], ['PB', 1e15]];
+        const CAP_BIN = [['GiB', 2 ** 30], ['TiB', 2 ** 40], ['PiB', 2 ** 50]];
+
+        function diskSpec() {
+            return { r: readNum('stR'), w: readNum('stW'), seq: readNum('stSeq'), ure: Number($('stUre').value) };
+        }
+
+        function applyDiskType() {
+            const d = DISKS.find((x) => x.id === $('stType').value);
+            if (!d || d.id === 'custom') return;
+            $('stR').value = d.r; $('stW').value = d.w; $('stSeq').value = d.seq; $('stUre').value = String(d.ure);
+        }
+
+        /**
+         * Capacity, protection and performance of one layout.
+         * n disks per group, g groups, s bytes per disk, d per-disk spec, readFrac 0..1.
+         */
+        function layout(id, n, g, s, d, readFrac) {
+            const L = LEVELS[id];
+            if (!Number.isInteger(n) || n < L.min) return { error: `${L.name} needs at least ${L.min} disks per group.` };
+            if (L.even && n % 2) return { error: `${L.name} needs an even number of disks per array (pairs).` };
+            if (L.minGroups && g < L.minGroups) return { error: `${L.name} needs at least ${L.minGroups} groups striped together.` };
+
+            const data = L.data(n);
+            const tol = L.tol(n);
+            let read, write, seqR, seqW, penalty;
+            switch (L.kind) {
+                case 'stripe':
+                    read = n * d.r; write = n * d.w; seqR = seqW = n * d.seq; penalty = '×1';
+                    break;
+                case 'mirror': // every write goes to all n copies; reads can use any copy
+                    read = n * d.r; write = d.w; seqR = n * d.seq; seqW = d.seq; penalty = `×${n}`;
+                    break;
+                case 'mirror10':
+                    read = n * d.r; write = n * d.w / 2; seqR = n * d.seq; seqW = data * d.seq; penalty = '×2';
+                    break;
+                case 'parity': // read-modify-write: each small write costs pen disk I/Os
+                    read = n * d.r; write = n * d.w / L.pen; seqR = seqW = data * d.seq; penalty = `×${L.pen}`;
+                    break;
+                case 'raidz': // every block spans the vdev: random IOPS of about one disk per vdev
+                    read = d.r; write = d.w; seqR = seqW = data * d.seq; penalty = 'full stripe';
+                    break;
+            }
+            read *= g; write *= g; seqR *= g; seqW *= g;
+            const mixed = 1 / (readFrac / read + (1 - readFrac) / write);
+
+            // Rebuild: copy one disk's worth at best sequential speed (a lower bound).
+            const rebuildSec = s / (d.seq * 1e6);
+            // Chance of an unreadable sector while the group has no redundancy left (only when tol is 1).
+            let risk = null;
+            if (tol === 1) {
+                const bitsRead = (L.kind === 'parity' || L.kind === 'raidz' ? (n - 1) * s : s) * 8;
+                risk = -Math.expm1(-bitsRead / 10 ** d.ure);
+            } else if (tol >= 2) risk = 0;
+
+            return { L, n, g, data, tol, usable: data * g * s, read, write, mixed, seqR, seqW, penalty, rebuildSec, risk };
+        }
+
+        function scaleOut(id, n, g, s) {
+            const nodes = g, raw = n * g * s;
+            if (id === 'ec') {
+                const k = readNum('stK'), m = readNum('stM');
+                if (!(Number.isInteger(k) && k >= 1 && Number.isInteger(m) && m >= 1)) return { error: 'k and m must be whole numbers of at least 1.' };
+                return { L: LEVELS.ec, k, m, usable: raw * k / (k + m), tol: m, domains: k + m, nodes, label: `${k}+${m}` };
+            }
+            const c = readNum('stRep');
+            if (!(Number.isInteger(c) && c >= 2)) return { error: 'Copies must be a whole number of at least 2.' };
+            return { L: LEVELS.rep, c, usable: raw / c, tol: c - 1, domains: c, nodes, label: `×${c}` };
+        }
+
+        function fmtRisk(r) {
+            if (r === null) return 'no redundancy';
+            if (r === 0) return 'protected';
+            return `${NUM3.format(r * 100)}%`;
+        }
+        const fmtIops = (v) => COMPACT.format(v);
+        const fmtMBs = (v) => (v >= 1000 ? `${NUM3.format(v / 1000)} GB/s` : `${NUM3.format(v)} MB/s`);
+        const capBoth = (b) => `${inBest(b, CAP_DEC)} · ${inBest(b, CAP_BIN)}`;
+
+        /** Same disks, every RAID/ZFS layout that fits: g groups of n, mirrors as pairs. */
+        function compareLayouts(n, g) {
+            const total = n * g;
+            const list = [];
+            for (const id of ['raid0', 'raid10', 'raid5', 'raid6', 'raid50', 'raid60', 'zmirror', 'raidz1', 'raidz2', 'raidz3']) {
+                if (id === 'raid10') {
+                    if (n % 2 === 0 && n >= 4) list.push([id, n, g]);
+                    else if (total % 2 === 0 && total >= 4) list.push([id, total, 1]);
+                } else if (id === 'zmirror') {
+                    if (total % 2 === 0) list.push([id, 2, total / 2]);
+                } else if (LEVELS[id].nested) {
+                    if (g >= 2) list.push([id, n, g]);
+                    else if (n % 2 === 0 && n / 2 >= LEVELS[id].min) list.push([id, n / 2, 2]);
+                } else list.push([id, n, g]);
+            }
+            return list;
+        }
+
+        function groupWord(L) { return L.zfs ? 'vdev' : L.nested ? 'group' : 'array'; }
+
+        function calcStorage() {
+            const id = $('stLevel').value;
+            const L = LEVELS[id];
+            const out = $('stResult');
+
+            // Labels follow the layout's own words.
+            $('stEcBox').hidden = id !== 'ec';
+            $('stRepBox').hidden = id !== 'rep';
+            $('stPerLabel').textContent = L.scale ? 'Disks per node' : `Disks per ${L.nested ? `${L.name.replace('0', '')} group` : groupWord(L)}`;
+            $('stGroupsLabel').textContent = L.scale ? 'Nodes' : L.zfs ? 'vdevs in the pool' : L.nested ? 'Groups striped together' : 'Arrays';
+            $('stGroupsHint').textContent = L.scale ? 'Separate servers (failure domains).'
+                : L.zfs ? 'The pool stripes across all vdevs.'
+                : L.nested ? '' : 'Each array is its own volume; totals are summed.';
+
+            const n = readNum('stPer'), g = readNum('stGroups');
+            const s = readNum('stDiskSize') * Number($('stDiskUnit').value);
+            const spares = readNum('stSpares');
+            const readPct = readNum('stReadPct');
+            const d = diskSpec();
+            const type = DISKS.find((x) => x.id === $('stType').value) || DISKS[DISKS.length - 1];
+            const ssd = type.id === 'custom' ? d.r >= 5000 : !!type.ssd;
+            const fail = (msg) => { out.innerHTML = `<div class="error">${esc(msg)}</div>`; $('stCompare').replaceChildren(); $('stCompareNote').textContent = ''; };
+
+            if (!(s > 0)) return fail('Enter a disk size greater than 0.');
+            if (!(Number.isInteger(n) && n >= 1)) return fail('Disks per group must be a whole number of at least 1.');
+            if (!(Number.isInteger(g) && g >= 1)) return fail('The number of groups must be a whole number of at least 1.');
+            if (!(Number.isInteger(spares) && spares >= 0)) return fail('Hot spares must be a whole number (0 or more).');
+            if (!(readPct >= 0 && readPct <= 100)) return fail('Reads must be between 0 and 100%.');
+            if (!(d.r > 0 && d.w > 0 && d.seq > 0)) return fail('Per-disk IOPS and MB/s must be greater than 0.');
+
+            const totalDisks = n * g + spares;
+            const raw = totalDisks * s;
+            const advice = [];
+            let html = '';
+
+            if (L.scale) {
+                const x = scaleOut(id, n, g, s);
+                if (x.error) return fail(x.error);
+                const eff = x.usable / raw;
+                html += '<div class="cards">'
+                    + card('Usable', inBest(x.usable, CAP_DEC), inBest(x.usable, CAP_BIN), true)
+                    + card('Raw (all disks)', inBest(raw, CAP_DEC), `${totalDisks} disks × ${inBest(s, CAP_DEC)}`)
+                    + card('Efficiency', `${NUM3.format(eff * 100)}%`, `${id === 'ec' ? `EC ${x.label}` : `${x.c} copies`}`)
+                    + card('Survives', `${x.tol} node${x.tol > 1 ? 's' : ''}`, `with ≥ ${x.domains} nodes`)
+                    + card('Plan to fill', inBest(x.usable * 0.8, CAP_DEC), 'at 80% (headroom for recovery)')
+                    + '</div>';
+                if (g < x.domains) {
+                    advice.push(['bad', `${x.label} needs at least ${x.domains} nodes so each piece sits on a different server. With ${g}, losing one node can lose data. Add nodes or use a smaller scheme.`]);
+                } else if (g === x.domains) {
+                    advice.push(['warn', `Exactly ${x.domains} nodes: after a node fails there is nowhere to rebuild to until it returns. One spare node (${x.domains + 1}+) lets the cluster heal itself.`]);
+                } else {
+                    advice.push(['ok', `${g} nodes for ${x.label}: enough failure domains, with room to self-heal after a node failure.`]);
+                }
+                if (id === 'ec') {
+                    advice.push(['info', `Erasure coding ${x.label} stores ${NUM3.format(eff * 100)}% usable vs 33% for 3 copies, but small random writes are slower. Common choices: 4+2 (good balance), 8+3 (large archives). Use replication for databases and VM disks.`]);
+                } else {
+                    advice.push(['info', `Replication ×${x.c} is the safe default for block storage (VMs, databases): fast and simple, at ${NUM3.format(eff * 100)}% efficiency. Erasure coding 4+2 doubles usable space for object/archive data.`]);
+                    if (x.c === 2) advice.push(['warn', 'Two copies: while one copy is rebuilding, a second failure loses data. Ceph and vSAN guidance is 3 copies for production.']);
+                }
+                advice.push(['info', 'Keep the cluster below about 80% full: rebuilds need free space (Ceph warns at 85%). Performance depends on network and node count, so IOPS are not estimated here.']);
+                if (spares > 0) advice.push(['info', 'Scale-out systems rebuild into free space on all disks, so dedicated hot spares are usually unnecessary.']);
+                html += adviceList(advice);
+                out.innerHTML = html;
+                $('stCompare').replaceChildren();
+                $('stCompareNote').textContent = 'Comparison covers single-server RAID and ZFS layouts; choose one of those to compare.';
+                return;
+            }
+
+            const x = layout(id, n, g, s, d, readPct / 100);
+            if (x.error) return fail(x.error);
+
+            const per = groupWord(L);
+            const tolText = x.tol === 0 ? 'none'
+                : L.kind === 'mirror10' ? `1 disk per pair`
+                : `${x.tol} disk${x.tol > 1 ? 's' : ''} per ${per}`;
+            html += '<div class="cards">'
+                + card('Usable', inBest(x.usable, CAP_DEC), `${inBest(x.usable, CAP_BIN)} (as the OS shows)`, true)
+                + card('Raw (incl. spares)', inBest(raw, CAP_DEC), `${totalDisks} disks × ${inBest(s, CAP_DEC)}`)
+                + card('Efficiency', `${NUM3.format(x.usable / raw * 100)}%`, `${x.data * g} of ${totalDisks} disks hold data`)
+                + card('Survives', tolText, L.kind === 'mirror10' ? `up to ${n / 2 * g} if each in a different pair` : g > 1 && x.tol ? `up to ${x.tol * g} across ${g} ${per}s` : '')
+                + card('Random read', `${fmtIops(x.read)} IOPS`, '4K, all disks')
+                + card('Random write', `${fmtIops(x.write)} IOPS`, `write penalty ${x.penalty}`)
+                + card(`Mixed ${fmtNum(readPct)}/${fmtNum(100 - readPct)}`, `${fmtIops(x.mixed)} IOPS`, 'read/write blend')
+                + card('Sequential', `${fmtMBs(x.seqR)} read`, `${fmtMBs(x.seqW)} write`)
+                + card('Rebuild one disk', `≥ ${fmtDuration(x.rebuildSec)}`, 'often 2–5× longer under load')
+                + card('Rebuild risk', fmtRisk(x.risk), x.tol === 1 ? 'unreadable sector during rebuild' : x.tol ? 'still has redundancy while rebuilding' : '')
+                + '</div>';
+
+            // ---- best-practice advice ----
+            const big = !ssd && s >= 2 * TB;
+            if (x.tol === 0) {
+                advice.push(['bad', `${L.name} has no redundancy: one failed disk loses ${g > 1 && !L.nested && !L.zfs ? 'that array' : 'everything'}. Use it only for scratch or cache data that can be recreated, and keep backups.`]);
+            }
+            if (x.risk !== null && x.risk >= 0.05) {
+                advice.push(['bad', `After one failure, the rebuild must read ${inBest(L.kind === 'parity' || L.kind === 'raidz' ? (n - 1) * s : s, CAP_DEC)} with no redundancy left: about ${fmtRisk(x.risk)} chance of hitting an unreadable sector and failing the rebuild. Use ${L.kind === 'mirror' || L.kind === 'mirror10' ? (L.zfs ? 'RAIDZ2 or 3-way mirrors' : 'RAID 6, or 3-way mirrors') : L.zfs ? 'RAIDZ2 or mirrors' : 'RAID 6 or RAID 10'}.`]);
+            } else if (x.risk !== null && x.risk >= 0.01) {
+                advice.push(['warn', `Rebuild risk about ${fmtRisk(x.risk)} per failure. Acceptable with good backups; ${L.zfs ? 'RAIDZ2' : 'RAID 6'} removes it.`]);
+            }
+            if ((id === 'raid5' || id === 'raid50' || id === 'raidz1') && big) {
+                advice.push(['warn', 'Single parity on HDDs of 2 TB or more is no longer recommended by most vendors: rebuilds take many hours and a second failure in that window loses the array.']);
+            }
+            if ((id === 'raid5' || id === 'raid50' || id === 'raidz1') && ssd) {
+                advice.push(['ok', 'On SSDs, single parity is a reasonable capacity choice: rebuilds are fast and read errors are rare. Watch write endurance (DWPD), because parity adds writes.']);
+            }
+            if ((id === 'raid5' || id === 'raid50' || id === 'raidz1') && n > 8) {
+                advice.push(['warn', `${n} disks in one single-parity ${per}: keep it to about 3–8 disks${L.zfs ? ' per vdev and add more vdevs' : ', or split into RAID 50'}.`]);
+            }
+            if ((id === 'raid6' || id === 'raid60' || id === 'raidz2') && n > 12) {
+                advice.push(['warn', `${n} disks in one double-parity ${per}: about 6–12 is the usual sweet spot. Split into ${L.zfs ? 'more vdevs' : 'RAID 60'}, which also gives more IOPS.`]);
+            }
+            if ((id === 'raid6' || id === 'raid60' || id === 'raidz2') && n >= 4 && n <= 12) {
+                advice.push(['ok', `Double parity with ${n} disks per ${per}: survives two failures per ${per} and has no rebuild risk from read errors — the usual choice for capacity on large HDDs.`]);
+            }
+            if (id === 'raidz3') {
+                advice.push([n > 15 ? 'warn' : 'ok', n > 15 ? `${n} disks in one RAIDZ3 vdev: keep it under about 15 and add more vdevs.` : 'Triple parity suits very wide vdevs or very large disks (16 TB+) where rebuilds take days.']);
+            }
+            if (x.tol >= 1 && x.tol < 3 && !ssd && x.rebuildSec > 2 * 86400 && L.kind !== 'mirror' && L.kind !== 'mirror10') {
+                advice.push(['info', `A rebuild takes at least ${fmtDuration(x.rebuildSec)} even at full speed. With disks this large, consider ${L.zfs ? 'RAIDZ3' : 'RAID 60 with narrower groups'} or mirrors.`]);
+            }
+            if (L.kind === 'mirror10' || (L.kind === 'mirror' && L.zfs)) {
+                advice.push(['ok', 'Mirrors give the best random-write performance and the fastest, safest rebuild (it copies one disk), at 50% efficiency. Best for databases and VM storage.']);
+            }
+            if (id === 'raid1' && n > 2) advice.push(['info', `${n}-way mirror: survives ${n - 1} failures with the capacity of one disk. Mostly used for boot or critical small volumes.`]);
+            if (readPct < 60 && (L.kind === 'parity' || L.kind === 'raidz')) {
+                const alt = (n * g) % 2 === 0 && n * g >= 4 ? layout(L.zfs ? 'zmirror' : 'raid10', L.zfs ? 2 : n * g, L.zfs ? n * g / 2 : 1, s, d, readPct / 100) : null;
+                const gain = alt && !alt.error ? alt.mixed / x.mixed : 0;
+                advice.push(['warn', `Write-heavy workload on parity: each small write costs ${L.kind === 'raidz' ? 'a full-stripe write' : `${L.pen} disk I/Os`}.${gain > 1.2 ? ` ${L.zfs ? 'Mirror vdevs' : 'RAID 10'} with the same disks would give about ${NUM3.format(gain)}× the mixed IOPS.` : ''}`]);
+            }
+            if (L.kind === 'raidz') {
+                advice.push(['info', `ZFS RAIDZ: random IOPS are about one disk's worth per vdev, so ${g} vdev${g > 1 ? 's' : ''} ≈ ${fmtIops(x.read)} read IOPS. For VMs and databases use mirror vdevs or more, narrower vdevs.`]);
+            }
+            if (L.nested) advice.push(['info', `Data is striped across ${g} groups: losing more disks than one group can survive takes down the whole volume.`]);
+            if (L.zfs) advice.push(['info', `Keep ZFS pools below about 80% full for performance: plan on ${inBest(x.usable * 0.8, CAP_DEC)} (${inBest(x.usable * 0.8, CAP_BIN)}).`]);
+            if (g > 1 && !L.nested && !L.zfs) advice.push(['info', `${g} separate arrays: each is its own volume of ${inBest(x.usable / g, CAP_DEC)}. Figures shown are totals.`]);
+            if (x.tol > 0 && spares === 0 && n * g >= 8) {
+                advice.push(['info', `Add a hot spare (about 1 per 12–24 disks${L.zfs ? '; ZFS supports spares and dRAID' : ''}) so the rebuild starts the moment a disk fails.`]);
+            }
+            if (spares > 0 && x.tol > 0) advice.push(['ok', `${spares} hot spare${spares > 1 ? 's' : ''}: rebuild starts automatically after a failure.`]);
+            if (spares > 0 && x.tol === 0) advice.push(['warn', 'Hot spares cannot help a layout with no redundancy: there is nothing to rebuild from.']);
+            if (type.nvme && !L.zfs) advice.push(['info', 'NVMe: many hardware RAID controllers cap NVMe performance. Software RAID (mdadm, Storage Spaces, ZFS) or the CPU vendor\'s VROC is common.']);
+            if (!ssd && readPct >= 60 && x.mixed < 2000 && L.kind !== 'stripe') {
+                advice.push(['info', 'HDD arrays deliver hundreds to a few thousand IOPS. For VMs or databases, add an SSD cache or tier, or use SSDs.']);
+            }
+            html += adviceList(advice);
+            out.innerHTML = html;
+
+            // ---- comparison ----
+            const rows = compareLayouts(n, g).map(([lid, ln, lg]) => layout(lid, ln, lg, s, d, readPct / 100)).filter((r) => !r.error);
+            const safe = rows.filter((r) => r.tol >= 1 && r.risk !== null && r.risk < 0.05);
+            const pickCap = safe.reduce((a, b) => (!a || b.usable > a.usable || (b.usable === a.usable && b.mixed > a.mixed) ? b : a), null);
+            const pickPerf = rows.filter((r) => r.tol >= 1).reduce((a, b) => (!a || b.mixed > a.mixed ? b : a), null);
+            $('stCompareNote').textContent = `${n * g} disks of ${inBest(s, CAP_DEC)} (spares excluded). ★ marks the best performance and the most capacity with low rebuild risk (under 5%).`;
+            let t = '<thead><tr><th>Layout</th><th>Usable</th><th>Efficiency</th><th>Survives</th><th>Mixed IOPS</th><th>Read IOPS</th><th>Write IOPS</th><th>Seq. write</th><th>Rebuild risk</th></tr></thead><tbody>';
+            for (const r of rows) {
+                const geo = r.L.kind === 'mirror' ? `${r.g} × ${r.n}-way` : r.g > 1 ? `${r.g} × ${r.n} disks` : `${r.n} disks`;
+                const badges = (r === pickPerf ? '<span class="badge perf">★ performance</span>' : '')
+                    + (r === pickCap ? '<span class="badge cap">★ capacity</span>' : '');
+                const current = r.L === L && r.n === n && r.g === g;
+                t += `<tr class="${current ? 'current' : ''}"><td>${esc(r.L.name)} <span class="hint" style="display:inline">${esc(geo)}</span>${badges}</td>`
+                    + `<td>${esc(inBest(r.usable, CAP_DEC))}</td><td>${esc(NUM3.format(r.usable / (n * g * s) * 100))}%</td>`
+                    + `<td>${r.tol ? `${r.tol} per ${esc(groupWord(r.L))}` : '<span class="no">none</span>'}</td>`
+                    + `<td>${esc(fmtIops(r.mixed))}</td><td>${esc(fmtIops(r.read))}</td><td>${esc(fmtIops(r.write))}</td>`
+                    + `<td>${esc(fmtMBs(r.seqW))}</td>`
+                    + `<td class="${r.risk === null || r.risk >= 0.05 ? 'no' : r.risk === 0 ? 'yes' : ''}">${esc(fmtRisk(r.risk))}</td></tr>`;
+            }
+            $('stCompare').innerHTML = t + '</tbody>';
+        }
+
+        function card(k, v, s, main) {
+            return `<div class="card${main ? ' main' : ''}"><span class="k">${esc(k)}</span><span class="v">${esc(v)}</span>${s ? `<span class="s">${esc(s)}</span>` : ''}</div>`;
+        }
+
+        function adviceList(items) {
+            if (!items.length) return '';
+            const order = { bad: 0, warn: 1, ok: 2, info: 3 };
+            items.sort((a, b) => order[a[0]] - order[b[0]]);
+            return `<h4>Best practice</h4><ul class="advice">${items.map(([lvl, text]) => `<li class="${lvl}">${esc(text)}</li>`).join('')}</ul>`;
         }
 
         // ------------------------
@@ -659,129 +1148,34 @@
             };
         }
 
-        // ---------------------------
-        // Bandwidth Calculator Logic
-        // ---------------------------
-
-        // Unit conversion constants
-        const BYTES_PER = {
-            'Bytes': 1,
-            'KB': 1024,
-            'MB': Math.pow(1024, 2),
-            'GB': Math.pow(1024, 3),
-            'TB': Math.pow(1024, 4),
-            'PB': Math.pow(1024, 5)
-        };
-
-        const BITS_PER = { // Networking uses 1000-based
-            'bps': 1,
-            'kbps': 1000,
-            'Mbps': Math.pow(1000, 2),
-            'Gbps': Math.pow(1000, 3)
-        };
-
-        const SECONDS_PER = {
-            'Seconds': 1,
-            'Minutes': 60,
-            'Hours': 3600,
-            'Days': 86400
-        };
-
-        /**
-         * Toggles the display of the bandwidth calculator forms.
-         */
-        function toggleBwMode() {
-            const mode = document.getElementById('bwModeSelect').value;
-            const calcBwForm = document.getElementById('calcBandwidthForm');
-            const calcVolForm = document.getElementById('calcVolumeForm');
-
-            if (mode === 'calcBandwidth') {
-                calcBwForm.style.display = 'block';
-                calcVolForm.style.display = 'none';
-                calculateBandwidth(); // Trigger calculation
-            } else {
-                calcBwForm.style.display = 'none';
-                calcVolForm.style.display = 'block';
-                calculateVolume(); // Trigger calculation
-            }
-        }
-
-        /**
-         * Mode 1: Calculates required bandwidth.
-         */
-        function calculateBandwidth() {
-            const volume = parseFloat(document.getElementById('dataVolume').value) || 0;
-            const volUnit = document.getElementById('volumeUnit').value;
-            const time = parseFloat(document.getElementById('transferTime').value) || 0;
-            const timeUnit = document.getElementById('timeUnit').value;
-            const resultUnit = document.getElementById('bandwidthUnitResult').value;
-            const resultField = document.getElementById('resultBandwidth');
-
-            if (time === 0) {
-                resultField.value = "N/A (Time cannot be 0)";
-                return;
-            }
-
-            const totalBytes = volume * BYTES_PER[volUnit];
-            const totalBits = totalBytes * 8;
-            const totalSeconds = time * SECONDS_PER[timeUnit];
-
-            const bitsPerSecond = totalBits / totalSeconds;
-
-            const resultBandwidth = bitsPerSecond / BITS_PER[resultUnit];
-
-            resultField.value = formatNumber(resultBandwidth);
-        }
-
-        /**
-         * Mode 2: Calculates transferable data volume.
-         * *** JAVASCRIPT RENAMED HERE ***
-         */
-        function calculateVolume() {
-            // Use unique variable names for this function's scope
-            // *** RENAMED getElementById('bandwidthInput') ***
-            const bwVal = parseFloat(document.getElementById('bandwidthInput').value) || 0;
-            // *** RENAMED getElementById('bandwidthUnitInput') ***
-            const bwUnit = document.getElementById('bandwidthUnitInput').value;
-            const timeVal = parseFloat(document.getElementById('transferTimeVol').value) || 0;
-            const timeUnitString = document.getElementById('timeUnitVol').value;
-            const resultUnitString = document.getElementById('volumeUnitResult').value;
-            const resultField = document.getElementById('resultVolume');
-
-            const bitsPerSecond = bwVal * BITS_PER[bwUnit];
-
-            const totalSeconds = timeVal * SECONDS_PER[timeUnitString];
-
-            const totalBits = bitsPerSecond * totalSeconds;
-            const totalBytes = totalBits / 8;
-
-            const resultVolume = totalBytes / BYTES_PER[resultUnitString];
-
-            resultField.value = formatNumber(resultVolume);
-        }
-
-        /**
-         * Formats a number to a reasonable number of decimal places.
-         * @param {number} num - The number to format.
-         * @returns {string} The formatted number string.
-         */
-        function formatNumber(num) {
-            if (isNaN(num)) return "0";
-            if (!isFinite(num)) return "Infinity";
-
-            // Use 'toPrecision' to avoid long decimals from floating point math
-            return parseFloat(num.toPrecision(6)).toString();
-        }
-
+        // ------------------------
         // Initial setup
+        // ------------------------
         document.addEventListener('DOMContentLoaded', () => {
-            // Default to the new 'onpage' view
+            for (const btn of document.querySelectorAll('.tab-button')) btn.addEventListener('click', () => showTab(btn.dataset.tab));
+            let tab = 'bandwidth';
+            try { tab = localStorage.getItem(TAB_KEY) || tab; } catch (e) { console.warn('[svrnet] tab not read:', e); }
+            showTab(tab);
+
+            fillSelect($('bwSizeUnit'), SIZE_UNITS, 'TB');
+            fillSelect($('bwTimeUnit'), TIME_UNITS, 'hours');
+            fillSelect($('bwRateUnit'), RATE_UNITS, 'Gbps');
+            $('bandwidth').addEventListener('input', calcBandwidth);
+            $('bandwidth').addEventListener('change', calcBandwidth);
+            calcBandwidth();
+
+            $('stType').replaceChildren(...DISKS.map((d) => new Option(d.name, d.id, false, d.id === 'hdd72')));
+            applyDiskType();
+            $('stType').addEventListener('change', applyDiskType);
+            // Editing a per-disk value makes the disk "Custom".
+            for (const id of ['stR', 'stW', 'stSeq', 'stUre']) $(id).addEventListener('input', () => { $('stType').value = 'custom'; });
+            $('storage').addEventListener('input', calcStorage);
+            $('storage').addEventListener('change', calcStorage);
+            calcStorage();
+
+            // Default to the 'onpage' view
             document.getElementById('formatSelect').value = 'onpage';
             calculateSubnet();
-            calculateBandwidth();
-
-            // This call populates the 'Calculate Data Volume' tab on load.
-            calculateVolume();
         });
     </script>
 
