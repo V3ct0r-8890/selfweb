@@ -1,7 +1,7 @@
 // Bump on every release that changes any APP_SHELL file: this is what makes
 // browsers see a new version and offer the user the update.
 // Matches APP_VERSION in index.html (aa.bb.ccc).
-const CACHE_VERSION = 'selfweb-1.01.018';
+const CACHE_VERSION = 'selfweb-1.01.019';
 const APP_SHELL = [
   './',
   './index.html',
@@ -12,7 +12,8 @@ const APP_SHELL = [
   './modules/datecalc.html',
   './modules/pass-gen.html',
   './modules/PassCheck.html',
-  './modules/subnetcal.html',
+  './modules/storage-net.html',
+  './modules/subnetcal.html', // redirect to storage-net.html for old bookmarks
   './modules/EnergyConsumption-standalone.html',
   './modules/INS-offlineDB.html',
   './modules/Meal%20suggest%20tool-standalone.html',
