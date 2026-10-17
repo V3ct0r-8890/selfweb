@@ -191,6 +191,8 @@
         .pick.perf { border-color: var(--info); }
         .pick.bal { border-color: var(--warn); }
         .pick.cap { border-color: var(--ok); }
+        .data-table td.goal { text-align: left; }
+        .data-table td .sub { display: block; font-size: 0.75rem; opacity: 0.75; font-weight: 400; }
         .pick .t { display: block; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; }
         .pick.perf .t { color: var(--info); }
         .pick.bal .t { color: var(--warn); }
@@ -462,7 +464,8 @@
                 Real systems vary — check against the vendor's sizing tool before buying.</p>
 
             <h3>RAID type guide</h3>
-            <p class="hint">Recommended disks per array for good performance and safe rebuilds. n = disks per array (or vdev).</p>
+            <p class="hint">Disks per array (or group / vdev) from vendor and OpenZFS guidance: narrow for performance, middle sizes for the best balance,
+                and the widest still advised. Controllers may allow wider arrays, but rebuilds get slower and riskier. n = disks per array.</p>
             <div class="table-wrap"><table class="data-table" id="stGuide"></table></div>
         </section>
 
@@ -696,27 +699,41 @@
         const CAP_DEC = [['GB', 1e9], ['TB', 1e12], ['PB', 1e15]];
         const CAP_BIN = [['GiB', 2 ** 30], ['TiB', 2 ** 40], ['PiB', 2 ** 50]];
 
-        // Best-practice guide per type: minimum disks, recommended disks per array, efficiency, write penalty,
+        // Best-practice guide per type: minimum disks, disks per array for performance / optimized / at most
+        // (vendor and OpenZFS guidance), efficiency, write penalty,
         // failures survived, best use and a performance tip.
         const GUIDE = {
-            jbod: { min: '1', per: 'any', eff: '100%', pen: '×1', tol: 'none', suits: 'Joining odd-sized disks for scratch data', tip: 'No speed-up for one file: each file sits on one disk.' },
-            raid0: { min: '2', per: '2–8', eff: '100%', pen: '×1', tol: 'none', suits: 'Scratch, render or video cache that can be recreated', tip: 'Speed grows with each disk, and so does the chance of losing everything.' },
-            raid1: { min: '2', per: '2 (3 for critical)', eff: '50% (2-way)', pen: '×2', tol: 'n − 1 disks', suits: 'Boot/OS disks, small critical volumes', tip: 'Reads use both disks; writes run at one disk\'s speed.' },
-            raid10: { min: '4', per: '4–24, in pairs', eff: '50%', pen: '×2', tol: '1 per pair', suits: 'Databases, VMs, mail, write-heavy work', tip: 'Each added pair raises IOPS almost linearly; fastest and safest rebuild.' },
-            raid5: { min: '3', per: '3–8 (best 3, 5 or 9)', eff: '(n−1)/n', pen: '×4', tol: '1 disk', suits: 'Read-mostly shares on SSDs or disks under 2 TB', tip: 'A power-of-2 count of data disks gives full-stripe writes; needs a battery/flash-backed write cache.' },
-            raid6: { min: '4', per: '6–12 (best 6 or 10)', eff: '(n−2)/n', pen: '×6', tol: '2 disks', suits: 'File servers, backup and archive on large HDDs', tip: '4 or 8 data disks align full stripes; write cache is essential as each small write costs 6 I/Os.' },
-            raid50: { min: '6', per: '2+ groups of 4–8', eff: '(n−1)/n', pen: '×4', tol: '1 per group', suits: 'Large read-heavy volumes needing more IOPS than RAID 5', tip: 'More, narrower groups give more write IOPS and faster rebuilds.' },
-            raid60: { min: '8', per: '2+ groups of 6–12', eff: '(n−2)/n', pen: '×6', tol: '2 per group', suits: 'Large capacity with more write IOPS than one RAID 6', tip: 'Groups of 6–8 for performance, 10–12 for capacity.' },
-            zmirror: { min: '2', per: '2-way vdevs, as many as needed', eff: '50%', pen: '×2', tol: '1 per vdev (2-way)', suits: 'VMs, databases, iSCSI/NFS block storage on ZFS', tip: 'IOPS grow with every vdev; a resilver copies only one disk.' },
-            raidz1: { min: '3', per: '3–5 per vdev', eff: '(n−1)/n', pen: 'full stripe', tol: '1 per vdev', suits: 'SSD pools, small home NAS', tip: 'About one disk of random IOPS per vdev; avoid on HDDs over 2 TB.' },
-            raidz2: { min: '4', per: '6–10 per vdev', eff: '(n−2)/n', pen: 'full stripe', tol: '2 per vdev', suits: 'General ZFS capacity: shares, backup, media', tip: 'Add vdevs rather than widening them for more IOPS; 6 or 10 disks align well.' },
-            raidz3: { min: '5', per: '9–15 per vdev', eff: '(n−3)/n', pen: 'full stripe', tol: '3 per vdev', suits: 'Very large HDDs (16 TB+), archive, long resilvers', tip: 'Suits wide vdevs; random IOPS are still about one disk per vdev.' },
-            ec: { min: 'k + m nodes', per: 'k + m over k + m + 1 nodes or more', eff: 'k/(k+m)', pen: 'k + m chunks', tol: 'm nodes', suits: 'Object storage, backup, archive (Ceph, MinIO)', tip: '4+2 or 8+3 are common; small writes are slower than with replication.' },
-            rep: { min: '2–3 nodes', per: '3 copies over 4+ nodes', eff: '1/copies', pen: '×copies', tol: 'copies − 1 nodes', suits: 'VM disks and databases on Ceph or vSAN', tip: 'Fastest scale-out option, at 33% efficiency for 3 copies.' },
+            jbod: { min: '1', perf: 'any', opt: 'any', max: '—', eff: '100%', pen: '×1', tol: 'none', suits: 'Joining odd-sized disks for scratch data', tip: 'No speed-up for one file: each file sits on one disk.' },
+            raid0: { min: '2', perf: '2–8', opt: '2–8', max: '8', eff: '100%', pen: '×1', tol: 'none', suits: 'Scratch, render or video cache that can be recreated', tip: 'Speed grows with each disk, and so does the chance of losing everything.' },
+            raid1: { min: '2', perf: '2', opt: '2', max: '3 (3-way)', eff: '50% (2-way)', pen: '×2', tol: 'n − 1 disks', suits: 'Boot/OS disks, small critical volumes', tip: 'Reads use both disks; writes run at one disk\'s speed.' },
+            raid10: { min: '4', perf: '8–16, in pairs', opt: '8–16, in pairs', max: '16 (8 pairs)', eff: '50%', pen: '×2', tol: '1 per pair', suits: 'Databases, VMs, mail, write-heavy work', tip: 'Each added pair raises IOPS almost linearly; fastest and safest rebuild.' },
+            raid5: { min: '3', perf: '4', opt: '5–6', max: '8', eff: '(n−1)/n', pen: '×4', tol: '1 disk', suits: 'Read-mostly shares on SSDs or disks under 2 TB', tip: 'Keep to 8 disks or fewer: each extra disk adds rebuild time and read-error exposure. Needs a battery/flash-backed write cache.' },
+            raid6: { min: '4', perf: '6', opt: '8–10', max: '12 (controllers allow 16)', eff: '(n−2)/n', pen: '×6', tol: '2 disks', suits: 'File servers, backup and archive on large HDDs', tip: 'Wider arrays rebuild slower; past 12 disks use RAID 60. Write cache is essential as each small write costs 6 I/Os.' },
+            raid50: { min: '6', perf: '4 per group, 2+ groups', opt: '5–6 per group', max: '8 per group', eff: '(n−1)/n', pen: '×4', tol: '1 per group', suits: 'Large read-heavy volumes needing more IOPS than RAID 5', tip: 'More, narrower groups give more write IOPS and faster rebuilds.' },
+            raid60: { min: '8', perf: '6 per group, 2+ groups', opt: '8–10 per group', max: '12 per group', eff: '(n−2)/n', pen: '×6', tol: '2 per group', suits: 'Large capacity with more write IOPS than one RAID 6', tip: 'Groups of 6–8 for performance, 10–12 for capacity.' },
+            zmirror: { min: '2', perf: '2-way vdevs', opt: '2-way vdevs', max: '3-way', eff: '50%', pen: '×2', tol: '1 per vdev (2-way)', suits: 'VMs, databases, iSCSI/NFS block storage on ZFS', tip: 'IOPS grow with every vdev; a resilver copies only one disk.' },
+            raidz1: { min: '3', perf: '3', opt: '4–5', max: '5', eff: '(n−1)/n', pen: 'full stripe', tol: '1 per vdev', suits: 'SSD pools, small home NAS', tip: 'About one disk of random IOPS per vdev; avoid on HDDs over 2 TB.' },
+            raidz2: { min: '4', perf: '6', opt: '6–9', max: '10 (12 absolute)', eff: '(n−2)/n', pen: 'full stripe', tol: '2 per vdev', suits: 'General ZFS capacity: shares, backup, media', tip: 'Add vdevs rather than widening them for more IOPS; with compression on, exact widths no longer matter.' },
+            raidz3: { min: '5', perf: '7', opt: '9–11', max: '12 (wider: use dRAID)', eff: '(n−3)/n', pen: 'full stripe', tol: '3 per vdev', suits: 'Very large HDDs (16 TB+), archive, long resilvers', tip: 'Suits wide vdevs; random IOPS are still about one disk per vdev.' },
+            ec: { min: 'k + m nodes', perf: '4+2', opt: '8+3', max: 'k + m ≤ nodes − 1', eff: 'k/(k+m)', pen: 'k + m chunks', tol: 'm nodes', suits: 'Object storage, backup, archive (Ceph, MinIO)', tip: '4+2 or 8+3 are common; small writes are slower than with replication.' },
+            rep: { min: '2–3 nodes', perf: '3 copies over 4+ nodes', opt: '3 copies', max: '3 copies', eff: '1/copies', pen: '×copies', tol: 'copies − 1 nodes', suits: 'VM disks and databases on Ceph or vSAN', tip: 'Fastest scale-out option, at 33% efficiency for 3 copies.' },
         };
 
-        // Disks per group tried when sizing from the space needed (wider than GUIDE so small needs fit).
-        const SIZE_RANGE = { raid5: [3, 8], raid6: [4, 12], raid50: [3, 8], raid60: [4, 12], raidz1: [3, 5], raidz2: [4, 10], raidz3: [5, 15] };
+        // Disks per array (RAID 5/6), group (RAID 50/60) or vdev (RAIDZ) tried for each goal when sizing from
+        // the space needed. perf: narrow groups (more IOPS, faster rebuild); opt: the usual balance;
+        // space: any width up to the best-practice max. Sources: OpenZFS docs, Dell/HPE/Promise/Microway guidance.
+        const SIZE_GOALS = {
+            raid5: { perf: [4, 4], opt: [5, 6], space: [3, 8] },
+            raid6: { perf: [6, 6], opt: [8, 10], space: [4, 12] },
+            raid50: { perf: [4, 4], opt: [5, 6], space: [3, 8] },
+            raid60: { perf: [6, 6], opt: [8, 10], space: [4, 12] },
+            raidz1: { perf: [3, 3], opt: [4, 5], space: [3, 5] },
+            raidz2: { perf: [6, 6], opt: [6, 9], space: [4, 10] },
+            raidz3: { perf: [7, 7], opt: [9, 11], space: [5, 12] },
+        };
+        // Best-practice maximum disks per array / group / vdev (RAID 10: Dell PERC limit of 8 spans × 2).
+        const SIZE_MAX = { raid1: 3, raid10: 16, raid5: 8, raid6: 12, raid50: 8, raid60: 12, zmirror: 3, raidz1: 5, raidz2: 10, raidz3: 12 };
+        const GOALS = [['perf', '1. Best performance'], ['space', '2. Best of space'], ['opt', '3. Optimization']];
         const SIZE_LEVELS = ['raid10', 'raid1', 'raid5', 'raid6', 'raid50', 'raid60', 'zmirror', 'raidz1', 'raidz2', 'raidz3'];
 
         function diskSpec() {
@@ -880,7 +897,7 @@
                     advice.push(['info', `Replication ×${x.c} is the safe default for block storage (VMs, databases): fast and simple, at ${NUM3.format(eff * 100)}% efficiency. Erasure coding 4+2 doubles usable space for object/archive data.`]);
                     if (x.c === 2) advice.push(['warn', 'Two copies: while one copy is rebuilding, a second failure loses data. Ceph and vSAN guidance is 3 copies for production.']);
                 }
-                advice.push(['info', `Recommended: ${GUIDE[id].per}. Best for: ${GUIDE[id].suits}.`]);
+                advice.push(['info', `Recommended: ${GUIDE[id].perf} for performance, ${GUIDE[id].opt} for capacity. Best for: ${GUIDE[id].suits}.`]);
                 advice.push(['info', 'Keep the cluster below about 80% full: rebuilds need free space (Ceph warns at 85%). Performance depends on network and node count, so IOPS are not estimated here.']);
                 if (spares > 0) advice.push(['info', 'Scale-out systems rebuild into free space on all disks, so dedicated hot spares are usually unnecessary.']);
                 html += adviceList(advice);
@@ -912,7 +929,12 @@
 
             // ---- best-practice advice ----
             const big = !ssd && s >= 2 * TB;
-            advice.push(['info', `${L.name} performance: recommended ${GUIDE[id].per}${/per|group|pair|vdev/.test(GUIDE[id].per) ? '' : ` disks per ${per}`}. ${GUIDE[id].tip} Best for: ${GUIDE[id].suits}.`]);
+            const gd = GUIDE[id];
+            const unit = /per|group|pair|vdev|any/.test(gd.perf) ? '' : ` disks per ${per}`;
+            advice.push(['info', `${L.name} size: ${gd.perf}${unit} for best performance, ${gd.opt} optimized, ${gd.max} at most. ${gd.tip} Best for: ${gd.suits}.`]);
+            if (SIZE_MAX[id] && n > SIZE_MAX[id]) {
+                advice.push(['warn', `${n} disks per ${per} is wider than the best-practice maximum of ${SIZE_MAX[id]}: rebuilds take longer and more disks share one failure window. ${L.nested || L.zfs ? `Use more, narrower ${per}s.` : id === 'raid5' || id === 'raid6' ? `Split it, or use ${id === 'raid5' ? 'RAID 50' : 'RAID 60'}.` : 'Split it into more arrays.'}`]);
+            }
             if (x.tol === 0) {
                 advice.push(['bad', `${L.name} has no redundancy: one failed disk loses ${g > 1 && !L.nested && !L.zfs ? 'that array' : 'everything'}. Use it only for scratch or cache data that can be recreated, and keep backups.`]);
             }
@@ -1003,32 +1025,34 @@
         }
 
         function renderGuide(current) {
-            let t = '<thead><tr><th>Type</th><th>Min disks</th><th>Recommended per array</th><th>Efficiency</th><th>Write penalty</th><th>Survives</th><th>Best for</th><th>Performance tip</th></tr></thead><tbody>';
+            let t = '<thead><tr><th>Type</th><th>Min disks</th><th>Best for performance</th><th>Optimized</th><th>Max per array</th><th>Efficiency</th><th>Write penalty</th><th>Survives</th><th>Best for</th><th>Performance tip</th></tr></thead><tbody>';
             for (const [id, gd] of Object.entries(GUIDE)) {
-                t += `<tr class="${id === current ? 'current' : ''}"><td>${esc(LEVELS[id].name)}</td><td>${esc(gd.min)}</td><td class="wrap">${esc(gd.per)}</td>`
+                t += `<tr class="${id === current ? 'current' : ''}"><td>${esc(LEVELS[id].name)}</td><td>${esc(gd.min)}</td><td class="wrap">${esc(gd.perf)}</td><td class="wrap">${esc(gd.opt)}</td><td class="wrap">${esc(gd.max)}</td>`
                     + `<td>${esc(gd.eff)}</td><td>${esc(gd.pen)}</td><td>${esc(gd.tol)}</td>`
                     + `<td class="wrap">${esc(gd.suits)}</td><td class="wrap">${esc(gd.tip)}</td></tr>`;
             }
             $('stGuide').innerHTML = t + '</tbody>';
         }
 
-        /** [disks per group, groups] options for one layout that hold at least target bytes. */
-        function sizeOptions(id, target, s) {
+        /** [disks per group, groups] options for one layout and goal that hold at least target bytes. */
+        function sizeOptions(id, target, s, goal) {
             const L = LEVELS[id];
             const need = Math.ceil(target / s - 1e-9); // data disks' worth
-            if (id === 'raid10') { // split into equal arrays of at most 24 disks (even counts)
+            if (id === 'raid10') { // split into equal arrays of at most SIZE_MAX disks (even counts)
                 const disks = Math.max(4, 2 * need);
-                const g = Math.ceil(disks / 24);
+                const g = Math.ceil(disks / SIZE_MAX.raid10);
                 const n = Math.max(4, 2 * Math.ceil(disks / g / 2));
                 return [[n, g]];
             }
             if (id === 'raid1' || id === 'zmirror') return [[2, Math.max(1, need)]];
-            const [lo, hi] = SIZE_RANGE[id];
+            const [lo, hi] = SIZE_GOALS[id][goal];
+            const fewest = L.minGroups || 1;
             const list = [];
-            for (let n = lo; n <= hi; n++) {
+            for (let n = SIZE_GOALS[id].space[0]; n <= hi; n++) {
                 // RAID 5/6: g separate arrays; RAID 50/60 and ZFS: g groups/vdevs in one volume.
-                const g = Math.max(L.minGroups || 1, Math.ceil(target / (L.data(n) * s) - 1e-9));
-                list.push([n, g]);
+                const g = Math.max(fewest, Math.ceil(target / (L.data(n) * s) - 1e-9));
+                // Narrower than the goal's range only when a small need fits in the fewest groups.
+                if (n >= lo || g === fewest) list.push([n, g]);
             }
             return list;
         }
@@ -1099,19 +1123,30 @@
             };
 
             const all = [];
-            const byType = [];
+            const byType = []; // [id, { perf, space, opt }] best setup of each layout for each goal
+            const seen = new Map();
+            const build = (id, n, g) => {
+                const key = `${id}:${n}x${g}`;
+                if (seen.has(key)) return seen.get(key);
+                const r = layout(id, n, g, s, d, rf);
+                if (!r.error) {
+                    const used = r.n * r.g;
+                    r.spares = autoSpare && r.tol > 0 && used >= 8 ? Math.ceil(used / 24) : 0;
+                    r.disks = used + r.spares;
+                    all.push(r);
+                }
+                seen.set(key, r.error ? null : r);
+                return seen.get(key);
+            };
             for (const id of SIZE_LEVELS) {
-                const opts = sizeOptions(id, target, s)
-                    .map(([n, g]) => layout(id, n, g, s, d, rf))
-                    .filter((r) => !r.error)
-                    .map((r) => {
-                        const used = r.n * r.g;
-                        r.spares = autoSpare && r.tol > 0 && used >= 8 ? Math.ceil(used / 24) : 0;
-                        r.disks = used + r.spares;
-                        return r;
-                    });
-                all.push(...opts);
-                byType.push([id, opts]);
+                const best = {};
+                for (const [goal] of GOALS) {
+                    const opts = sizeOptions(id, target, s, goal).map(([n, g]) => build(id, n, g)).filter(Boolean);
+                    // Performance: narrowest groups (more IOPS, faster rebuild); space and optimization: fewest disks (ties: more IOPS).
+                    const narrow = (a, b) => (b.n < a.n || (b.n === a.n && b.disks < a.disks) ? b : a);
+                    best[goal] = opts.length ? opts.reduce(goal === 'perf' ? narrow : fewer) : null;
+                }
+                byType.push([id, best]);
             }
 
             // On a tie, prefer one volume (RAID 50/60, ZFS) over the same disks as separate arrays.
@@ -1153,26 +1188,32 @@
 
             // ---- per-layout table: smallest setup for each type, plus any pick that differs ----
             const picks = [[pickPerf, 'perf', '★ performance'], [pickBal, 'bal', '★ balanced'], [pickCap, 'cap', '★ capacity']];
-            $('stCompareNote').textContent = `Smallest setup of each layout for ${inBest(target, CAP_DEC)} on ${inBest(s, CAP_DEC)} disks, with group sizes in the recommended range.`;
-            let t = '<thead><tr><th>Layout</th><th>Setup</th><th>Disks</th><th>Usable</th><th>Filled to</th><th>Survives</th><th>Mixed IOPS</th><th>Read IOPS</th><th>Write IOPS</th><th>Seq. write</th><th>Rebuild risk</th></tr></thead><tbody>';
-            const rowHtml = (r) => {
-                const badges = picks.filter(([p]) => p === r).map(([, c, label]) => `<span class="badge ${c}">${label}</span>`).join('');
-                return `<tr><td>${esc(r.L.name)}${badges}</td><td>${esc(geoText(r))}</td><td>${r.disks}</td>`
+            $('stCompareNote').textContent = `Best setup of each layout for ${inBest(target, CAP_DEC)} on ${inBest(s, CAP_DEC)} disks, for each goal. `
+                + 'Best performance uses narrow arrays (more IOPS, faster rebuilds); best of space uses any width up to the best-practice max; optimization uses the usual middle sizes.';
+            let t = '<thead><tr><th>Layout</th><th>Goal</th><th>Setup</th><th>Disks</th><th>Usable</th><th>Filled to</th><th>Survives</th><th>Mixed IOPS</th><th>Read IOPS</th><th>Write IOPS</th><th>Seq. write</th><th>Rebuild risk</th></tr></thead><tbody>';
+            const badged = new Set();
+            const rowHtml = (r, first, goalText) => {
+                const badges = picks.filter(([p]) => p === r && !badged.has(p)).map(([p, c, label]) => { badged.add(p); return `<span class="badge ${c}">${label}</span>`; }).join('');
+                return `${first}<td class="goal">${esc(goalText)}${badges}</td><td>${esc(geoText(r))}</td><td>${r.disks}</td>`
                     + `<td>${esc(inBest(r.usable, CAP_DEC))}</td><td>${esc(pct(need / r.usable))}</td><td>${esc(survText(r))}</td>`
                     + `<td>${esc(fmtIops(r.mixed))}</td><td>${esc(fmtIops(r.read))}</td><td>${esc(fmtIops(r.write))}</td>`
                     + `<td>${esc(fmtMBs(r.seqW))}</td>`
                     + `<td class="${r.risk === null || r.risk >= 0.05 ? 'no' : r.risk === 0 ? 'yes' : ''}">${esc(fmtRisk(r.risk))}</td></tr>`;
             };
-            for (const [id, opts] of byType) {
-                if (!opts.length) {
-                    t += `<tr><td>${esc(LEVELS[id].name)}</td><td class="wrap" colspan="10">No setup fits these inputs.</td></tr>`;
+            for (const [id, best] of byType) {
+                const gd = GUIDE[id];
+                const head = (span) => `<tr class="grp"><td class="wrap"${span > 1 ? ` rowspan="${span}"` : ''}><b>${esc(LEVELS[id].name)}</b>`
+                    + `<span class="sub">Best ${esc(gd.opt)} · max ${esc(gd.max)}${/per|vdev|way|pair/.test(gd.max) ? '' : ` per ${groupWord(LEVELS[id])}`}</span></td>`;
+                const rows = GOALS.filter(([goal]) => best[goal]);
+                if (!rows.length) {
+                    t += `${head(1)}<td class="wrap" colspan="11">No setup fits these inputs.</td></tr>`;
                     continue;
                 }
-                const small = opts.reduce(fewer);
-                t += rowHtml(small);
-                for (const [p] of picks) if (p.L === LEVELS[id] && p !== small && !t.includes(`data-k="${p.n}x${p.g}${id}"`)) {
-                    t += rowHtml(p).replace('<tr>', `<tr data-k="${p.n}x${p.g}${id}">`);
+                if (rows.every(([goal]) => best[goal] === best[rows[0][0]])) { // one setup serves every goal
+                    t += rowHtml(best[rows[0][0]], head(1), 'All three goals');
+                    continue;
                 }
+                rows.forEach(([goal, label], i) => { t += rowHtml(best[goal], i ? '<tr>' : head(rows.length), label); });
             }
             $('stCompare').innerHTML = t + '</tbody>';
         }
