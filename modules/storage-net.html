@@ -351,6 +351,27 @@
                     <input type="number" id="stHead" value="20" min="0" max="90" step="any">
                     <span class="hint">Arrays and ZFS pools slow down when nearly full; 20% is usual.</span>
                 </div>
+                <div class="form-group" data-mode="need">
+                    <label for="stPrefer">Preferred RAID type</label>
+                    <select id="stPrefer">
+                        <option value="any" selected>Any – suggest the best overall</option>
+                        <optgroup label="Hardware / software RAID">
+                            <option value="raid1">RAID 1 – mirror</option>
+                            <option value="raid10">RAID 10 – striped mirrors</option>
+                            <option value="raid5">RAID 5 – single parity</option>
+                            <option value="raid6">RAID 6 – double parity</option>
+                            <option value="raid50">RAID 50 – striped RAID 5 groups</option>
+                            <option value="raid60">RAID 60 – striped RAID 6 groups</option>
+                        </optgroup>
+                        <optgroup label="ZFS (TrueNAS, Proxmox, OpenZFS)">
+                            <option value="zmirror">ZFS mirror vdevs</option>
+                            <option value="raidz1">ZFS RAIDZ1 – single parity</option>
+                            <option value="raidz2">ZFS RAIDZ2 – double parity</option>
+                            <option value="raidz3">ZFS RAIDZ3 – triple parity</option>
+                        </optgroup>
+                    </select>
+                    <span class="hint">Shows this type's three setups first; the table still compares every type.</span>
+                </div>
                 <div class="form-group" data-mode="disks">
                     <label for="stLevel">RAID / protection</label>
                     <select id="stLevel">
@@ -1168,13 +1189,23 @@
                 + card('Disk', inBest(s, CAP_DEC), type.name)
                 + card('Data disks (before protection)', String(Math.ceil(target / s - 1e-9)), 'at least, before parity or mirrors')
                 + '</div>';
-            html += '<h4>Suggested setups</h4><div class="picks">'
+            const pref = $('stPrefer').value;
+            const prefBest = (byType.find(([id]) => id === pref) || [])[1];
+            const riskNote = (r) => (r.risk >= 0.05 ? ` Rebuild risk ${fmtRisk(r.risk)}: keep good backups, or use disks rated 1 per 10^16 bits.` : '');
+            const goalWhy = { perf: 'Narrowest arrays: most IOPS per disk and the fastest rebuilds.', space: 'Fewest disks, using arrays up to the best-practice max.', opt: 'Fewest disks with the usual middle array sizes.' };
+            if (prefBest) {
+                html += `<h4>Suggested setups for ${esc(LEVELS[pref].name)}</h4><div class="picks">`
+                    + GOALS.filter(([goal]) => prefBest[goal]).map(([goal, label], i) => pickCard(['perf', 'cap', 'bal'][i], label, prefBest[goal], goalWhy[goal] + riskNote(prefBest[goal]), need)).join('')
+                    + '</div>';
+                if (!GOALS.some(([goal]) => prefBest[goal])) html += `<div class="error">No ${esc(LEVELS[pref].name)} setup fits these inputs.</div>`;
+            } else html += '<h4>Suggested setups</h4><div class="picks">'
                 + pickCard('perf', '★ Best performance', pickPerf, `Most IOPS for each disk you buy.${pickPerf.risk >= 0.05 ? ` Rebuild risk ${fmtRisk(pickPerf.risk)}: keep good backups, or use disks rated 1 per 10^16 bits.` : ''}`, need)
                 + pickCard('bal', '★ Balanced', pickBal, 'Most IOPS per disk while keeping at least 65% of disk space usable.', need)
                 + pickCard('cap', '★ Best capacity', pickCap, 'Fewest disks for the space, with low rebuild risk.', need)
                 + '</div>';
 
             const advice = [];
+            if (prefBest) advice.push(['info', `Across all types (★ in the table): best performance ${pickPerf.L.name}, ${pickPerf.disks} disks; balanced ${pickBal.L.name}, ${pickBal.disks} disks; best capacity ${pickCap.L.name}, ${pickCap.disks} disks.`]);
             if (riskyOnly) advice.push(['bad', 'Every protected layout has a rebuild risk of 5% or more with these disks. Use smaller disks or ones with a better read-error rate.']);
             else advice.push(['info', 'Suggestions only use layouts that survive a disk failure, with group sizes in the recommended range. Balanced and capacity keep rebuild risk under 5%; performance also allows mirrors up to 10%, because their rebuild copies only one disk.']);
             if (!ssd && pickPerf.mixed < 2000) advice.push(['info', `Even the fastest HDD setup gives about ${fmtIops(pickPerf.mixed)} mixed IOPS. For VMs or databases, add an SSD cache or tier, or use SSDs.`]);
@@ -1201,9 +1232,11 @@
                     + `<td>${esc(fmtMBs(r.seqW))}</td>`
                     + `<td class="${r.risk === null || r.risk >= 0.05 ? 'no' : r.risk === 0 ? 'yes' : ''}">${esc(fmtRisk(r.risk))}</td></tr>`;
             };
-            for (const [id, best] of byType) {
+            const ordered = byType.filter(([id]) => id === pref).concat(byType.filter(([id]) => id !== pref));
+            for (const [id, best] of ordered) {
                 const gd = GUIDE[id];
-                const head = (span) => `<tr class="grp"><td class="wrap"${span > 1 ? ` rowspan="${span}"` : ''}><b>${esc(LEVELS[id].name)}</b>`
+                const cur = id === pref ? ' current' : '';
+                const head = (span) => `<tr class="grp${cur}"><td class="wrap"${span > 1 ? ` rowspan="${span}"` : ''}><b>${esc(LEVELS[id].name)}</b>`
                     + `<span class="sub">Best ${esc(gd.opt)} · max ${esc(gd.max)}${/per|vdev|way|pair/.test(gd.max) ? '' : ` per ${groupWord(LEVELS[id])}`}</span></td>`;
                 const rows = GOALS.filter(([goal]) => best[goal]);
                 if (!rows.length) {
@@ -1214,7 +1247,7 @@
                     t += rowHtml(best[rows[0][0]], head(1), 'All three goals');
                     continue;
                 }
-                rows.forEach(([goal, label], i) => { t += rowHtml(best[goal], i ? '<tr>' : head(rows.length), label); });
+                rows.forEach(([goal, label], i) => { t += rowHtml(best[goal], i ? `<tr class="${cur.trim()}">` : head(rows.length), label); });
             }
             $('stCompare').innerHTML = t + '</tbody>';
         }
