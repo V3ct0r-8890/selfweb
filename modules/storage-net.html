@@ -465,7 +465,7 @@
 
             <h3>RAID type guide</h3>
             <p class="hint">Disks per array (or group / vdev) from vendor and OpenZFS guidance: narrow for performance, middle sizes for the best balance,
-                and the widest still advised. Controllers may allow wider arrays, but rebuilds get slower and riskier. n = disks per array.</p>
+                and the widest still advised. Controllers may allow wider arrays, but rebuilds get slower and riskier. n = disks per array, including parity or mirror disks.</p>
             <div class="table-wrap"><table class="data-table" id="stGuide"></table></div>
         </section>
 
@@ -1189,7 +1189,8 @@
             // ---- per-layout table: smallest setup for each type, plus any pick that differs ----
             const picks = [[pickPerf, 'perf', '★ performance'], [pickBal, 'bal', '★ balanced'], [pickCap, 'cap', '★ capacity']];
             $('stCompareNote').textContent = `Best setup of each layout for ${inBest(target, CAP_DEC)} on ${inBest(s, CAP_DEC)} disks, for each goal. `
-                + 'Best performance uses narrow arrays (more IOPS, faster rebuilds); best of space uses any width up to the best-practice max; optimization uses the usual middle sizes.';
+                + 'Best performance uses narrow arrays (more IOPS, faster rebuilds); best of space uses any width up to the best-practice max; optimization uses the usual middle sizes. '
+                + 'Disks per array already include parity and mirror disks; spares are added on top, and Disks is the total to buy.';
             let t = '<thead><tr><th>Layout</th><th>Goal</th><th>Setup</th><th>Disks</th><th>Usable</th><th>Filled to</th><th>Survives</th><th>Mixed IOPS</th><th>Read IOPS</th><th>Write IOPS</th><th>Seq. write</th><th>Rebuild risk</th></tr></thead><tbody>';
             const badged = new Set();
             const rowHtml = (r, first, goalText) => {
